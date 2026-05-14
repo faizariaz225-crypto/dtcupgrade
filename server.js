@@ -388,7 +388,7 @@ app.get('/api/validate-token', (req, res) => {
 
 // ── Submit ─────────────────────────────────────────────────────────────────────
 app.post('/api/submit', (req, res) => {
-  const { token, orgId, sessionData, wechat, email } = req.body;
+  const { token, orgId, sessionData, wechat, email, country } = req.body;
   const tokens = loadTokens();
   if (!token || !tokens[token]) return res.status(404).json({ success: false, error: 'Invalid link.' });
   const t = tokens[token];
@@ -431,11 +431,12 @@ app.post('/api/submit', (req, res) => {
   if (t.credentialsMode) { lines.push('── Credentials provided by DTC ────────────────────────'); }
   else if (t.product === 'chatgpt') { lines.push('── Session Data ───────────────────────────────────────', sessionData.trim()); }
   else { lines.push(`Org ID       : ${orgId ? orgId.trim() : '—'}`); }
-  lines.push(`WeChat       : ${wechat.trim()}`, `Email        : ${email.trim()}`, '══════════════════════════════════════════════════════', '');
+  lines.push(`WeChat       : ${wechat.trim()}`, `Email        : ${email.trim()}`, `Country      : ${(country||'').trim()||'—'}`, '══════════════════════════════════════════════════════', '');
   fs.appendFileSync(SESSIONS_FILE, lines.join('\n'));
 
   tokens[token].used = true; tokens[token].submittedAt = timestamp;
   tokens[token].wechat = wechat.trim(); tokens[token].email = email.trim();
+  tokens[token].country = (country || '').trim();
   if (!t.credentialsMode) {
     if (t.product === 'chatgpt') tokens[token].sessionData = sessionData.trim();
     else tokens[token].orgId = orgId ? orgId.trim() : '';
@@ -458,6 +459,7 @@ app.get('/api/status', (req, res) => {
     credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '',
     approvedAt: t.approvedAt || null, declineReason: t.declineReason || '',
     orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '',
+    country: t.country || '',
     subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30,
     processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps,
     postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps,
@@ -819,7 +821,171 @@ app.post('/admin/landing-content', (req, res) => {
 });
 
 // ── Pages ──────────────────────────────────────────────────────────────────────
-app.get('/submit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'form.html')));
+// ── Backup — download all data as a single JSON bundle ────────────────────────
+app.get('/admin/backup', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
+    const bundle = {
+      _meta:        { exportedAt: new Date().toISOString(), version: '1.0' },
+      tokens:       readJson(TOKENS_FILE),
+      emailConfig:  readJson(EMAIL_CONFIG),
+      emailLog:     readJson(EMAIL_LOG),
+      instructions: readJson(INSTRUCTIONS_FILE),
+      notifications:readJson(NOTIFY_FILE),
+      products:     readJson(PRODUCTS_FILE),
+      emailTemplates: readJson(TEMPLATES_FILE),
+      settings:     readJson(SETTINGS_FILE),
+      landingContent: readJson(LANDING_FILE),
+    };
+    const filename = `dtc-backup-${new Date().toISOString().slice(0,10)}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(JSON.stringify(bundle, null, 2));
+  } catch(e) {
+    res.status(500).json({ error: 'Backup failed: ' + e.message });
+  }
+});
+
+// ── Restore — upload a backup bundle and overwrite data files ─────────────────
+app.post('/admin/restore', (req, res) => {
+  const { adminKey, bundle } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!bundle || typeof bundle !== 'object') return res.status(400).json({ error: 'Invalid backup file.' });
+  try {
+    const writeJson = (f, data) => { if (data !== null && data !== undefined) fs.writeFileSync(f, JSON.stringify(data, null, 2)); };
+    writeJson(TOKENS_FILE,        bundle.tokens);
+    writeJson(EMAIL_CONFIG,       bundle.emailConfig);
+    writeJson(EMAIL_LOG,          bundle.emailLog);
+    writeJson(INSTRUCTIONS_FILE,  bundle.instructions);
+    writeJson(NOTIFY_FILE,        bundle.notifications);
+    writeJson(PRODUCTS_FILE,      bundle.products);
+    writeJson(TEMPLATES_FILE,     bundle.emailTemplates);
+    writeJson(SETTINGS_FILE,      bundle.settings);
+    writeJson(LANDING_FILE,       bundle.landingContent);
+    // Reload admin key override from restored settings
+    try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); if (s.adminKey) ADMIN_KEY_OVERRIDE = s.adminKey; } catch {}
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: 'Restore failed: ' + e.message });
+  }
+});
+
+// ── Payment details (admin sets payment info on a token) ──────────────────────
+app.post('/admin/payment', (req, res) => {
+  const { adminKey, token, paymentStatus, paymentMethod, amountPaid, paymentNote } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const tokens = loadTokens();
+  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  tokens[token].paymentStatus    = paymentStatus || 'unpaid';
+  tokens[token].paymentMethod    = paymentMethod || '';
+  tokens[token].amountPaid       = parseFloat(amountPaid) || 0;
+  tokens[token].paymentNote      = paymentNote   || '';
+  tokens[token].paymentUpdatedAt = new Date().toISOString();
+  saveTokens(tokens);
+  res.json({ success: true });
+});
+
+// ── Renewal request (customer clicks "I want to renew" on status page) ────────
+app.post('/api/request-renewal', async (req, res) => {
+  const { token } = req.body;
+  const tokens = loadTokens();
+  if (!token || !tokens[token]) return res.status(404).json({ error: 'Invalid token.' });
+  const t = tokens[token];
+  if (!t.approved) return res.status(400).json({ error: 'Subscription not activated.' });
+  const cfg = loadEmailCfg();
+  if (!cfg.host || !cfg.user || !cfg.pass) return res.status(503).json({ error: 'Email not configured on server.' });
+  const expiry = t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+  const html = baseEmail(`
+    <h2 style="color:#1e293b;margin:0 0 12px">🔄 Renewal Request</h2>
+    <p style="color:#475569;margin:0 0 16px">A customer has requested renewal from the status portal.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <tr><td style="padding:8px 0;color:#64748b;width:120px">Name</td><td style="padding:8px 0;color:#1e293b;font-weight:600">${t.customerName}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">Package</td><td style="padding:8px 0;color:#1e293b;font-weight:600">${t.packageType}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">WeChat</td><td style="padding:8px 0;color:#1e293b">${t.wechat||'—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">Email</td><td style="padding:8px 0;color:#1e293b">${t.email||'—'}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">Expires</td><td style="padding:8px 0;color:#d97706;font-weight:600">${expiry}</td></tr>
+      <tr><td style="padding:8px 0;color:#64748b">Country</td><td style="padding:8px 0;color:#1e293b">${t.country||'—'}</td></tr>
+    </table>
+    <p style="margin:16px 0 0;font-size:.8rem;color:#94a3b8">Generate a new activation link in the admin panel and send it to this customer.</p>
+  `);
+  const r = await sendEmail({ to: cfg.user, subject: `Renewal Request — ${t.customerName} — DTC`, html, type: 'renewal_request', token });
+  if (r.ok) res.json({ success: true });
+  else res.status(500).json({ error: r.error });
+});
+
+// ── OTP store (in-memory, expires 10 min) ────────────────────────────────────
+const _otpStore = new Map();
+const _genOtp   = () => Math.floor(100000 + Math.random() * 900000).toString();
+
+app.post('/api/send-otp', async (req, res) => {
+  const { email, purpose } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email.' });
+  const tokens = loadTokens();
+  const hasRecord = Object.values(tokens).some(t => (t.email||'').toLowerCase() === email.toLowerCase());
+  const code = _genOtp();
+  _otpStore.set(email.toLowerCase(), { code, expires: Date.now() + 10 * 60 * 1000 });
+  if (hasRecord) {
+    const label = purpose === 'find-link' ? 'Activation Link Lookup' : 'Subscription History';
+    const html  = baseEmail(`<h2 style="color:#1e293b;margin:0 0 12px">Your verification code</h2>
+      <p style="color:#475569;margin:0 0 20px">Use this code to access your ${label}. It expires in 10 minutes.</p>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:20px;text-align:center;margin-bottom:16px">
+        <div style="font-size:2rem;font-weight:800;font-family:monospace;color:#2563eb;letter-spacing:.2em">${code}</div>
+      </div>
+      <p style="font-size:.78rem;color:#94a3b8;margin:0">If you did not request this, you can ignore this email.</p>`);
+    await sendEmail({ to: email, subject: `Your DTC verification code: ${code}`, html, type: 'otp' });
+  }
+  res.json({ success: true });
+});
+
+app.post('/api/history', (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Missing fields.' });
+  const rec = _otpStore.get(email.toLowerCase());
+  if (!rec || rec.code !== otp || Date.now() > rec.expires) return res.status(401).json({ error: 'Invalid or expired code.' });
+  _otpStore.delete(email.toLowerCase());
+  const tokens = loadTokens();
+  const history = Object.entries(tokens)
+    .filter(([, t]) => (t.email||'').toLowerCase() === email.toLowerCase() && t.approved && !t.hidden)
+    .sort((a, b) => new Date(b[1].approvedAt||0) - new Date(a[1].approvedAt||0))
+    .map(([, t]) => ({
+      customerName: t.customerName, packageType: t.packageType, product: t.product||'claude',
+      approvedAt: t.approvedAt, subscriptionExpiresAt: t.subscriptionExpiresAt,
+      durationDays: t.durationDays||30, country: t.country||'',
+    }));
+  res.json({ history });
+});
+
+app.post('/api/find-link', async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Missing fields.' });
+  const rec = _otpStore.get(email.toLowerCase());
+  if (!rec || rec.code !== otp || Date.now() > rec.expires) return res.status(401).json({ error: 'Invalid or expired code.' });
+  _otpStore.delete(email.toLowerCase());
+  const tokens = loadTokens();
+  const cfg    = loadEmailCfg();
+  const pending = Object.entries(tokens).filter(([, t]) =>
+    (t.email||'').toLowerCase() === email.toLowerCase() && !t.approved && !t.deactivated && !t.declined
+  );
+  if (!pending.length) return res.json({ success: true, found: 0 });
+  if (!cfg.host || !cfg.user || !cfg.pass) return res.status(503).json({ error: 'Email not configured.' });
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const linksHtml = pending.map(([tok, t]) =>
+    `<div style="background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:8px">
+      <div style="font-size:.75rem;color:#64748b;margin-bottom:4px">${t.packageType} &middot; Created ${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : '—'}</div>
+      <a href="${baseUrl}/submit?token=${tok}" style="color:#2563eb;font-size:.82rem;word-break:break-all">${baseUrl}/submit?token=${tok}</a>
+    </div>`).join('');
+  const html = baseEmail(`<h2 style="color:#1e293b;margin:0 0 12px">Your activation link${pending.length>1?'s':''}</h2>
+    <p style="color:#475569;margin:0 0 16px">Here ${pending.length>1?'are your pending activation links':'is your pending activation link'}:</p>
+    ${linksHtml}
+    <p style="font-size:.78rem;color:#94a3b8;margin:12px 0 0">If your link has expired, please contact DTC to request a new one.</p>`);
+  await sendEmail({ to: email, subject: 'Your DTC activation link', html, type: 'link_resend' });
+  res.json({ success: true, found: pending.length });
+});
+
+app.get('/status',    (req, res) => res.sendFile(path.join(__dirname, 'public', 'status.html')));
+app.get('/history',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
+app.get('/find-link', (req, res) => res.sendFile(path.join(__dirname, 'public', 'find-link.html')));
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/',       (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 

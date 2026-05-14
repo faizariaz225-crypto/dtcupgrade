@@ -232,6 +232,10 @@
     .notif-type-btn.sel-warning{background:#fffbeb;border-color:#fde68a;color:#b45309}
     .notif-type-btn.sel-error  {background:#fef2f2;border-color:#fecaca;color:#dc2626}
 
+    /* ── Landing Page Editor ──────────────────────────────────────────────────── */
+    @media(max-width:960px){#page-landing [style*="grid-template-columns:1fr 420px"]{display:block!important}}
+    #page-landing [style*="grid-template-columns:1fr 420px"] > div:last-child{margin-top:1.2rem}
+
     /* ── Login screen ──────────────────────────────────────────────────────── */
     #login-wrap {
       min-height: 100vh;
@@ -359,6 +363,9 @@
         <span class="icon">📦</span>Products
       </div>
       <div class="nav-sec" style="margin-top:.5rem">Settings</div>
+      <div class="nav-item" onclick="Shell.navigate('landing', this)">
+        <span class="icon">🌐</span>Landing Page
+      </div>
       <div class="nav-item" onclick="Shell.navigate('instructions', this)">
         <span class="icon">📋</span>Instructions
       </div>
@@ -485,9 +492,6 @@
         <div class="card-title">
           <span>All Links</span>
           <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
-        </div>
-        <div style="margin-bottom:.6rem">
-          <input id="dash-search" placeholder="🔍  Search by name, email or WeChat…" oninput="Dashboard.render()" style="width:100%;padding:.45rem .75rem;font-size:.82rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);outline:none;box-sizing:border-box;color:var(--text)" />
         </div>
         <div class="filters" id="df">
           <button class="fb active" onclick="Dashboard.setFilter('all',this)">All</button>
@@ -633,36 +637,14 @@
           <!-- Recipient filter -->
           <div class="recipient-bar">
             <label style="font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:0;white-space:nowrap">Send to:</label>
-            <select id="recipient-filter" onchange="BulkEmail.onFilterChange()" style="flex:1;padding:.4rem .7rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:7px;background:var(--white);outline:none;min-width:160px">
+            <select id="recipient-filter" onchange="BulkEmail._renderRecipientCount !== undefined && BulkEmail.render()" style="flex:1;padding:.4rem .7rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:7px;background:var(--white);outline:none;min-width:160px">
               <option value="all-with-email">Everyone with an email</option>
               <option value="activated">Active subscribers only</option>
               <option value="expiring">Expiring within 30 days</option>
               <option value="expired">Expired subscriptions</option>
               <option value="submitted">Submitted, awaiting approval</option>
-              <option value="individual">Pick individual customers…</option>
             </select>
             <span class="recipient-count-badge" id="recipient-count">0 recipients</span>
-          </div>
-
-          <!-- Individual customer picker (shown only when filter = individual) -->
-          <div id="individual-picker" style="display:none;margin-bottom:.7rem;border:1.5px solid var(--border);border-radius:8px;padding:.6rem .75rem;background:var(--bg)">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em">Select customers</div>
-            <div id="individual-search-wrap" style="margin-bottom:.45rem">
-              <input id="individual-search" placeholder="Search by name or email…" style="width:100%;padding:.4rem .65rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px;background:var(--white);outline:none;box-sizing:border-box" oninput="BulkEmail.filterIndividualList()" />
-            </div>
-            <div id="individual-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem"></div>
-            <div id="individual-selected-bar" style="margin-top:.45rem;font-size:.72rem;color:var(--blue);font-weight:600"></div>
-          </div>
-
-          <!-- Custom email addresses (always visible) -->
-          <div style="margin-bottom:.7rem">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">+ Add extra email addresses</div>
-            <div id="custom-email-tags" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;min-height:0"></div>
-            <div style="display:flex;gap:.4rem">
-              <input id="custom-email-input" placeholder="someone@example.com" style="flex:1;padding:.38rem .65rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px;background:var(--white);outline:none" onkeydown="BulkEmail.handleCustomEmailKey(event)" />
-              <button class="btn btn-ghost-blue btn-sm" onclick="BulkEmail.addCustomEmail()" style="white-space:nowrap">Add</button>
-            </div>
-            <div style="font-size:.68rem;color:var(--muted);margin-top:.25rem">Press Enter or click Add. These are sent in addition to the filter above.</div>
           </div>
 
           <!-- Template type indicator -->
@@ -764,41 +746,136 @@
         </div>
       </div>
 
-      <div class="setting-block">
-        <div class="setting-block-title">Automatic Renewal Reminders</div>
-        <div class="setting-block-sub">When enabled, customers with an email address automatically receive a 5-day reminder before expiry and a notice when their subscription expires. Disable this if you prefer to send reminders manually.</div>
-        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.88rem;font-weight:500;color:var(--text)">
-          <input type="checkbox" id="auto-reminders-enabled" style="width:16px;height:16px;accent-color:var(--blue)" />
-          Enable automatic renewal reminders &amp; expiry notices
-        </label>
-      </div>
-
       <button class="btn btn-primary" onclick="Settings.save()">Save Settings</button>
       <div class="msg ok" id="settings-ok"></div>
       <div class="msg err" id="settings-err"></div>
+    </div><!-- /page-settings -->
 
-      <div class="setting-block" style="margin-top:2rem;border-top:1.5px solid var(--border);padding-top:1.5rem">
-        <div class="setting-block-title">Change Admin Password</div>
-        <div class="setting-block-sub">Update the password used to log in to this admin panel. You will need to use the new password on your next login. Requires your current password to confirm.</div>
-        <div class="form-row">
-          <div class="form-group" style="margin-bottom:0">
-            <label>Current Password</label>
-            <input type="password" id="key-current" placeholder="Current admin password" autocomplete="current-password" />
+    <!-- ── PAGE: Landing Page Editor ── -->
+    <div class="page" id="page-landing">
+      <div class="ph">
+        <div class="ph-title">🌐 Landing Page</div>
+        <div class="ph-sub">Edit all content displayed on your public-facing landing page.</div>
+      </div>
+
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center">
+        <button class="btn btn-primary" onclick="Landing.save()">💾 Save Changes</button>
+        <button class="btn btn-outline" onclick="Landing.openLandingPage()">↗ View Live Page</button>
+        <button class="btn btn-outline" onclick="Landing.reset()" style="margin-left:auto;color:var(--error);border-color:var(--error-border)">↺ Reset to Defaults</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 420px;gap:1.5rem;align-items:start">
+        <!-- LEFT: Edit forms -->
+        <div>
+
+          <!-- Hero Section -->
+          <div class="setting-block">
+            <div class="setting-block-title">🚀 Hero Section</div>
+            <div class="setting-block-sub">The main headline and subtitle visitors see first.</div>
+            <div class="form-group">
+              <label>Hero Title <span style="font-weight:400;color:var(--muted)">(HTML supported — use &lt;span&gt; for blue text)</span></label>
+              <input id="lp-hero-title" placeholder="Your Gateway to <span>AI & Academic</span> Excellence"/>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Hero Subtitle</label>
+              <textarea id="lp-hero-subtitle" rows="3" placeholder="Short compelling description of DTC's value…"></textarea>
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label>New Password <span style="font-weight:400;color:var(--muted)">(min 6 characters)</span></label>
-            <input type="password" id="key-new" placeholder="New admin password" autocomplete="new-password" />
+
+          <!-- Statistics -->
+          <div class="setting-block">
+            <div class="setting-block-title">📊 Statistics Bar</div>
+            <div class="setting-block-sub">Key numbers shown prominently on the landing page.</div>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Active Customers</label>
+                <input id="lp-stat-customers" placeholder="2,000+"/>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Accounts Activated</label>
+                <input id="lp-stat-activations" placeholder="10,000+"/>
+              </div>
+            </div>
+            <div class="form-row" style="margin-top:.7rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label>AI Tools Count</label>
+                <input id="lp-stat-tools" placeholder="100+"/>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Countries Served</label>
+                <input id="lp-stat-countries" placeholder="50+"/>
+              </div>
+            </div>
           </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label>Confirm New Password</label>
-            <input type="password" id="key-confirm" placeholder="Repeat new password" autocomplete="new-password" />
+
+          <!-- About -->
+          <div class="setting-block">
+            <div class="setting-block-title">ℹ About Section</div>
+            <div class="setting-block-sub">Text in the "About DTC" section of the page.</div>
+            <div class="form-group">
+              <label>Section Title</label>
+              <input id="lp-about-title" placeholder="Premium AI Access, Made Affordable"/>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>Description</label>
+              <textarea id="lp-about-desc" rows="3" placeholder="Describe DTC's mission and value proposition…"></textarea>
+            </div>
+          </div>
+
+          <!-- Contact -->
+          <div class="setting-block">
+            <div class="setting-block-title">📞 Contact Details</div>
+            <div class="setting-block-sub">Shown in the contact section and page footer.</div>
+            <div class="form-row">
+              <div class="form-group" style="margin-bottom:0">
+                <label>Email Address</label>
+                <input id="lp-email" type="email" placeholder="dtc@dtc1.shop"/>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>WhatsApp Number</label>
+                <input id="lp-whatsapp" placeholder="+86 19738122807"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- WeChat QR -->
+          <div class="setting-block">
+            <div class="setting-block-title">💬 WeChat QR Code</div>
+            <div class="setting-block-sub">Upload your WeChat QR code image. It will be embedded on the landing page. Max 500 KB.</div>
+            <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
+              <div id="lp-qr-preview" style="width:80px;height:80px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:.65rem;text-align:center;background:#f8fafc">
+                No QR set
+              </div>
+              <div style="flex:1;min-width:200px">
+                <label class="btn btn-outline" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
+                  📁 Upload QR Image
+                  <input type="file" accept="image/*" style="display:none" onchange="Landing.handleQrUpload(this)"/>
+                </label>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Or paste Image URL / Base64</label>
+                  <input id="lp-wechat-qr" placeholder="https://… or data:image/png;base64,…" style="font-size:.75rem"/>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT: Live preview -->
+        <div style="position:sticky;top:1.5rem">
+          <div class="card" style="margin-bottom:0">
+            <div class="card-title" style="margin-bottom:.9rem">
+              <span>Live Preview</span>
+              <button class="btn btn-outline btn-sm" onclick="Landing.save()">Save →</button>
+            </div>
+            <div id="lp-preview" style="font-size:.78rem"></div>
           </div>
         </div>
-        <button class="btn btn-outline" style="margin-top:.8rem" onclick="Settings.changeKey()">Change Password</button>
-        <div class="msg ok" id="key-ok" style="margin-top:.5rem"></div>
-        <div class="msg err" id="key-err" style="margin-top:.5rem"></div>
       </div>
-    </div><!-- /page-settings -->
+
+      <div class="msg ok" id="lp-ok" style="margin-top:1rem"></div>
+      <div class="msg err" id="lp-err" style="margin-top:1rem"></div>
+    </div><!-- /page-landing -->
 
     <!-- ── PAGE: Email Config ── -->
     <div class="page" id="page-email">
@@ -1041,6 +1118,7 @@
 <script src="js/settings.js"></script>
 <script src="js/resellers.js"></script>
 <script src="js/bulk-email.js"></script>
+<script src="js/landing.js"></script>
 <script src="js/products.js"></script>
 <script src="js/revenue.js"></script>
 <script src="js/notifications.js"></script>
