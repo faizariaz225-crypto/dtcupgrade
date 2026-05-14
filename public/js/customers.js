@@ -141,12 +141,26 @@ const Customers = (() => {
         <button class="btn btn-outline btn-sm" style="border-color:#dc2626;color:#dc2626;margin-top:.3rem" onclick="Customers.deleteCustomer('${esc(t.customerName)}')">🗑 Delete Customer</button>
       </div>
 
-      ${t.paymentStatus ? `<div style="margin-top:.6rem;background:${t.paymentStatus==='paid'?'#f0fdf4':t.paymentStatus==='partial'?'#fffbeb':'#fef2f2'};border:1px solid ${t.paymentStatus==='paid'?'#bbf7d0':t.paymentStatus==='partial'?'#fde68a':'#fecaca'};border-radius:8px;padding:.5rem .75rem;font-size:.74rem;display:flex;gap:.75rem;flex-wrap:wrap;align-items:center">
-        <span style="font-weight:700;color:${t.paymentStatus==='paid'?'#15803d':t.paymentStatus==='partial'?'#92400e':'#dc2626'}">${t.paymentStatus==='paid'?'✓ Paid':t.paymentStatus==='partial'?'⚠ Partial':'✕ Unpaid'}</span>
-        ${t.paymentMethod?`<span style="color:var(--muted)">via ${esc(t.paymentMethod)}</span>`:''}
-        ${t.amountPaid?`<span style="font-family:'JetBrains Mono',monospace;color:var(--text)">${(Store.settings||{}).currencySymbol||'$'}${parseFloat(t.amountPaid).toFixed(2)}</span>`:''}
-        ${t.paymentNote?`<span style="color:var(--muted2);font-style:italic">${esc(t.paymentNote)}</span>`:''}
-      </div>` : ''}
+      ${t.paymentStatus ? (() => {
+        const sym = (Store.settings||{}).currencySymbol||'$';
+        const statusMap = {
+          paid:            { bg:'#f0fdf4', border:'#bbf7d0', color:'#15803d', label:'✓ Paid' },
+          partial:         { bg:'#fffbeb', border:'#fde68a', color:'#92400e', label:'⚠ Partial' },
+          'partial-refund':{ bg:'#fff7ed', border:'#fed7aa', color:'#c2410c', label:'↩ Partial Refund' },
+          refunded:        { bg:'#fef2f2', border:'#fecaca', color:'#dc2626', label:'↩ Refunded' },
+          unpaid:          { bg:'#fef2f2', border:'#fecaca', color:'#dc2626', label:'✕ Unpaid' },
+        };
+        const sc = statusMap[t.paymentStatus] || statusMap.unpaid;
+        const records = t.paymentRecords || [];
+        const paid = t.amountPaid || 0;
+        const refunded = t.amountRefunded || 0;
+        return `<div style="margin-top:.6rem;background:${sc.bg};border:1px solid ${sc.border};border-radius:8px;padding:.45rem .75rem;font-size:.74rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <span style="font-weight:700;color:${sc.color}">${sc.label}</span>
+          ${paid > 0 ? `<span style="color:var(--muted)">Paid: <strong>${sym}${paid.toFixed(2)}</strong></span>` : ''}
+          ${refunded > 0 ? `<span style="color:#dc2626">Refunded: <strong>−${sym}${refunded.toFixed(2)}</strong></span>` : ''}
+          ${records.length > 0 ? `<span style="color:var(--muted2)">${records.length} record${records.length!==1?'s':''}</span>` : ''}
+        </div>`;
+      })() : ''}
     </div>`;
   };
 
@@ -173,37 +187,143 @@ const Customers = (() => {
     }
   };
 
-  const openPayment = (token) => {
-    const t = Store.tokens[token];
-    if (!t) return;
-    document.getElementById('pay-token').value         = token;
-    document.getElementById('pay-status').value        = t.paymentStatus  || 'unpaid';
-    document.getElementById('pay-method').value        = t.paymentMethod  || '';
-    document.getElementById('pay-amount').value        = t.amountPaid     || '';
-    document.getElementById('pay-note').value          = t.paymentNote    || '';
-    document.getElementById('pay-customer-name').textContent = t.customerName;
-    document.getElementById('pay-pkg').textContent     = t.packageType;
-    const sym = (Store.settings||{}).currencySymbol||'$';
-    document.getElementById('pay-price-label').textContent = `Total price: ${sym}${(t.price||0).toFixed(2)}`;
-    document.getElementById('pay-modal').classList.add('open');
-  };
+  // ── Payment modal state ──────────────────────────────────────────────────
+  let _payType = 'payment'; // 'payment' or 'refund'
 
-  const savePayment = async () => {
-    const token         = document.getElementById('pay-token').value;
-    const paymentStatus = document.getElementById('pay-status').value;
-    const paymentMethod = document.getElementById('pay-method').value.trim();
-    const amountPaid    = document.getElementById('pay-amount').value;
-    const paymentNote   = document.getElementById('pay-note').value.trim();
-    const d = await api('/admin/payment', { adminKey: Store.adminKey, token, paymentStatus, paymentMethod, amountPaid, paymentNote });
-    if (d && d.success) {
-      document.getElementById('pay-modal').classList.remove('open');
-      await Dashboard.reload();
+  const setPayType = (type) => {
+    _payType = type;
+    const btnP = document.getElementById('pay-type-payment');
+    const btnR = document.getElementById('pay-type-refund');
+    const addBtn = document.getElementById('pay-add-btn');
+    if (type === 'payment') {
+      btnP.style.background = 'var(--blue)'; btnP.style.color = '#fff'; btnP.style.borderColor = 'var(--blue)';
+      btnR.style.background = 'var(--white)'; btnR.style.color = 'var(--muted)'; btnR.style.borderColor = 'var(--border)';
+      addBtn.textContent = 'Add Payment';
+      addBtn.style.background = 'var(--blue)';
     } else {
-      alert('Failed to save: ' + (d && d.error));
+      btnR.style.background = '#dc2626'; btnR.style.color = '#fff'; btnR.style.borderColor = '#dc2626';
+      btnP.style.background = 'var(--white)'; btnP.style.color = 'var(--muted)'; btnP.style.borderColor = 'var(--border)';
+      addBtn.textContent = 'Add Refund';
+      addBtn.style.background = '#dc2626';
     }
   };
 
-  const closePayment = () => document.getElementById('pay-modal').classList.remove('open');
+  const openPayment = (token) => {
+    const t = Store.tokens[token];
+    if (!t) return;
+    _payType = 'payment';
+    document.getElementById('pay-token').value              = token;
+    document.getElementById('pay-customer-name').textContent = t.customerName;
+    document.getElementById('pay-pkg').textContent          = t.packageType;
+    const sym = (Store.settings||{}).currencySymbol||'$';
+    document.getElementById('pay-price-label').textContent  = `Subscription price: ${sym}${(t.price||0).toFixed(2)}`;
+    document.getElementById('pay-amount').value = '';
+    document.getElementById('pay-method').value = '';
+    document.getElementById('pay-note').value   = '';
+    document.getElementById('pay-err').classList.remove('show');
+    setPayType('payment');
+    _renderPaySummary(t, sym);
+    _renderPayRecords(token, t, sym);
+    document.getElementById('pay-modal').classList.add('open');
+  };
 
-  return { render, setFilter, sendReminder, deleteCustomer, openPayment, savePayment, closePayment };
+  const _renderPaySummary = (t, sym) => {
+    const paid     = t.amountPaid     || 0;
+    const refunded = t.amountRefunded || 0;
+    const net      = t.netAmountPaid  || (paid - refunded);
+    const price    = t.price || 0;
+    const status   = t.paymentStatus  || 'unpaid';
+    const statusColors = {
+      paid:           { bg:'#f0fdf4', border:'#bbf7d0', color:'#15803d', label:'✓ Fully Paid' },
+      partial:        { bg:'#fffbeb', border:'#fde68a', color:'#92400e', label:'⚠ Partial Payment' },
+      'partial-refund':{ bg:'#fffbeb', border:'#fde68a', color:'#92400e', label:'⚠ Partial Refund' },
+      refunded:       { bg:'#fef2f2', border:'#fecaca', color:'#dc2626', label:'↩ Refunded' },
+      unpaid:         { bg:'#fef2f2', border:'#fecaca', color:'#dc2626', label:'✕ Unpaid' },
+    };
+    const sc = statusColors[status] || statusColors.unpaid;
+    document.getElementById('pay-summary').innerHTML = `
+      <div style="background:${sc.bg};border:1px solid ${sc.border};border-radius:6px;padding:.3rem .7rem;font-weight:700;color:${sc.color}">${sc.label}</div>
+      <div style="padding:.3rem .5rem;color:var(--muted)">Paid: <strong style="color:var(--text)">${sym}${paid.toFixed(2)}</strong></div>
+      ${refunded > 0 ? `<div style="padding:.3rem .5rem;color:var(--error)">Refunded: <strong>−${sym}${refunded.toFixed(2)}</strong></div>` : ''}
+      <div style="padding:.3rem .5rem;color:var(--muted)">Net: <strong style="color:var(--text)">${sym}${Math.max(0,net).toFixed(2)}</strong> / ${sym}${price.toFixed(2)}</div>
+    `;
+  };
+
+  const _renderPayRecords = (token, t, sym) => {
+    const wrap    = document.getElementById('pay-records');
+    const records = (t.paymentRecords || []).slice().sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+    if (!records.length) {
+      wrap.innerHTML = '<div style="font-size:.78rem;color:var(--muted2);padding:.4rem 0">No transactions yet.</div>';
+      return;
+    }
+    wrap.innerHTML = records.map(r => {
+      const isRefund = r.type === 'refund';
+      const fmtDate  = new Date(r.createdAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      return `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding:.55rem .65rem;margin-bottom:.35rem;border-radius:8px;background:${isRefund?'#fef2f2':'#f0fdf4'};border:1px solid ${isRefund?'#fecaca':'#bbf7d0'}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.78rem;font-weight:700;color:${isRefund?'#dc2626':'#15803d'}">${isRefund?'↩ Refund':'＋ Payment'} &nbsp;<span style="font-family:\'JetBrains Mono\',monospace">${isRefund?'−':''}${sym}${r.amount.toFixed(2)}</span></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.15rem">${r.method?esc(r.method)+' · ':''}<span style="color:var(--muted2)">${fmtDate}</span></div>
+          ${r.note?`<div style="font-size:.7rem;color:var(--muted2);font-style:italic;margin-top:.1rem">${esc(r.note)}</div>`:''}
+        </div>
+        <button onclick="Customers.deletePayRecord('${token}','${r.id}')" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--muted2);font-size:.85rem;padding:.1rem .2rem;flex-shrink:0;line-height:1" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='var(--muted2)'">✕</button>
+      </div>`;
+    }).join('');
+  };
+
+  const addPaymentRecord = async () => {
+    const token  = document.getElementById('pay-token').value;
+    const amount = document.getElementById('pay-amount').value;
+    const method = document.getElementById('pay-method').value;
+    const note   = document.getElementById('pay-note').value.trim();
+    const errEl  = document.getElementById('pay-err');
+    errEl.classList.remove('show');
+    if (!amount || parseFloat(amount) <= 0) {
+      errEl.textContent = 'Please enter a valid amount greater than 0.';
+      errEl.classList.add('show'); return;
+    }
+    const d = await api('/admin/payment', { adminKey: Store.adminKey, token, type: _payType, paymentMethod: method, amount, note });
+    if (d && d.success) {
+      // Update local token state immediately
+      const t = Store.tokens[token];
+      if (t) {
+        if (!t.paymentRecords) t.paymentRecords = [];
+        t.paymentRecords.unshift(d.record);
+        t.paymentStatus   = d.paymentStatus;
+        t.amountPaid      = d.amountPaid;
+        t.amountRefunded  = d.amountRefunded;
+        t.netAmountPaid   = d.netAmountPaid;
+      }
+      document.getElementById('pay-amount').value = '';
+      document.getElementById('pay-note').value   = '';
+      const sym = (Store.settings||{}).currencySymbol||'$';
+      _renderPaySummary(t, sym);
+      _renderPayRecords(token, t, sym);
+      // Refresh revenue stat
+      try { Dashboard.render(); } catch(e) {}
+    } else {
+      errEl.textContent = (d && d.error) || 'Failed to save.';
+      errEl.classList.add('show');
+    }
+  };
+
+  const deletePayRecord = async (token, recordId) => {
+    if (!confirm('Delete this transaction record?')) return;
+    const d = await api('/admin/payment/delete', { adminKey: Store.adminKey, token, recordId });
+    if (d && d.success) {
+      await Dashboard.reload();
+      const t = Store.tokens[token];
+      if (t) {
+        const sym = (Store.settings||{}).currencySymbol||'$';
+        _renderPaySummary(t, sym);
+        _renderPayRecords(token, t, sym);
+      }
+    } else {
+      alert((d && d.error) || 'Failed to delete.');
+    }
+  };
+
+  const savePayment   = () => {}; // kept for compat, replaced by addPaymentRecord
+  const closePayment  = () => document.getElementById('pay-modal').classList.remove('open');
+
+  return { render, setFilter, sendReminder, deleteCustomer, openPayment, savePayment, closePayment, addPaymentRecord, deletePayRecord, setPayType };
 })();

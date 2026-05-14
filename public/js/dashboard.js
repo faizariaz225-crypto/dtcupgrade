@@ -13,11 +13,16 @@ const Dashboard = (() => {
     document.getElementById('s-sub').textContent  = cnt.submitted;
     document.getElementById('s-act').textContent  = cnt.activated;
     document.getElementById('s-exp').textContent  = (cnt.expired || 0) + (cnt.declined || 0);
-    // Revenue stat
-    const rev = Store.revenue || { total: 0 };
+    // Revenue stat — net of refunds
+    const rev = Store.revenue || { total: 0, totalRefunded: 0 };
     const revEl = document.getElementById('s-rev');
     const sym = (Store.settings || {}).currencySymbol || '$';
-    if (revEl) revEl.textContent = sym + rev.total.toFixed(2);
+    if (revEl) {
+      revEl.textContent = sym + rev.total.toFixed(2);
+      revEl.title = rev.totalRefunded > 0 ? `${sym}${rev.totalRefunded.toFixed(2)} refunded` : '';
+    }
+    const refEl = document.getElementById('s-refunded');
+    if (refEl) refEl.textContent = sym + (rev.totalRefunded || 0).toFixed(2);
   };
 
   // ── Sub expiry cell ────────────────────────────────────────────────────────

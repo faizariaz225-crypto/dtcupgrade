@@ -14,6 +14,8 @@ const Revenue = (() => {
     // Stats
     const sym = (Store.settings || {}).currencySymbol || '$';
     document.getElementById('rev-total').textContent = sym + rev.total.toFixed(2);
+    const refEl = document.getElementById('rev-refunded');
+    if (refEl) refEl.textContent = sym + (rev.totalRefunded || 0).toFixed(2);
 
     // Per-product breakdown
     const wrap = document.getElementById('rev-breakdown');
