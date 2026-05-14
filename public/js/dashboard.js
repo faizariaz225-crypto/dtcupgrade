@@ -139,6 +139,12 @@ const Dashboard = (() => {
     try { Customers.render(); } catch(e) { console.warn(e); }
     try { EmailLog.render(); } catch(e) { console.warn(e); }
     try { Revenue.render(); } catch(e) { console.warn(e); }
+    // Stamp last-updated time
+    const el = document.getElementById('dash-last-updated');
+    if (el) {
+      const now = new Date();
+      el.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
   };
 
   // ── Generate link ──────────────────────────────────────────────────────────

@@ -111,5 +111,60 @@ const Settings = (() => {
     _renderActivationTemplateDropdown(current);
   };
 
-  return { load, save, changeKey, refreshTemplateDropdown, CURRENCIES };
+  const downloadBackup = (e) => {
+    e.preventDefault();
+    const key = encodeURIComponent(Store.adminKey);
+    const a = document.createElement('a');
+    a.href = `/admin/backup?adminKey=${key}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const restoreBackup = async () => {
+    const fileInput = document.getElementById('restore-file');
+    const okEl  = document.getElementById('restore-ok');
+    const errEl = document.getElementById('restore-err');
+    okEl.classList.remove('show'); errEl.classList.remove('show');
+
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    let bundle;
+    try {
+      const text = await file.text();
+      bundle = JSON.parse(text);
+    } catch {
+      errEl.textContent = 'Invalid file — could not parse JSON.';
+      errEl.classList.add('show');
+      fileInput.value = '';
+      return;
+    }
+
+    if (!bundle._meta || !bundle.tokens) {
+      errEl.textContent = 'This does not look like a valid DTC backup file.';
+      errEl.classList.add('show');
+      fileInput.value = '';
+      return;
+    }
+
+    if (!confirm(`Restore backup from ${bundle._meta.exportedAt?.slice(0,10) || 'unknown date'}?\n\nThis will overwrite ALL current data. This cannot be undone.`)) {
+      fileInput.value = '';
+      return;
+    }
+
+    const d = await api('/admin/restore', { adminKey: Store.adminKey, bundle });
+    fileInput.value = '';
+    if (d && d.success) {
+      okEl.textContent = '✓ Restore complete. Reloading data…';
+      okEl.classList.add('show');
+      setTimeout(async () => { await Dashboard.reload(); okEl.textContent = '✓ Data restored and reloaded successfully.'; }, 1200);
+    } else {
+      errEl.textContent = (d && d.error) || 'Restore failed.';
+      errEl.classList.add('show');
+    }
+  };
+
+  return { load, save, changeKey, downloadBackup, restoreBackup, refreshTemplateDropdown, CURRENCIES };
 })();
