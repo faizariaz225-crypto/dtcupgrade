@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DTC — Subscription History</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--blue-light:#eff6ff;--blue-mid:#bfdbfe;--success:#16a34a;--warn:#d97706;--error:#dc2626;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--white:#fff;--bg:#f8fafc}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem}
+.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:2rem;width:100%;max-width:520px;box-shadow:0 4px 24px rgba(37,99,235,.07)}
+.logo{text-align:center;margin-bottom:1.8rem}
+.logo-name{font-size:1.5rem;font-weight:800;color:var(--text);letter-spacing:-.025em}
+.logo-sub{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.1rem}
+h2{font-size:1.1rem;font-weight:700;margin-bottom:.3rem}
+.sub{font-size:.83rem;color:var(--muted);margin-bottom:1.3rem;line-height:1.6}
+label{display:block;font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
+input[type=email],input[type=text]{width:100%;padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;margin-bottom:.8rem}
+input:focus{border-color:var(--blue)}
+.btn{width:100%;padding:.65rem;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:'Inter',sans-serif;margin-bottom:.5rem}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-outline{background:var(--white);border:1.5px solid var(--border);color:var(--text);width:auto;padding:.45rem 1rem;font-size:.8rem}.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.step{display:none}.step.show{display:block}
+.err{font-size:.78rem;color:var(--error);margin:.3rem 0;display:none}.err.show{display:block}
+.ok{font-size:.78rem;color:var(--success);margin:.3rem 0;display:none}.ok.show{display:block}
+.hist-item{border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:.75rem}
+.hist-pkg{font-weight:700;font-size:.9rem;margin-bottom:.4rem}
+.hist-row{display:flex;justify-content:space-between;font-size:.78rem;padding:.2rem 0}
+.hist-label{color:var(--muted)}.hist-val{font-weight:500}
+.badge{display:inline-block;padding:.15rem .55rem;border-radius:99px;font-size:.67rem;font-weight:700;margin-left:.4rem}
+.b-active{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d}
+.b-expired{background:#fef2f2;border:1px solid #fecaca;color:#dc2626}
+.b-expiring{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.links-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:.78rem}
+.links-bar a{color:var(--blue);text-decoration:none}.links-bar a:hover{text-decoration:underline}
+.links-bar span{color:var(--border)}
+.footer{margin-top:2rem;font-size:.72rem;color:var(--muted);text-align:center}
+.otp-hint{font-size:.75rem;color:var(--muted);margin-bottom:.8rem;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-name">DTC</div>
+    <div class="logo-sub">Digital Tools Corner</div>
+  </div>
+
+  <!-- Step 1: Enter email -->
+  <div class="step show" id="step-email">
+    <h2>Subscription History</h2>
+    <p class="sub">Enter your email address and we will send you a verification code to view your full subscription history.</p>
+    <label>Email Address</label>
+    <input type="email" id="email-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')sendOtp()"/>
+    <div class="err" id="email-err"></div>
+    <button class="btn btn-primary" onclick="sendOtp()" id="otp-btn">Send Verification Code</button>
+  </div>
+
+  <!-- Step 2: Enter OTP -->
+  <div class="step" id="step-otp">
+    <h2>Enter Verification Code</h2>
+    <p class="otp-hint">We sent a 6-digit code to <strong id="otp-email-label"></strong>. Check your inbox and enter it below. The code expires in 10 minutes.</p>
+    <label>Verification Code</label>
+    <input type="text" id="otp-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyOtp()"/>
+    <div class="err" id="otp-err"></div>
+    <button class="btn btn-primary" onclick="verifyOtp()" id="verify-btn">Verify &amp; View History</button>
+    <button class="btn-outline btn" onclick="goBack()" style="margin-top:.3rem">← Back</button>
+  </div>
+
+  <!-- Step 3: History -->
+  <div class="step" id="step-history">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.1rem">
+      <h2>Your History</h2>
+      <button class="btn-outline btn" onclick="goBack()">← Back</button>
+    </div>
+    <div id="history-list"></div>
+  </div>
+
+  <div class="links-bar">
+    <a href="/status">Check Subscription Status</a>
+    <span>·</span>
+    <a href="/find-link">Find my activation link</a>
+    <span>·</span>
+    <a href="/">DTC Home</a>
+  </div>
+</div>
+<div class="footer">DTC — Digital Tools Corner &nbsp;·&nbsp; dtc@dtc1.shop</div>
+
+<script>
+  let emailUsed = '';
+
+  async function sendOtp() {
+    const email = document.getElementById('email-input').value.trim();
+    const err   = document.getElementById('email-err');
+    err.classList.remove('show');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
+    emailUsed = email;
+    const btn = document.getElementById('otp-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, purpose:'history' }) });
+    btn.disabled = false; btn.textContent = 'Send Verification Code';
+    document.getElementById('otp-email-label').textContent = email;
+    document.getElementById('step-email').classList.remove('show');
+    document.getElementById('step-otp').classList.add('show');
+    document.getElementById('otp-input').focus();
+  }
+
+  async function verifyOtp() {
+    const otp = document.getElementById('otp-input').value.trim();
+    const err = document.getElementById('otp-err');
+    err.classList.remove('show');
+    if (otp.length < 6) { err.textContent='Please enter the 6-digit code.'; err.classList.add('show'); return; }
+    const btn = document.getElementById('verify-btn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    const r = await fetch('/api/history', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: emailUsed, otp }) });
+    const d = await r.json();
+    btn.disabled = false; btn.textContent = 'Verify & View History';
+    if (!r.ok) { err.textContent = d.error || 'Invalid code.'; err.classList.add('show'); return; }
+    showHistory(d.history);
+  }
+
+  function showHistory(history) {
+    document.getElementById('step-otp').classList.remove('show');
+    document.getElementById('step-history').classList.add('show');
+    const wrap = document.getElementById('history-list');
+    if (!history.length) { wrap.innerHTML = '<p style="color:var(--muted);font-size:.85rem">No subscription history found for this email.</p>'; return; }
+    const fmt = iso => iso ? new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+    wrap.innerHTML = history.map(h => {
+      const now      = new Date();
+      const expiry   = h.subscriptionExpiresAt ? new Date(h.subscriptionExpiresAt) : null;
+      const daysLeft = expiry ? Math.ceil((expiry - now) / 86400000) : null;
+      const badgeCls = daysLeft === null ? '' : daysLeft < 0 ? 'b-expired' : daysLeft <= 7 ? 'b-expiring' : 'b-active';
+      const badgeTxt = daysLeft === null ? '' : daysLeft < 0 ? '✕ Expired' : daysLeft <= 7 ? `⚠ ${daysLeft}d left` : '✓ Active';
+      return `<div class="hist-item">
+        <div class="hist-pkg">${h.packageType} ${badgeTxt ? `<span class="badge ${badgeCls}">${badgeTxt}</span>` : ''}</div>
+        <div class="hist-row"><span class="hist-label">Activated</span><span class="hist-val">${fmt(h.approvedAt)}</span></div>
+        <div class="hist-row"><span class="hist-label">Expires</span><span class="hist-val">${fmt(h.subscriptionExpiresAt)}</span></div>
+        ${h.country ? `<div class="hist-row"><span class="hist-label">Country</span><span class="hist-val">${h.country}</span></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function goBack() {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('show'));
+    document.getElementById('step-email').classList.add('show');
+    document.getElementById('otp-input').value = '';
+    document.getElementById('otp-err').classList.remove('show');
+  }
+</script>
+</body>
+</html>

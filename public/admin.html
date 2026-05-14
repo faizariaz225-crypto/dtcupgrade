@@ -484,7 +484,10 @@
       <div class="card">
         <div class="card-title">
           <span>All Links</span>
-          <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="dash-last-updated" style="font-size:.68rem;color:var(--muted2)"></span>
+            <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          </div>
         </div>
         <div style="margin-bottom:.6rem">
           <input id="dash-search" placeholder="🔍  Search by name, email or WeChat…" oninput="Dashboard.render()" style="width:100%;padding:.45rem .75rem;font-size:.82rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);outline:none;box-sizing:border-box;color:var(--text)" />
@@ -778,7 +781,22 @@
       <div class="msg err" id="settings-err"></div>
 
       <div class="setting-block" style="margin-top:2rem;border-top:1.5px solid var(--border);padding-top:1.5rem">
-        <div class="setting-block-title">Change Admin Password</div>
+        <div class="setting-block-title">Backup &amp; Restore</div>
+        <div class="setting-block-sub">Download a complete snapshot of all your data — customers, tokens, products, templates, settings — as a single JSON file. You can restore from this file at any time. <strong>Always back up before major changes.</strong></div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.8rem;align-items:center">
+          <a id="backup-btn" href="#" onclick="Settings.downloadBackup(event)"
+             style="display:inline-flex;align-items:center;gap:.4rem;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:.55rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;transition:background .15s"
+             onmouseover="this.style.background='var(--ink)'" onmouseout="this.style.background='var(--blue)'">
+            ⬇ Download Backup
+          </a>
+          <label style="display:inline-flex;align-items:center;gap:.4rem;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text)">
+            ⬆ Restore from File
+            <input type="file" id="restore-file" accept=".json" onchange="Settings.restoreBackup()" style="display:none" />
+          </label>
+        </div>
+        <div class="msg ok" id="restore-ok" style="margin-top:.6rem"></div>
+        <div class="msg err" id="restore-err" style="margin-top:.6rem"></div>
+      </div>
         <div class="setting-block-sub">Update the password used to log in to this admin panel. You will need to use the new password on your next login. Requires your current password to confirm.</div>
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
@@ -867,6 +885,52 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 
 <!-- Decline -->
+<!-- Payment Details Modal -->
+<div class="modal-overlay" id="pay-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">💳 Payment Details</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+      <strong id="pay-customer-name"></strong> &nbsp;·&nbsp; <span id="pay-pkg"></span><br>
+      <span id="pay-price-label" style="font-size:.75rem;color:var(--muted2)"></span>
+    </div>
+    <input type="hidden" id="pay-token"/>
+    <div class="form-group">
+      <label>Payment Status</label>
+      <select id="pay-status" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);font-size:.85rem;outline:none">
+        <option value="unpaid">✕ Unpaid</option>
+        <option value="partial">⚠ Partial Payment</option>
+        <option value="paid">✓ Fully Paid</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Payment Method</label>
+      <select id="pay-method" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);font-size:.85rem;outline:none">
+        <option value="">— Select method —</option>
+        <option>WeChat Pay</option>
+        <option>Alipay</option>
+        <option>Bank Transfer</option>
+        <option>PayPal</option>
+        <option>Wise</option>
+        <option>Crypto</option>
+        <option>Cash</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Amount Paid</label>
+      <input type="number" id="pay-amount" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;outline:none;box-sizing:border-box"/>
+    </div>
+    <div class="form-group" style="margin-bottom:1.1rem">
+      <label>Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <input type="text" id="pay-note" placeholder="e.g. Receipt #1234, partial pending…" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;outline:none;box-sizing:border-box"/>
+    </div>
+    <div style="display:flex;gap:.6rem">
+      <button class="btn btn-primary" style="flex:1" onclick="Customers.savePayment()">Save</button>
+      <button class="btn btn-outline" onclick="Customers.closePayment()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="decline-modal">
   <div class="modal">
     <div class="modal-title">Decline Activation Request</div>

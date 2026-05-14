@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DTC — Find My Activation Link</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--success:#16a34a;--error:#dc2626;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--white:#fff;--bg:#f8fafc}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem}
+.card{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:2rem;width:100%;max-width:460px;box-shadow:0 4px 24px rgba(37,99,235,.07)}
+.logo{text-align:center;margin-bottom:1.8rem}
+.logo-name{font-size:1.5rem;font-weight:800;color:var(--text);letter-spacing:-.025em}
+.logo-sub{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.1rem}
+h2{font-size:1.1rem;font-weight:700;margin-bottom:.3rem}
+.sub{font-size:.83rem;color:var(--muted);margin-bottom:1.3rem;line-height:1.6}
+label{display:block;font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
+input{width:100%;padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;margin-bottom:.8rem}
+input:focus{border-color:var(--blue)}
+.btn{width:100%;padding:.65rem;border-radius:8px;font-size:.88rem;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;margin-bottom:.5rem;transition:all .15s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:#1d4ed8}
+.btn-outline{background:var(--white);border:1.5px solid var(--border);color:var(--text);width:auto;padding:.45rem 1rem;font-size:.8rem}.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.step{display:none}.step.show{display:block}
+.err{font-size:.78rem;color:var(--error);margin:.3rem 0;display:none}.err.show{display:block}
+.success-wrap{text-align:center;padding:1rem 0}
+.success-icon{font-size:2.5rem;margin-bottom:.6rem}
+.success-title{font-size:1rem;font-weight:700;margin-bottom:.4rem}
+.success-sub{font-size:.83rem;color:var(--muted);line-height:1.6}
+.links-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.5rem;padding-top:1.2rem;border-top:1px solid var(--border);font-size:.78rem}
+.links-bar a{color:var(--blue);text-decoration:none}.links-bar a:hover{text-decoration:underline}
+.links-bar span{color:var(--border)}
+.footer{margin-top:2rem;font-size:.72rem;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-name">DTC</div>
+    <div class="logo-sub">Digital Tools Corner</div>
+  </div>
+
+  <!-- Step 1: Email -->
+  <div class="step show" id="step-email">
+    <h2>Find My Activation Link</h2>
+    <p class="sub">Lost your activation link? Enter the email address you used when signing up and we will send your pending link(s) to it.</p>
+    <label>Email Address</label>
+    <input type="email" id="email-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')sendOtp()"/>
+    <div class="err" id="email-err"></div>
+    <button class="btn btn-primary" onclick="sendOtp()" id="otp-btn">Send Verification Code</button>
+  </div>
+
+  <!-- Step 2: OTP -->
+  <div class="step" id="step-otp">
+    <h2>Enter Verification Code</h2>
+    <p class="sub" style="margin-bottom:1rem">We sent a 6-digit code to <strong id="otp-email-label"></strong>. Enter it below to verify your identity.</p>
+    <label>Verification Code</label>
+    <input type="text" id="otp-input" placeholder="123456" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')verifyOtp()"/>
+    <div class="err" id="otp-err"></div>
+    <button class="btn btn-primary" onclick="verifyOtp()" id="verify-btn">Verify &amp; Send My Link</button>
+    <button class="btn-outline btn" onclick="goBack()" style="margin-top:.3rem">← Back</button>
+  </div>
+
+  <!-- Step 3: Success/result -->
+  <div class="step" id="step-done">
+    <div class="success-wrap">
+      <div class="success-icon" id="done-icon">📬</div>
+      <div class="success-title" id="done-title">Link sent!</div>
+      <p class="success-sub" id="done-sub"></p>
+    </div>
+    <button class="btn btn-primary" onclick="goBack()" style="margin-top:1.5rem">Start over</button>
+  </div>
+
+  <div class="links-bar">
+    <a href="/status">Check Subscription Status</a>
+    <span>·</span>
+    <a href="/history">Subscription History</a>
+    <span>·</span>
+    <a href="/">DTC Home</a>
+  </div>
+</div>
+<div class="footer">DTC — Digital Tools Corner &nbsp;·&nbsp; dtc@dtc1.shop</div>
+
+<script>
+  let emailUsed = '';
+
+  async function sendOtp() {
+    const email = document.getElementById('email-input').value.trim();
+    const err   = document.getElementById('email-err');
+    err.classList.remove('show');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
+    emailUsed = email;
+    const btn = document.getElementById('otp-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    await fetch('/api/send-otp', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, purpose:'find-link' }) });
+    btn.disabled = false; btn.textContent = 'Send Verification Code';
+    document.getElementById('otp-email-label').textContent = email;
+    document.getElementById('step-email').classList.remove('show');
+    document.getElementById('step-otp').classList.add('show');
+    document.getElementById('otp-input').focus();
+  }
+
+  async function verifyOtp() {
+    const otp = document.getElementById('otp-input').value.trim();
+    const err = document.getElementById('otp-err');
+    err.classList.remove('show');
+    if (otp.length < 6) { err.textContent='Please enter the 6-digit code.'; err.classList.add('show'); return; }
+    const btn = document.getElementById('verify-btn');
+    btn.disabled = true; btn.textContent = 'Sending your link…';
+    const r = await fetch('/api/find-link', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: emailUsed, otp }) });
+    const d = await r.json();
+    btn.disabled = false; btn.textContent = 'Verify & Send My Link';
+    if (!r.ok) { err.textContent = d.error || 'Invalid code.'; err.classList.add('show'); return; }
+    document.getElementById('step-otp').classList.remove('show');
+    document.getElementById('step-done').classList.add('show');
+    if (d.found > 0) {
+      document.getElementById('done-icon').textContent  = '📬';
+      document.getElementById('done-title').textContent = `${d.found} link${d.found>1?'s':''} sent!`;
+      document.getElementById('done-sub').textContent   = `We have sent your activation link${d.found>1?'s':''} to ${emailUsed}. Check your inbox and follow the link to complete activation.`;
+    } else {
+      document.getElementById('done-icon').textContent  = '🔍';
+      document.getElementById('done-title').textContent = 'No pending links found';
+      document.getElementById('done-sub').textContent   = `We could not find any pending activation links for ${emailUsed}. If you believe this is an error, please contact DTC support via WeChat or email.`;
+    }
+  }
+
+  function goBack() {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('show'));
+    document.getElementById('step-email').classList.add('show');
+    document.getElementById('email-input').value = '';
+    document.getElementById('otp-input').value   = '';
+    document.getElementById('email-err').classList.remove('show');
+    document.getElementById('otp-err').classList.remove('show');
+  }
+</script>
+</body>
+</html>
