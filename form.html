@@ -347,33 +347,6 @@
         <div class="field-error" id="err-email"></div>
       </div>
 
-      <div class="form-group">
-        <label>Country</label>
-        <div class="input-wrap">
-          <span class="input-icon">🌍</span>
-          <select id="country" style="flex:1;border:none;background:transparent;font-size:.9rem;color:var(--text);outline:none;padding:.1rem 0">
-            <option value="">— Select your country —</option>
-            <option>Afghanistan</option><option>Albania</option><option>Algeria</option><option>Argentina</option><option>Australia</option>
-            <option>Austria</option><option>Azerbaijan</option><option>Bahrain</option><option>Bangladesh</option><option>Belgium</option>
-            <option>Brazil</option><option>Canada</option><option>Chile</option><option>China</option><option>Colombia</option>
-            <option>Croatia</option><option>Czech Republic</option><option>Denmark</option><option>Egypt</option><option>Ethiopia</option>
-            <option>Finland</option><option>France</option><option>Germany</option><option>Ghana</option><option>Greece</option>
-            <option>Hong Kong</option><option>Hungary</option><option>India</option><option>Indonesia</option><option>Iran</option>
-            <option>Iraq</option><option>Ireland</option><option>Israel</option><option>Italy</option><option>Japan</option>
-            <option>Jordan</option><option>Kazakhstan</option><option>Kenya</option><option>Kuwait</option><option>Lebanon</option>
-            <option>Libya</option><option>Malaysia</option><option>Mexico</option><option>Morocco</option><option>Netherlands</option>
-            <option>New Zealand</option><option>Nigeria</option><option>Norway</option><option>Oman</option><option>Pakistan</option>
-            <option>Palestine</option><option>Peru</option><option>Philippines</option><option>Poland</option><option>Portugal</option>
-            <option>Qatar</option><option>Romania</option><option>Russia</option><option>Saudi Arabia</option><option>Singapore</option>
-            <option>South Africa</option><option>South Korea</option><option>Spain</option><option>Sri Lanka</option><option>Sudan</option>
-            <option>Sweden</option><option>Switzerland</option><option>Syria</option><option>Taiwan</option><option>Thailand</option>
-            <option>Tunisia</option><option>Turkey</option><option>UAE</option><option>Uganda</option><option>Ukraine</option>
-            <option>United Kingdom</option><option>United States</option><option>Uzbekistan</option><option>Venezuela</option>
-            <option>Vietnam</option><option>Yemen</option><option>Zimbabwe</option><option>Other</option>
-          </select>
-        </div>
-      </div>
-
       <div class="divider"></div>
       <button class="btn-submit" id="submit-btn" disabled onclick="handleSubmit()">
         <span class="btn-text">Submit Details →</span>
@@ -726,7 +699,7 @@
     const btn       = document.getElementById('submit-btn');
     btn.classList.add('loading'); btn.disabled = true;
     try {
-      const r = await fetch('/api/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: linkToken, orgId, sessionData, wechat, email, country: document.getElementById('country')?.value || '' }) });
+      const r = await fetch('/api/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: linkToken, orgId, sessionData, wechat, email }) });
       const d = await r.json();
       if (d.success) {
         state.orgId = orgId; state.sessionData = sessionData; state.wechat = wechat; state.email = email;
