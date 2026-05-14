@@ -821,5 +821,6 @@ app.post('/admin/landing-content', (req, res) => {
 // ── Pages ──────────────────────────────────────────────────────────────────────
 app.get('/submit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'form.html')));
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/',       (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.listen(PORT, () => { console.log(`\n✅  DTC — Digital Tools Corner\n🌐  http://localhost:${PORT}\n`); });
