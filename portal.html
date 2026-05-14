@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>DTC — Customer Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#2563eb;--blue-dark:#1d4ed8;--blue-light:#eff6ff;--blue-mid:#bfdbfe;
+  --success:#16a34a;--success-bg:#f0fdf4;--success-border:#bbf7d0;
+  --warn:#d97706;--warn-bg:#fffbeb;--warn-border:#fde68a;
+  --error:#dc2626;--error-bg:#fef2f2;--error-border:#fecaca;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;--purple-border:#ddd6fe;
+  --text:#1e293b;--text2:#334155;--muted:#64748b;--muted2:#94a3b8;
+  --border:#e2e8f0;--border2:#f1f5f9;--white:#fff;--bg:#f0f4ff;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── HEADER ── */
+.header{background:var(--blue);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(37,99,235,.3)}
+.header-brand{display:flex;align-items:center;gap:.6rem}
+.header-logo{font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.02em}
+.header-sub{font-size:.65rem;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.1em}
+.header-right{display:flex;align-items:center;gap:.75rem}
+.header-user{font-size:.78rem;color:rgba(255,255,255,.85);font-weight:500}
+.header-logout{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:.3rem .75rem;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s}
+.header-logout:hover{background:rgba(255,255,255,.25)}
+
+/* ── LAYOUT ── */
+.main{max-width:760px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.page-title{font-size:1.25rem;font-weight:800;color:var(--text);margin-bottom:.25rem}
+.page-sub{font-size:.83rem;color:var(--muted);margin-bottom:1.5rem}
+
+/* ── AUTH SCREENS ── */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.auth-card{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:2.2rem 2rem;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(37,99,235,.1)}
+.auth-logo{text-align:center;margin-bottom:1.8rem}
+.auth-logo-name{font-size:1.6rem;font-weight:800;color:var(--text);letter-spacing:-.025em}
+.auth-logo-sub{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:.15rem}
+.auth-title{font-size:1rem;font-weight:700;margin-bottom:.3rem}
+.auth-sub{font-size:.82rem;color:var(--muted);margin-bottom:1.4rem;line-height:1.6}
+.form-label{display:block;font-size:.73rem;font-weight:600;color:var(--text);margin-bottom:.35rem}
+.form-input{width:100%;padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:8px;font-size:.88rem;outline:none;font-family:'Inter',sans-serif;transition:border-color .15s;background:var(--white);color:var(--text);margin-bottom:.85rem}
+.form-input:focus{border-color:var(--blue)}
+.btn-full{width:100%;padding:.68rem;border-radius:9px;font-size:.88rem;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;transition:all .15s;margin-bottom:.5rem}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-dark)}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted)}.btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+.btn-full:disabled{opacity:.5;cursor:not-allowed}
+.auth-err{font-size:.77rem;color:var(--error);margin:.3rem 0 .6rem;display:none}.auth-err.show{display:block}
+.otp-hint{font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:8px;padding:.7rem .9rem}
+.resend-row{text-align:center;margin-top:.3rem;font-size:.75rem;color:var(--muted)}
+.resend-row button{background:none;border:none;color:var(--blue);cursor:pointer;font-size:.75rem;font-family:'Inter',sans-serif;padding:0;text-decoration:underline}
+
+/* ── SUBSCRIPTION CARDS ── */
+.sub-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.5rem;margin-bottom:1rem;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:box-shadow .2s}
+.sub-card:hover{box-shadow:0 4px 16px rgba(37,99,235,.09)}
+.sub-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap}
+.sub-pkg{font-size:1rem;font-weight:700;color:var(--text);line-height:1.2}
+.sub-product{font-size:.72rem;color:var(--muted);margin-top:.2rem;text-transform:uppercase;letter-spacing:.06em}
+.status-badge{padding:.28rem .8rem;border-radius:99px;font-size:.71rem;font-weight:700;white-space:nowrap;flex-shrink:0}
+.b-active  {background:var(--success-bg);border:1px solid var(--success-border);color:var(--success)}
+.b-expiring{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn)}
+.b-expired {background:var(--error-bg);border:1px solid var(--error-border);color:var(--error)}
+.b-processing{background:var(--blue-light);border:1px solid var(--blue-mid);color:var(--blue)}
+.b-pending {background:#f8fafc;border:1px solid var(--border);color:var(--muted)}
+.b-declined{background:var(--error-bg);border:1px solid var(--error-border);color:var(--error)}
+
+/* Progress bar */
+.progress-wrap{margin:.9rem 0 1rem}
+.progress-meta{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);margin-bottom:.4rem}
+.progress-bar{height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden}
+.progress-fill{height:100%;border-radius:4px;transition:width .7s ease}
+
+/* Info grid */
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem .8rem;margin-bottom:1rem}
+@media(max-width:480px){.info-grid{grid-template-columns:1fr}}
+.info-item{}
+.info-label{font-size:.68rem;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.15rem}
+.info-val{font-size:.83rem;font-weight:600;color:var(--text)}
+
+/* Payment badge */
+.pay-badge{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .65rem;border-radius:7px;font-size:.72rem;font-weight:700;margin-bottom:.8rem}
+.pay-paid    {background:var(--success-bg);border:1px solid var(--success-border);color:var(--success)}
+.pay-partial {background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn)}
+.pay-unpaid  {background:var(--error-bg);border:1px solid var(--error-border);color:var(--error)}
+
+/* Action buttons */
+.sub-actions{display:flex;gap:.5rem;flex-wrap:wrap;padding-top:.85rem;border-top:1px solid var(--border2)}
+.btn-renew{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:.42rem 1rem;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s;display:flex;align-items:center;gap:.35rem}
+.btn-renew:hover{background:var(--blue-dark)}
+.btn-renew:disabled{opacity:.5;cursor:not-allowed}
+.btn-renew.sent{background:var(--success)}
+
+/* Empty / error states */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:.75rem}
+.empty-title{font-size:1rem;font-weight:700;color:var(--text2);margin-bottom:.35rem}
+.empty-sub{font-size:.82rem;line-height:1.6}
+
+/* Welcome banner */
+.welcome-banner{background:linear-gradient(135deg,var(--blue) 0%,#4f46e5 100%);border-radius:14px;padding:1.4rem 1.6rem;margin-bottom:1.5rem;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.welcome-text{}
+.welcome-name{font-size:1.1rem;font-weight:800;margin-bottom:.2rem}
+.welcome-sub{font-size:.78rem;color:rgba(255,255,255,.75)}
+.welcome-stat{text-align:right;flex-shrink:0}
+.welcome-stat-num{font-size:1.5rem;font-weight:800;font-family:'JetBrains Mono',monospace}
+.welcome-stat-lbl{font-size:.68rem;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.07em}
+
+/* Notification banner */
+.notif-bar{border-radius:10px;padding:.75rem 1rem;margin-bottom:1.2rem;font-size:.82rem;font-weight:500;display:flex;align-items:center;gap:.6rem;line-height:1.5}
+.notif-info   {background:var(--blue-light);border:1px solid var(--blue-mid);color:#1d4ed8}
+.notif-success{background:var(--success-bg);border:1px solid var(--success-border);color:var(--success)}
+.notif-warning{background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn)}
+.notif-error  {background:var(--error-bg);border:1px solid var(--error-border);color:var(--error)}
+
+/* Nav links */
+.portal-nav{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem;font-size:.78rem}
+.portal-nav a{color:var(--blue);text-decoration:none;font-weight:500}.portal-nav a:hover{text-decoration:underline}
+.portal-nav span{color:var(--border)}
+
+.footer{text-align:center;padding:1.5rem;font-size:.7rem;color:var(--muted2)}
+
+/* Spinner */
+.spinner-wrap{display:flex;align-items:center;justify-content:center;padding:3rem;font-size:.85rem;color:var(--muted);gap:.6rem}
+.spin{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Step visibility */
+.screen{display:none}.screen.active{display:block}
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREENS ── -->
+<div id="auth-wrap" class="auth-wrap">
+
+  <!-- Step 1: Email -->
+  <div class="auth-card screen active" id="screen-email">
+    <div class="auth-logo">
+      <div class="auth-logo-name">DTC</div>
+      <div class="auth-logo-sub">Customer Portal</div>
+    </div>
+    <h2 class="auth-title">Sign in to your portal</h2>
+    <p class="auth-sub">Enter the email address linked to your subscription. We'll send you a one-time code — no password needed.</p>
+    <label class="form-label">Email Address</label>
+    <input class="form-input" type="email" id="email-input" placeholder="you@example.com" onkeydown="if(event.key==='Enter')sendOtp()"/>
+    <div class="auth-err" id="email-err"></div>
+    <button class="btn-full btn-primary" id="send-otp-btn" onclick="sendOtp()">Send Code →</button>
+    <div class="resend-row" style="margin-top:.5rem">
+      <span style="color:var(--muted)">Lost your activation link?</span>
+      <button onclick="location.href='/find-link'">Find it here</button>
+    </div>
+  </div>
+
+  <!-- Step 2: OTP -->
+  <div class="auth-card screen" id="screen-otp">
+    <div class="auth-logo">
+      <div class="auth-logo-name">DTC</div>
+      <div class="auth-logo-sub">Customer Portal</div>
+    </div>
+    <h2 class="auth-title">Enter verification code</h2>
+    <div class="otp-hint">📬 We sent a 6-digit code to <strong id="otp-email-display"></strong>. Check your inbox — it expires in 10 minutes.</div>
+    <label class="form-label">6-Digit Code</label>
+    <input class="form-input" type="text" id="otp-input" placeholder="123456" maxlength="6" inputmode="numeric" style="font-size:1.3rem;font-family:'JetBrains Mono',monospace;letter-spacing:.2em;text-align:center" onkeydown="if(event.key==='Enter')verifyOtp()"/>
+    <div class="auth-err" id="otp-err"></div>
+    <button class="btn-full btn-primary" id="verify-btn" onclick="verifyOtp()">Sign In →</button>
+    <button class="btn-full btn-ghost" onclick="goBack()">← Use a different email</button>
+    <div class="resend-row">
+      Didn't get it? <button onclick="resendOtp()">Resend code</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── PORTAL ── -->
+<div id="portal-wrap" style="display:none">
+  <div class="header">
+    <div class="header-brand">
+      <div>
+        <div class="header-logo">DTC</div>
+        <div class="header-sub">Customer Portal</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="header-user" id="header-email"></span>
+      <button class="header-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="portal-nav">
+      <a href="/status">Check by Token</a>
+      <span>·</span>
+      <a href="/history">Full History</a>
+      <span>·</span>
+      <a href="/find-link">Find Activation Link</a>
+      <span>·</span>
+      <a href="/">DTC Home</a>
+    </div>
+
+    <div id="notif-area"></div>
+
+    <div id="portal-content">
+      <div class="spinner-wrap"><div class="spin"></div> Loading your subscriptions…</div>
+    </div>
+  </div>
+
+  <div class="footer">DTC — Digital Tools Corner &nbsp;·&nbsp; dtc@dtc1.shop</div>
+</div>
+
+<script>
+  // ─── State ────────────────────────────────────────────────────────────────
+  let _email       = '';
+  let _sessionToken= '';
+  let _data        = null;
+
+  // Restore session from sessionStorage
+  const saved = sessionStorage.getItem('dtc_portal');
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      _sessionToken = s.sessionToken;
+      _email        = s.email;
+      showPortal(s);
+      refreshPortal(); // refresh data silently
+    } catch { sessionStorage.removeItem('dtc_portal'); }
+  }
+
+  // ─── Auth flow ────────────────────────────────────────────────────────────
+  function show(id) {
+    document.querySelectorAll('.auth-card').forEach(c => c.classList.remove('active'));
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+  }
+
+  async function sendOtp() {
+    const email = document.getElementById('email-input').value.trim();
+    const err   = document.getElementById('email-err');
+    err.classList.remove('show');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      err.textContent = 'Please enter a valid email address.';
+      err.classList.add('show'); return;
+    }
+    _email = email;
+    const btn = document.getElementById('send-otp-btn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    await fetch('/api/send-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, purpose: 'portal' })
+    });
+    btn.disabled = false; btn.textContent = 'Send Code →';
+    document.getElementById('otp-email-display').textContent = email;
+    show('screen-otp');
+    document.getElementById('otp-input').value = '';
+    document.getElementById('otp-input').focus();
+  }
+
+  async function resendOtp() {
+    await fetch('/api/send-otp', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: _email, purpose: 'portal' })
+    });
+    document.getElementById('otp-err').textContent = '✓ New code sent.';
+    document.getElementById('otp-err').style.color = 'var(--success)';
+    document.getElementById('otp-err').classList.add('show');
+    setTimeout(() => { document.getElementById('otp-err').classList.remove('show'); document.getElementById('otp-err').style.color = ''; }, 3000);
+  }
+
+  async function verifyOtp() {
+    const otp = document.getElementById('otp-input').value.trim();
+    const err = document.getElementById('otp-err');
+    err.classList.remove('show'); err.style.color = '';
+    if (otp.length < 6) { err.textContent = 'Please enter the 6-digit code.'; err.classList.add('show'); return; }
+    const btn = document.getElementById('verify-btn');
+    btn.disabled = true; btn.textContent = 'Verifying…';
+    const r = await fetch('/api/portal-login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: _email, otp })
+    });
+    const d = await r.json();
+    btn.disabled = false; btn.textContent = 'Sign In →';
+    if (!r.ok) { err.textContent = d.error || 'Invalid code.'; err.classList.add('show'); return; }
+    _sessionToken = d.sessionToken;
+    _data         = d;
+    sessionStorage.setItem('dtc_portal', JSON.stringify({ sessionToken: d.sessionToken, email: _email, customerName: d.customerName }));
+    showPortal(d);
+  }
+
+  function goBack() {
+    show('screen-email');
+    document.getElementById('otp-input').value = '';
+    document.getElementById('otp-err').classList.remove('show');
+  }
+
+  function logout() {
+    sessionStorage.removeItem('dtc_portal');
+    _sessionToken = ''; _email = ''; _data = null;
+    document.getElementById('portal-wrap').style.display = 'none';
+    document.getElementById('auth-wrap').style.display   = '';
+    show('screen-email');
+    document.getElementById('email-input').value = '';
+  }
+
+  // ─── Portal display ───────────────────────────────────────────────────────
+  function showPortal(d) {
+    document.getElementById('auth-wrap').style.display   = 'none';
+    document.getElementById('portal-wrap').style.display = '';
+    document.getElementById('header-email').textContent  = d.email || _email;
+    renderPortal(d.subscriptions || [], d.customerName || '');
+  }
+
+  async function refreshPortal() {
+    if (!_sessionToken) return;
+    const r = await fetch('/api/portal-refresh', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sessionToken: _sessionToken })
+    });
+    if (r.status === 401) { logout(); return; }
+    const d = await r.json();
+    if (d.subscriptions) renderPortal(d.subscriptions, _data?.customerName || '');
+  }
+
+  function renderPortal(subs, customerName) {
+    const wrap = document.getElementById('portal-content');
+
+    // Summary stats
+    const active   = subs.filter(s => s.status === 'activated' && !isExpired(s));
+    const expiring = subs.filter(s => s.status === 'activated' && getDaysLeft(s) >= 0 && getDaysLeft(s) <= 7);
+    const total    = subs.length;
+
+    let html = '';
+
+    // Welcome banner
+    const name = customerName || _email.split('@')[0];
+    html += `<div class="welcome-banner">
+      <div class="welcome-text">
+        <div class="welcome-name">Welcome back, ${esc(name)} 👋</div>
+        <div class="welcome-sub">${active.length} active subscription${active.length !== 1 ? 's' : ''} · ${total} total</div>
+      </div>
+      <div class="welcome-stat">
+        <div class="welcome-stat-num">${active.length}</div>
+        <div class="welcome-stat-lbl">Active Now</div>
+      </div>
+    </div>`;
+
+    // Expiry warnings
+    if (expiring.length) {
+      html += `<div class="notif-bar notif-warning">⚠ ${expiring.length} subscription${expiring.length > 1 ? 's expire' : ' expires'} within 7 days. Click "Request Renewal" below to notify DTC.</div>`;
+    }
+
+    if (!total) {
+      html += `<div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">No subscriptions found</div>
+        <div class="empty-sub">No subscriptions are linked to this email address.<br>Check you used the same email when activating, or <a href="/find-link" style="color:var(--blue)">find your activation link</a>.</div>
+      </div>`;
+    } else {
+      html += `<div style="font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.06em">${total} Subscription${total !== 1 ? 's' : ''}</div>`;
+      html += subs.map(s => renderSubCard(s)).join('');
+    }
+
+    wrap.innerHTML = html;
+  }
+
+  function renderSubCard(s) {
+    const now      = new Date();
+    const expiry   = s.subscriptionExpiresAt ? new Date(s.subscriptionExpiresAt) : null;
+    const daysLeft = expiry ? Math.ceil((expiry - now) / 86400000) : null;
+    const fmt      = iso => iso ? new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+
+    // Status badge
+    let badgeCls = 'b-pending', badgeTxt = '⏳ Pending';
+    if (s.status === 'activated') {
+      if (daysLeft === null)       { badgeCls = 'b-active';    badgeTxt = '✓ Active'; }
+      else if (daysLeft < 0)       { badgeCls = 'b-expired';   badgeTxt = '✕ Expired'; }
+      else if (daysLeft <= 7)      { badgeCls = 'b-expiring';  badgeTxt = `⚠ ${daysLeft}d left`; }
+      else if (daysLeft <= 30)     { badgeCls = 'b-expiring';  badgeTxt = `⏰ ${daysLeft}d left`; }
+      else                         { badgeCls = 'b-active';    badgeTxt = '✓ Active'; }
+    } else if (s.status === 'processing') { badgeCls = 'b-processing'; badgeTxt = '⏳ Under Review'; }
+    else if (s.status === 'declined')     { badgeCls = 'b-declined';   badgeTxt = '✕ Declined'; }
+
+    // Progress bar
+    let progressHtml = '';
+    if (s.status === 'activated' && expiry && s.durationDays) {
+      const start   = new Date(expiry - s.durationDays * 86400000);
+      const total   = s.durationDays * 86400000;
+      const used    = Math.max(0, now - start);
+      const pct     = Math.min(100, Math.round(used / total * 100));
+      const color   = daysLeft < 0 ? '#dc2626' : daysLeft <= 7 ? '#d97706' : '#16a34a';
+      const remain  = daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired') : '';
+      progressHtml  = `<div class="progress-wrap">
+        <div class="progress-meta"><span>${pct}% used</span><span style="color:${color};font-weight:600">${remain}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }
+
+    // Payment badge + records
+    let payHtml = '';
+    if (s.paymentStatus) {
+      const statusMap = {
+        paid:            { cls:'pay-paid',    label:'✓ Fully Paid' },
+        partial:         { cls:'pay-partial', label:'⚠ Partial Payment' },
+        'partial-refund':{ cls:'pay-partial', label:'↩ Partial Refund' },
+        refunded:        { cls:'pay-unpaid',  label:'↩ Refunded' },
+        unpaid:          { cls:'pay-unpaid',  label:'✕ Unpaid' },
+      };
+      const sc = statusMap[s.paymentStatus] || statusMap.unpaid;
+      const sym = s.currencySymbol || '$';
+      payHtml = `<div class="pay-badge ${sc.cls}">${sc.label}</div>`;
+      if (s.paymentRecords && s.paymentRecords.length) {
+        const fmt = iso => new Date(iso).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+        payHtml += `<div style="margin-bottom:.8rem">
+          <div style="font-size:.68rem;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">Payment History</div>
+          ${s.paymentRecords.map(r => {
+            const isRefund = r.type === 'refund';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;margin-bottom:.25rem;border-radius:7px;background:${isRefund?'#fef2f2':'#f0fdf4'};border:1px solid ${isRefund?'#fecaca':'#bbf7d0'};font-size:.75rem">
+              <span style="color:${isRefund?'#dc2626':'#15803d'};font-weight:600">${isRefund?'↩ Refund':'＋ Payment'}</span>
+              <span style="font-weight:700;font-family:\'JetBrains Mono\',monospace">${isRefund?'−':''}${sym}${r.amount.toFixed(2)}</span>
+              <span style="color:var(--muted2)">${r.method||''} ${fmt(r.createdAt)}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+    }
+
+    // Info grid
+    const infoRows = [];
+    if (s.approvedAt)            infoRows.push(['Activated', fmt(s.approvedAt)]);
+    if (s.subscriptionExpiresAt) infoRows.push(['Expires', fmt(s.subscriptionExpiresAt)]);
+    if (s.country)               infoRows.push(['Country', s.country]);
+    if (s.wechat)                infoRows.push(['WeChat', s.wechat]);
+    if (s.price)                 infoRows.push(['Price Paid', `${s.currencySymbol||'$'}${parseFloat(s.price).toFixed(2)}`]);
+    if (s.status === 'declined' && s.declineReason) infoRows.push(['Reason', s.declineReason]);
+
+    const infoHtml = infoRows.length ? `<div class="info-grid">
+      ${infoRows.map(([l,v]) => `<div class="info-item"><div class="info-label">${l}</div><div class="info-val">${esc(v)}</div></div>`).join('')}
+    </div>` : '';
+
+    // Renew button — show for activated (active or expired)
+    const renewBtn = s.status === 'activated'
+      ? `<button class="btn-renew" id="renew-${s.token}" onclick="requestRenewal('${s.token}', this)">🔄 Request Renewal</button>`
+      : '';
+
+    return `<div class="sub-card">
+      <div class="sub-card-header">
+        <div>
+          <div class="sub-pkg">${esc(s.packageType)}</div>
+          <div class="sub-product">${esc(s.product)}</div>
+        </div>
+        <span class="status-badge ${badgeCls}">${badgeTxt}</span>
+      </div>
+      ${payHtml}
+      ${progressHtml}
+      ${infoHtml}
+      ${renewBtn ? `<div class="sub-actions">${renewBtn}</div>` : ''}
+    </div>`;
+  }
+
+  // ─── Renewal request ──────────────────────────────────────────────────────
+  async function requestRenewal(token, btn) {
+    btn.disabled = true; btn.textContent = 'Sending…';
+    const r = await fetch('/api/request-renewal', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ token })
+    });
+    const d = await r.json();
+    if (d.success) {
+      btn.textContent = '✓ Request sent!';
+      btn.classList.add('sent');
+      setTimeout(() => { btn.textContent = '🔄 Request Renewal'; btn.classList.remove('sent'); btn.disabled = false; }, 5000);
+    } else {
+      btn.disabled = false; btn.textContent = '🔄 Request Renewal';
+      alert(d.error || 'Could not send renewal request.');
+    }
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  function isExpired(s) { return s.subscriptionExpiresAt && new Date(s.subscriptionExpiresAt) < new Date(); }
+  function getDaysLeft(s) {
+    if (!s.subscriptionExpiresAt) return null;
+    return Math.ceil((new Date(s.subscriptionExpiresAt) - new Date()) / 86400000);
+  }
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
