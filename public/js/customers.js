@@ -45,6 +45,8 @@ const Customers = (() => {
     const barColor= subSt === 'expired' || subSt === 'danger' ? '#dc2626' : subSt === 'soon' ? '#d97706' : '#16a34a';
     const dCls    = subSt === 'expired' || subSt === 'danger' ? 'red' : subSt === 'soon' ? 'warn' : 'green';
     const cardCls = 'cust-card' + (subSt === 'soon' || subSt === 'danger' ? ' expiring' : subSt === 'expired' ? ' expired-sub' : '');
+    const sym     = (Store.settings || {}).currencySymbol || t.currencySymbol || '$';
+    const refundedBadge = t.refunded ? `<span class="badge b-exp" style="margin-left:.3rem">↩ Refunded</span>` : '';
 
     const expBadge = days === null ? ''
       : days < 0   ? `<span class="badge b-exp">✕ Expired</span>`
@@ -91,7 +93,7 @@ const Customers = (() => {
           </div>
           <div class="cust-pk">${esc(t.packageType)}</div>
         </div>
-        <div>${expBadge}</div>
+        <div>${expBadge}${refundedBadge}</div>
       </div>
 
       <div class="cust-grid">
@@ -107,9 +109,14 @@ const Customers = (() => {
           <div class="cf-lbl">Days Remaining</div>
           <div class="cf-val ${dCls}">${days === null ? '—' : days <= 0 ? 'Expired' : days + ' days'}</div>
         </div>
+        <div>
+          <div class="cf-lbl">Payment</div>
+          <div class="cf-val" style="${t.refunded ? 'text-decoration:line-through;color:var(--muted)' : 'color:var(--success)'}">${t.amountReceived != null ? sym + Number(t.amountReceived).toFixed(2) : (t.price != null ? sym + Number(t.price).toFixed(2) : '—')}${t.paymentMethod ? ` <span style="color:var(--muted);text-decoration:none">· ${esc(t.paymentMethod)}</span>` : ''}</div>
+        </div>
       </div>
 
       ${expiredNote}
+      ${t.refunded ? `<div style="margin-top:.4rem;font-size:.72rem;background:var(--error-bg);border:1px solid var(--error-border);border-radius:7px;padding:.45rem .7rem;color:var(--error);font-weight:600">↩ Refunded ${t.refundAmount != null ? sym + Number(t.refundAmount).toFixed(2) : ''}${t.refundedAt ? ' on ' + new Date(t.refundedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}${t.refundNote ? ' · ' + esc(t.refundNote) : ''}</div>` : ''}
 
       <div class="exp-bar-wrap" style="margin-top:${expiredNote ? '.6rem' : '.1rem'}">
         <div class="exp-bar-label">
@@ -128,6 +135,7 @@ const Customers = (() => {
         <button class="btn btn-outline btn-sm" onclick="Modals.openEdit('${token}')">✏ Edit Package</button>
         <button class="btn btn-ghost-blue btn-sm" onclick="Customers.sendReminder('${token}', 'reminder')">📧 Send 5-day Reminder</button>
         <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error)" onclick="Customers.sendReminder('${token}', 'expired')">📧 Send Expiry Notice</button>
+        ${t.refunded ? '' : `<button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn)" onclick="Customers.refund('${token}')">↩ Refund</button>`}
         <button class="btn btn-delete btn-sm" onclick="Customers.deleteCustomer('${token}')">Delete Customer</button>
       </div>
     </div>`;
@@ -214,5 +222,14 @@ const Customers = (() => {
     if (d && d.success) Dashboard.reload(); else alert('Failed to delete.');
   };
 
-  return { render, setFilter, sendReminder, toggleMore, deleteCustomer };
+  const refund = async (token) => {
+    const t = Store.tokens[token] || {};
+    const amt = (t.amountReceived != null ? t.amountReceived : t.price);
+    if (!confirm(`Mark ${t.customerName || 'this customer'} as refunded${amt != null ? ' (' + amt + ')' : ''}? This removes the amount from revenue and deactivates the subscription.`)) return;
+    const refundNote = prompt('Optional refund note / reason:', '') || '';
+    const d = await api('/admin/refund', { adminKey: Store.adminKey, token, refundNote });
+    if (d && d.success) Dashboard.reload(); else alert('Refund failed.');
+  };
+
+  return { render, setFilter, sendReminder, toggleMore, deleteCustomer, refund };
 })();

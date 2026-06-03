@@ -52,6 +52,8 @@ const Modals = (() => {
     document.getElementById('edit-package').value = t.packageType || '';
     document.getElementById('edit-price').value   = (t.price != null ? t.price : '');
     document.getElementById('edit-days').value    = t.subscriptionDays || t.durationDays || 30;
+    document.getElementById('edit-amount').value   = (t.amountReceived != null ? t.amountReceived : '');
+    document.getElementById('edit-method').value   = t.paymentMethod || '';
     const exp = t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt) : null;
     document.getElementById('edit-expiry').value  = exp && !isNaN(exp) ? exp.toISOString().slice(0, 10) : '';
     document.getElementById('edit-modal').classList.add('open');
@@ -67,13 +69,16 @@ const Modals = (() => {
     const packageType  = document.getElementById('edit-package').value.trim();
     const priceVal     = document.getElementById('edit-price').value;
     const daysVal      = document.getElementById('edit-days').value;
+    const amountVal    = document.getElementById('edit-amount').value;
+    const methodVal    = document.getElementById('edit-method').value;
     const expiryVal    = document.getElementById('edit-expiry').value; // yyyy-mm-dd
 
     if (!customerName) { alert('Customer name is required.'); return; }
 
-    const payload = { adminKey: Store.adminKey, token, customerName, email, wechat, packageType };
+    const payload = { adminKey: Store.adminKey, token, customerName, email, wechat, packageType, paymentMethod: methodVal };
     if (priceVal !== '') payload.price = parseFloat(priceVal);
     if (daysVal  !== '') payload.subscriptionDays = parseInt(daysVal, 10);
+    payload.amountReceived = (amountVal === '' ? '' : parseFloat(amountVal));
     if (expiryVal)       payload.subscriptionExpiresAt = new Date(expiryVal + 'T23:59:59').toISOString();
 
     const d = await api('/admin/edit-token', payload);

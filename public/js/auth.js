@@ -80,6 +80,10 @@ const Auth = (() => {
     safeRun('BulkEmail.init', BulkEmail.init);
     safeRun('Resellers',      Resellers.render);
     Notifications.init();
+    // Begin silent background polling so customer data stays current without manual refresh
+    safeRun('AutoRefresh',    Dashboard.startAutoRefresh);
+    // Enable new-submission alerts (sound + browser notification); request permission within this login gesture
+    safeRun('Alerts',         () => Dashboard.setAlerts(true));
   };
 
   // Silent error boundary — logs to console, never crashes login

@@ -36,7 +36,9 @@ const Dashboard = (() => {
     // Revenue stat
     const rev = Store.revenue || { total: 0 };
     const revEl = document.getElementById('s-rev');
-    if (revEl) revEl.textContent = '$' + rev.total.toFixed(2);
+    if (revEl) revEl.textContent = '$' + (rev.total || 0).toFixed(2);
+    const refEl = document.getElementById('s-refund');
+    if (refEl) refEl.textContent = (rev.refundedTotal ? `· −$${rev.refundedTotal.toFixed(2)} refunded` : '');
   };
 
   // ── Sub expiry cell ────────────────────────────────────────────────────────
@@ -65,7 +67,23 @@ const Dashboard = (() => {
     if (t.deactivated) return `<div><span class="badge b-deact">⊘ Deactivated</span><div style="font-size:.62rem;color:#6b7280;font-family:'JetBrains Mono',monospace;margin-top:.2rem">⊘ ${t.deactivatedAt ? fmtFull(new Date(t.deactivatedAt)) : '—'}</div><button class="action-btn react" style="margin-top:.4rem" onclick="Dashboard.reactivate('${token}')">↑ Reactivate</button>${del}</div>`;
     if (t.approved)    return `<div><span class="badge b-act">✓ Activated</span><div style="font-size:.62rem;color:var(--success);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✓ ${fmtFull(new Date(t.approvedAt))}</div><button class="action-btn edit" style="margin-top:.4rem" onclick="Modals.openEdit('${token}')">✏ Edit</button><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
     if (t.declined)    return `<div><span class="badge b-dec">✕ Declined</span><div style="font-size:.62rem;color:var(--error);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✕ ${fmtFull(new Date(t.declinedAt))}</div><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
-    if (status === 'submitted') return `<div class="action-wrap"><button class="approve-btn" id="ab-${token}" onclick="Dashboard.approve('${token}')">✓ Approve</button><button class="decline-btn" id="db-${token}" onclick="Modals.openDecline('${token}')">✕ Decline</button><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    if (status === 'submitted') {
+      const stage = t.stage || 'submitted';
+      const map = {
+        submitted:  { label: 'Submitted',             lbl: '→ Start Verification',    fn: `Dashboard.setStage('${token}','verifying')` },
+        verifying:  { label: 'Verification',          lbl: '→ Verification Approved',  fn: `Dashboard.setStage('${token}','verified')` },
+        verified:   { label: 'Verification Approved', lbl: '→ Start Processing',       fn: `Dashboard.setStage('${token}','processing')` },
+        processing: { label: 'Processing',            lbl: '✓ Approve & Activate',     fn: `Dashboard.approve('${token}')` },
+      };
+      const sd = map[stage] || map.submitted;
+      return `<div class="action-wrap">
+        <span class="stage-pill">⏳ ${sd.label}</span>
+        <button class="approve-btn" onclick="${sd.fn}">${sd.lbl}</button>
+        <button class="decline-btn" onclick="Modals.openDecline('${token}')">✕ Decline</button>
+        <button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>
+        ${del}
+      </div>`;
+    }
     if (!t.used) return `<div><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
     return `<div>${del}</div>`;
   };
@@ -140,6 +158,7 @@ const Dashboard = (() => {
     }).join('');
 
     wrap.innerHTML = `<div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Status</th><th>Data</th><th>Timeline</th><th>Subscription</th><th>WeChat</th><th>Price</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    try { _checkNewSubmissions(); } catch (e) { console.warn(e); }
   };
 
   // ── Reload ─────────────────────────────────────────────────────────────────
@@ -151,7 +170,150 @@ const Dashboard = (() => {
     try { Customers.render(); } catch(e) { console.warn(e); }
     try { EmailLog.render(); } catch(e) { console.warn(e); }
     try { Revenue.render(); } catch(e) { console.warn(e); }
+    try { _checkNewSubmissions(); } catch(e) { console.warn(e); }
+    _stampUpdated();
   };
+
+  // ── Auto-refresh ─────────────────────────────────────────────────────────────
+  let _autoTimer = null;
+  let _autoOn    = true;
+  const AUTO_MS  = 15000; // poll every 15s
+
+  const _stampUpdated = () => {
+    const el = document.getElementById('last-updated');
+    if (el) {
+      const t = new Date();
+      el.textContent = 'Updated ' + t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  };
+
+  const startAutoRefresh = () => {
+    if (_autoTimer) clearInterval(_autoTimer);
+    const cb = document.getElementById('auto-refresh');
+    if (cb) _autoOn = cb.checked;
+    _autoTimer = setInterval(() => {
+      // Only poll when enabled and the tab is actually visible (saves bandwidth/battery)
+      if (_autoOn && document.visibilityState === 'visible') {
+        reload().catch(() => {});
+      }
+    }, AUTO_MS);
+
+    // Refresh immediately when the operator returns to the tab
+    if (!startAutoRefresh._wired) {
+      document.addEventListener('visibilitychange', () => {
+        if (_autoOn && document.visibilityState === 'visible') reload().catch(() => {});
+      });
+      startAutoRefresh._wired = true;
+    }
+  };
+
+  const setAuto = (on) => {
+    _autoOn = !!on;
+    if (_autoOn) reload().catch(() => {}); // give instant feedback when switched on
+  };
+
+  // ── New-submission alerts (sound + browser notification + badge) ─────────────
+  let _knownSubmitted = null;   // Set of tokens already in 'submitted' on the previous poll; null = not initialised
+  let _alertsOn       = true;
+  let _audioCtx       = null;
+  let _titleTimer     = null;
+  const _origTitle    = (typeof document !== 'undefined' && document.title) || 'DTC Admin';
+
+  const _ensureAudio = () => {
+    try {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    } catch (e) { /* audio unavailable */ }
+  };
+
+  const _ping = () => {
+    _ensureAudio();
+    if (!_audioCtx) return;
+    try {
+      const now = _audioCtx.currentTime;
+      [880, 1244].forEach((freq, i) => {
+        const t   = now + i * 0.18;
+        const osc = _audioCtx.createOscillator();
+        const g   = _audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+        osc.connect(g).connect(_audioCtx.destination);
+        osc.start(t); osc.stop(t + 0.19);
+      });
+    } catch (e) { /* ignore */ }
+  };
+
+  const _notify = (count) => {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const n = new Notification('DTC — New submission', {
+          body: count + ' new activation request' + (count !== 1 ? 's' : '') + ' awaiting approval.',
+          tag:  'dtc-new-submission',
+        });
+        n.onclick = () => {
+          window.focus();
+          try { const dn = document.querySelector(".nav-item"); Shell.navigate('dashboard', dn); } catch (e) {}
+          n.close();
+        };
+      }
+    } catch (e) { /* ignore */ }
+  };
+
+  const _flashTitle = (count) => {
+    if (document.visibilityState === 'visible') return; // only blink when tab is in background
+    if (_titleTimer) clearInterval(_titleTimer);
+    const msg = `(${count}) New submission`;
+    let on = false;
+    _titleTimer = setInterval(() => { document.title = on ? _origTitle : msg; on = !on; }, 1000);
+  };
+
+  const _stopFlash = () => {
+    if (_titleTimer) { clearInterval(_titleTimer); _titleTimer = null; document.title = _origTitle; }
+  };
+
+  const _updatePendingBadge = (count) => {
+    const b = document.getElementById('nb-sub');
+    if (!b) return;
+    b.textContent = count;
+    b.style.display = count > 0 ? '' : 'none';
+  };
+
+  const _checkNewSubmissions = () => {
+    const submitted = new Set(
+      Object.entries(Store.tokens || {})
+        .filter(([, t]) => getLinkStatus(t) === 'submitted')
+        .map(([tok]) => tok)
+    );
+    _updatePendingBadge(submitted.size);
+
+    if (_knownSubmitted === null) { _knownSubmitted = submitted; return; } // first load — don't alert
+    let fresh = 0;
+    submitted.forEach(tok => { if (!_knownSubmitted.has(tok)) fresh++; });
+    _knownSubmitted = submitted;
+
+    if (fresh > 0 && _alertsOn) { _ping(); _notify(fresh); _flashTitle(fresh); }
+  };
+
+  const setAlerts = (on) => {
+    _alertsOn = !!on;
+    if (_alertsOn) {
+      _ensureAudio(); // unlock audio within this user gesture
+      try {
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+      } catch (e) {}
+    } else {
+      _stopFlash();
+    }
+  };
+
+  // Stop the title blink as soon as the operator looks at the tab
+  if (typeof window !== 'undefined' && !setAlerts._wired) {
+    window.addEventListener('focus', _stopFlash);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') _stopFlash(); });
+    setAlerts._wired = true;
+  }
 
   // ── Generate link ──────────────────────────────────────────────────────────
   const generateLink = async () => {
@@ -199,6 +361,11 @@ const Dashboard = (() => {
   const reactivate = async (token) => {
     const d = await api('/admin/reactivate', { adminKey: Store.adminKey, token });
     if (d && d.success) reload(); else alert('Failed.');
+  };
+
+  const setStage = async (token, stage) => {
+    const d = await api('/admin/set-stage', { adminKey: Store.adminKey, token, stage });
+    if (d && d.success) reload(); else alert('Failed to update stage.');
   };
 
   const deleteLink = async (token) => {
@@ -285,5 +452,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts };
 })();

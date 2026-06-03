@@ -43,7 +43,11 @@ const Settings = (() => {
       </div>
       <div class="form-row">
         <div class="form-group" style="margin-bottom:0"><label>Title</label><input class="slide-title" placeholder="e.g. Claude Pro — 1 Month" value="${esc(s.title || '')}"/></div>
-        <div class="form-group" style="margin-bottom:0"><label>Subtitle / Price</label><input class="slide-text" placeholder="e.g. Only $15 · Tap to order on WhatsApp" value="${esc(s.text || '')}"/></div>
+        <div class="form-group" style="margin-bottom:0"><label>Subtitle</label><input class="slide-text" placeholder="e.g. Unlimited access · tap to order" value="${esc(s.text || '')}"/></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Price badge <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input class="slide-price" placeholder="e.g. $15 /mo" value="${esc(s.price || '')}"/></div>
+        <div class="form-group" style="margin-bottom:0"><label>Tag <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input class="slide-tag" placeholder="e.g. Most popular" value="${esc(s.tag || '')}"/></div>
       </div>
       <div class="form-group" style="margin-bottom:0">
         <label>Image <span style="font-weight:400;color:var(--muted)">(upload a file or paste a URL)</span></label>
@@ -128,7 +132,9 @@ const Settings = (() => {
       const title = row.querySelector('.slide-title').value.trim();
       const text  = row.querySelector('.slide-text').value.trim();
       const image = row.querySelector('.slide-image').value.trim();
-      if (title || text || image) slides.push({ title, text, image });
+      const price = (row.querySelector('.slide-price') || {}).value ? row.querySelector('.slide-price').value.trim() : '';
+      const tag   = (row.querySelector('.slide-tag')   || {}).value ? row.querySelector('.slide-tag').value.trim()   : '';
+      if (title || text || image || price || tag) slides.push({ title, text, image, price, tag });
     });
     return slides;
   };
