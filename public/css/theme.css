@@ -121,6 +121,9 @@ select option { background: var(--white); }
 .btn-ghost-blue { background: var(--blue-light); border: 1.5px solid var(--blue-mid); color: var(--blue); }
 .btn-ghost-blue:hover { background: #dbeafe; }
 
+.btn-delete    { background: var(--white); border: 1.5px solid var(--error-border); color: var(--error); }
+.btn-delete:hover:not(:disabled) { background: var(--error-bg); border-color: var(--error); }
+
 .btn-warn      { background: var(--warn-bg);  border: 1.5px solid var(--warn-border);  color: var(--warn); }
 .btn-sm        { padding: .28rem .7rem; font-size: .72rem; }
 
