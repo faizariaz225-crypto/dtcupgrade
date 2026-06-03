@@ -31,6 +31,27 @@
     .notif-close:hover{opacity:1}
 
     .wrap{width:100%;max-width:520px;padding-top:2.5rem}
+
+    /* ── Promotional slideshow ─────────────────────────────────────────────── */
+    #promo-rail{width:100%;max-width:520px;margin:1.75rem auto 0}
+    .promo-head{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;text-align:center}
+    .promo-stage{position:relative;overflow:hidden;border-radius:14px;border:1px solid var(--border);background:var(--white);box-shadow:0 6px 24px rgba(37,99,235,.08);cursor:pointer;transition:transform .2s,box-shadow .2s}
+    .promo-stage:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(37,99,235,.16)}
+    .promo-slides{display:flex;transition:transform .5s ease}
+    .promo-slide{flex:0 0 100%;min-width:100%}
+    .promo-img{height:150px;background-size:cover;background-position:center;background-color:var(--blue-light)}
+    .promo-img-none{background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(99,102,241,.10))}
+    .promo-body{padding:.85rem 1rem}
+    .promo-title{font-size:.95rem;font-weight:700;color:var(--text);line-height:1.3}
+    .promo-text{font-size:.78rem;color:var(--muted);margin-top:.25rem;line-height:1.5}
+    .promo-cta{display:flex;align-items:center;justify-content:center;gap:.45rem;font-size:.74rem;font-weight:600;color:#fff;background:#25d366;padding:.6rem}
+    .promo-wa-dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.35)}
+    .promo-dots{display:flex;justify-content:center;gap:.4rem;margin-top:.65rem}
+    .promo-dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:background .2s,transform .2s}
+    .promo-dot.active{background:var(--blue);transform:scale(1.25)}
+    @media(min-width:1100px){
+      #promo-rail{position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);width:300px;margin:0;z-index:50}
+    }
     .brand{text-align:center;margin-bottom:2rem;animation:fadeDown .5s ease both}
     .brand-logo{display:inline-flex;align-items:center;gap:.6rem;margin-bottom:.4rem}
     .brand-icon{width:40px;height:40px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,.3)}
@@ -347,33 +368,6 @@
         <div class="field-error" id="err-email"></div>
       </div>
 
-      <div class="form-group">
-        <label>Country</label>
-        <div class="input-wrap">
-          <span class="input-icon">🌍</span>
-          <select id="country" style="flex:1;border:none;background:transparent;font-size:.9rem;color:var(--text);outline:none;padding:.1rem 0">
-            <option value="">— Select your country —</option>
-            <option>Afghanistan</option><option>Albania</option><option>Algeria</option><option>Argentina</option><option>Australia</option>
-            <option>Austria</option><option>Azerbaijan</option><option>Bahrain</option><option>Bangladesh</option><option>Belgium</option>
-            <option>Brazil</option><option>Canada</option><option>Chile</option><option>China</option><option>Colombia</option>
-            <option>Croatia</option><option>Czech Republic</option><option>Denmark</option><option>Egypt</option><option>Ethiopia</option>
-            <option>Finland</option><option>France</option><option>Germany</option><option>Ghana</option><option>Greece</option>
-            <option>Hong Kong</option><option>Hungary</option><option>India</option><option>Indonesia</option><option>Iran</option>
-            <option>Iraq</option><option>Ireland</option><option>Israel</option><option>Italy</option><option>Japan</option>
-            <option>Jordan</option><option>Kazakhstan</option><option>Kenya</option><option>Kuwait</option><option>Lebanon</option>
-            <option>Libya</option><option>Malaysia</option><option>Mexico</option><option>Morocco</option><option>Netherlands</option>
-            <option>New Zealand</option><option>Nigeria</option><option>Norway</option><option>Oman</option><option>Pakistan</option>
-            <option>Palestine</option><option>Peru</option><option>Philippines</option><option>Poland</option><option>Portugal</option>
-            <option>Qatar</option><option>Romania</option><option>Russia</option><option>Saudi Arabia</option><option>Singapore</option>
-            <option>South Africa</option><option>South Korea</option><option>Spain</option><option>Sri Lanka</option><option>Sudan</option>
-            <option>Sweden</option><option>Switzerland</option><option>Syria</option><option>Taiwan</option><option>Thailand</option>
-            <option>Tunisia</option><option>Turkey</option><option>UAE</option><option>Uganda</option><option>Ukraine</option>
-            <option>United Kingdom</option><option>United States</option><option>Uzbekistan</option><option>Venezuela</option>
-            <option>Vietnam</option><option>Yemen</option><option>Zimbabwe</option><option>Other</option>
-          </select>
-        </div>
-      </div>
-
       <div class="divider"></div>
       <button class="btn-submit" id="submit-btn" disabled onclick="handleSubmit()">
         <span class="btn-text">Submit Details →</span>
@@ -493,6 +487,89 @@
   <div class="footer">DTC — Digital Tools Corner &nbsp;·&nbsp; <a href="mailto:dtc@dtc1.shop">dtc@dtc1.shop</a></div>
 </div>
 
+<!-- Activation-page promotional slideshow (configured in admin) -->
+<aside id="promo-rail" style="display:none">
+  <div class="promo-head">Current Subscriptions</div>
+  <div class="promo-stage" id="promo-stage" role="button" tabindex="0" title="Chat with us on WhatsApp">
+    <div class="promo-slides" id="promo-slides"></div>
+    <div class="promo-cta"><span class="promo-wa-dot"></span>Tap to order on WhatsApp</div>
+  </div>
+  <div class="promo-dots" id="promo-dots"></div>
+</aside>
+
+<script>
+  /* ── Promotional slideshow ─────────────────────────────────────────────── */
+  (function () {
+    let slides = [], waLink = '', idx = 0, timer = null;
+
+    const esc2 = (s) => String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const toWhatsApp = (val) => {
+      if (!val) return '';
+      const v = val.trim();
+      if (/^https?:\/\//i.test(v)) return v;
+      const digits = v.replace(/[^0-9]/g, '');
+      return digits ? 'https://wa.me/' + digits : '';
+    };
+
+    const openWhatsApp = () => { if (waLink) window.open(waLink, '_blank', 'noopener'); };
+
+    const show = (n) => {
+      const track = document.getElementById('promo-slides');
+      if (!track) return;
+      idx = (n + slides.length) % slides.length;
+      track.style.transform = `translateX(-${idx * 100}%)`;
+      document.querySelectorAll('#promo-dots .promo-dot').forEach((d, i) =>
+        d.classList.toggle('active', i === idx));
+    };
+
+    const startAuto = () => {
+      if (timer) clearInterval(timer);
+      if (slides.length > 1) timer = setInterval(() => show(idx + 1), 5000);
+    };
+
+    const render = () => {
+      const rail  = document.getElementById('promo-rail');
+      const track = document.getElementById('promo-slides');
+      const dots  = document.getElementById('promo-dots');
+      if (!slides.length) { rail.style.display = 'none'; return; }
+
+      track.innerHTML = slides.map(s => `
+        <div class="promo-slide">
+          ${s.image ? `<div class="promo-img" style="background-image:url('${esc2(s.image)}')"></div>` : '<div class="promo-img promo-img-none"></div>'}
+          <div class="promo-body">
+            <div class="promo-title">${esc2(s.title)}</div>
+            ${s.text ? `<div class="promo-text">${esc2(s.text)}</div>` : ''}
+          </div>
+        </div>`).join('');
+
+      dots.innerHTML = slides.length > 1
+        ? slides.map((_, i) => `<span class="promo-dot${i === 0 ? ' active' : ''}" data-i="${i}"></span>`).join('')
+        : '';
+      dots.querySelectorAll('.promo-dot').forEach(d =>
+        d.addEventListener('click', (e) => { e.stopPropagation(); show(+d.dataset.i); startAuto(); }));
+
+      const stage = document.getElementById('promo-stage');
+      stage.addEventListener('click', openWhatsApp);
+      stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openWhatsApp(); });
+
+      rail.style.display = '';
+      show(0);
+      startAuto();
+    };
+
+    fetch('/api/portal-config')
+      .then(r => r.json())
+      .then(cfg => {
+        slides = Array.isArray(cfg.slides) ? cfg.slides : [];
+        waLink = toWhatsApp(cfg.whatsapp || '');
+        render();
+      })
+      .catch(() => {});
+  })();
+</script>
+
 <script>
   const UUID_REGEX  = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -502,7 +579,7 @@
   let currentProduct= 'claude';
   let state = {
     orgId:'', sessionData:'', wechat:'', email:'',
-    packageType:'', product:'claude',
+    packageType:'', product:'claude', portalName:'',
     credentialsMode: false, loginDetails: '',
     subscriptionExpiresAt: null, subscriptionDays: null,
     approvedSteps:[], processingText:'', approvedText:'',
@@ -530,7 +607,10 @@
     currentProduct = isGpt ? 'chatgpt' : 'claude';
     document.body.classList.toggle('gpt-mode', isGpt);
     document.getElementById('brand-icon').classList.toggle('gpt', isGpt);
-    document.getElementById('brand-sub').textContent = isGpt ? 'ChatGPT Plus Portal' : 'Claude Activation Portal';
+    const portalLabel = (state.portalName && state.portalName.trim())
+      ? state.portalName.trim()
+      : (isGpt ? 'ChatGPT Plus Portal' : 'Claude Activation Portal');
+    document.getElementById('brand-sub').textContent = portalLabel;
     document.getElementById('main-card').classList.toggle('gpt-card', isGpt);
     const badge = document.getElementById('svc-badge');
     badge.className = 'service-badge' + (isGpt ? ' gpt' : '');
@@ -607,6 +687,7 @@
       state.customerName        = d.customerName;
       state.packageType         = d.packageType;
       state.product             = d.product || 'claude';
+      state.portalName          = d.portalName || '';
       state.processingText      = d.processingText || '';
       state.approvedText        = d.approvedText || '';
       state.approvedSteps       = d.approvedSteps || [];
@@ -726,7 +807,7 @@
     const btn       = document.getElementById('submit-btn');
     btn.classList.add('loading'); btn.disabled = true;
     try {
-      const r = await fetch('/api/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: linkToken, orgId, sessionData, wechat, email, country: document.getElementById('country')?.value || '' }) });
+      const r = await fetch('/api/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: linkToken, orgId, sessionData, wechat, email }) });
       const d = await r.json();
       if (d.success) {
         state.orgId = orgId; state.sessionData = sessionData; state.wechat = wechat; state.email = email;

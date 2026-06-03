@@ -71,6 +71,10 @@
     .action-btn.deact:hover { background: #e5e7eb; border-color: #9ca3af; }
     .action-btn.react { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); }
     .action-btn.react:hover { background: #dbeafe; }
+    .action-btn.edit { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); margin-right: .35rem; }
+    .action-btn.edit:hover { background: #dbeafe; }
+    .action-btn.delete { background: #ffffff; border-color: var(--error-border); color: var(--error); margin-top: .4rem; }
+    .action-btn.delete:hover { background: var(--error-bg); }
 
     /* ── Customers ─────────────────────────────────────────────────────────── */
     .cust-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.3rem 1.5rem; margin-bottom: .9rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -90,6 +94,27 @@
     .exp-bar       { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .exp-bar-fill  { height: 100%; border-radius: 3px; transition: width .5s ease; }
     .email-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+    /* ── Customer card "See more" expand ───────────────────────────────────── */
+    .cust-more-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: .72rem; font-weight: 600; padding: 0; margin: 0 0 .6rem; font-family: 'Inter',sans-serif; }
+    .cust-more-btn:hover { text-decoration: underline; }
+    .cust-more { display: none; margin-bottom: .9rem; padding-top: .2rem; border-top: 1px dashed var(--border); }
+    .cust-more.open { display: block; padding-top: .9rem; }
+    .cmore-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .55rem .9rem; margin-bottom: .8rem; }
+    @media (max-width:560px) { .cmore-grid { grid-template-columns: 1fr 1fr; } }
+    .cmore-log { background: #f8faff; border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem; font-family: 'JetBrains Mono',monospace; }
+    .cmore-log-hdr, .cmore-log-row { display: grid; grid-template-columns: 1.3fr .9fr 1fr; gap: .4rem; font-size: .62rem; }
+    .cmore-log-hdr { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; padding-bottom: .3rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; }
+    .cmore-log-row { color: var(--muted); padding: .22rem 0; border-bottom: 1px solid #eef2f7; }
+    .cmore-log-row:last-child { border-bottom: none; }
+
+    /* ── Activation Portal slide editor ────────────────────────────────────── */
+    .slide-edit-row { border: 1.5px solid var(--border); border-radius: 10px; padding: .8rem .9rem; margin-bottom: .7rem; background: #fbfcfe; }
+    .slide-edit-row .form-row { margin-bottom: .5rem; }
+    .slide-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+    .slide-edit-head .slide-idx { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .slide-image-controls { display: flex; gap: .7rem; align-items: flex-start; margin-top: .35rem; }
+    .slide-thumb { width: 84px; height: 58px; border-radius: 8px; border: 1px solid var(--border); background-size: cover; background-position: center; background-color: #eef2f7; flex-shrink: 0; }
 
     /* ── Instructions ──────────────────────────────────────────────────────── */
     .instr-card    { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: .8rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -484,13 +509,7 @@
       <div class="card">
         <div class="card-title">
           <span>All Links</span>
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <span id="dash-last-updated" style="font-size:.68rem;color:var(--muted2)"></span>
-            <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
-          </div>
-        </div>
-        <div style="margin-bottom:.6rem">
-          <input id="dash-search" placeholder="🔍  Search by name, email or WeChat…" oninput="Dashboard.render()" style="width:100%;padding:.45rem .75rem;font-size:.82rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);outline:none;box-sizing:border-box;color:var(--text)" />
+          <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
         </div>
         <div class="filters" id="df">
           <button class="fb active" onclick="Dashboard.setFilter('all',this)">All</button>
@@ -636,36 +655,14 @@
           <!-- Recipient filter -->
           <div class="recipient-bar">
             <label style="font-size:.75rem;font-weight:600;color:var(--text);margin-bottom:0;white-space:nowrap">Send to:</label>
-            <select id="recipient-filter" onchange="BulkEmail.onFilterChange()" style="flex:1;padding:.4rem .7rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:7px;background:var(--white);outline:none;min-width:160px">
+            <select id="recipient-filter" onchange="BulkEmail._renderRecipientCount !== undefined && BulkEmail.render()" style="flex:1;padding:.4rem .7rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:7px;background:var(--white);outline:none;min-width:160px">
               <option value="all-with-email">Everyone with an email</option>
               <option value="activated">Active subscribers only</option>
               <option value="expiring">Expiring within 30 days</option>
               <option value="expired">Expired subscriptions</option>
               <option value="submitted">Submitted, awaiting approval</option>
-              <option value="individual">Pick individual customers…</option>
             </select>
             <span class="recipient-count-badge" id="recipient-count">0 recipients</span>
-          </div>
-
-          <!-- Individual customer picker (shown only when filter = individual) -->
-          <div id="individual-picker" style="display:none;margin-bottom:.7rem;border:1.5px solid var(--border);border-radius:8px;padding:.6rem .75rem;background:var(--bg)">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.06em">Select customers</div>
-            <div id="individual-search-wrap" style="margin-bottom:.45rem">
-              <input id="individual-search" placeholder="Search by name or email…" style="width:100%;padding:.4rem .65rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px;background:var(--white);outline:none;box-sizing:border-box" oninput="BulkEmail.filterIndividualList()" />
-            </div>
-            <div id="individual-list" style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:.25rem"></div>
-            <div id="individual-selected-bar" style="margin-top:.45rem;font-size:.72rem;color:var(--blue);font-weight:600"></div>
-          </div>
-
-          <!-- Custom email addresses (always visible) -->
-          <div style="margin-bottom:.7rem">
-            <div style="font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.06em">+ Add extra email addresses</div>
-            <div id="custom-email-tags" style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;min-height:0"></div>
-            <div style="display:flex;gap:.4rem">
-              <input id="custom-email-input" placeholder="someone@example.com" style="flex:1;padding:.38rem .65rem;font-size:.8rem;border:1.5px solid var(--border);border-radius:6px;background:var(--white);outline:none" onkeydown="BulkEmail.handleCustomEmailKey(event)" />
-              <button class="btn btn-ghost-blue btn-sm" onclick="BulkEmail.addCustomEmail()" style="white-space:nowrap">Add</button>
-            </div>
-            <div style="font-size:.68rem;color:var(--muted);margin-top:.25rem">Press Enter or click Add. These are sent in addition to the filter above.</div>
           </div>
 
           <!-- Template type indicator -->
@@ -768,54 +765,25 @@
       </div>
 
       <div class="setting-block">
-        <div class="setting-block-title">Automatic Renewal Reminders</div>
-        <div class="setting-block-sub">When enabled, customers with an email address automatically receive a 5-day reminder before expiry and a notice when their subscription expires. Disable this if you prefer to send reminders manually.</div>
-        <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.88rem;font-weight:500;color:var(--text)">
-          <input type="checkbox" id="auto-reminders-enabled" style="width:16px;height:16px;accent-color:var(--blue)" />
-          Enable automatic renewal reminders &amp; expiry notices
-        </label>
+        <div class="setting-block-title">Activation Page Slideshow &amp; WhatsApp</div>
+        <div class="setting-block-sub">These slides appear beside the customer's activation page. Clicking any slide opens your WhatsApp. Use them to promote current subscriptions and offers.</div>
+
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>WhatsApp Link or Number</label>
+          <input id="portal-whatsapp" placeholder="e.g. https://wa.me/8619738122807  or  +86 19738122807"/>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">A full https://wa.me/… link is used as-is. A plain number is converted to a wa.me link automatically.</div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <label style="margin-bottom:0">Slides</label>
+          <button class="btn btn-outline btn-sm" onclick="Settings.addSlide()">+ Add Slide</button>
+        </div>
+        <div id="portal-slides-rows"></div>
       </div>
 
       <button class="btn btn-primary" onclick="Settings.save()">Save Settings</button>
       <div class="msg ok" id="settings-ok"></div>
       <div class="msg err" id="settings-err"></div>
-
-      <div class="setting-block" style="margin-top:2rem;border-top:1.5px solid var(--border);padding-top:1.5rem">
-        <div class="setting-block-title">Backup &amp; Restore</div>
-        <div class="setting-block-sub">Download a complete snapshot of all your data — customers, tokens, products, templates, settings — as a single JSON file. You can restore from this file at any time. <strong>Always back up before major changes.</strong></div>
-        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-top:.8rem;align-items:center">
-          <a id="backup-btn" href="#" onclick="Settings.downloadBackup(event)"
-             style="display:inline-flex;align-items:center;gap:.4rem;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:.55rem 1.1rem;font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;transition:background .15s"
-             onmouseover="this.style.background='var(--ink)'" onmouseout="this.style.background='var(--blue)'">
-            ⬇ Download Backup
-          </a>
-          <label style="display:inline-flex;align-items:center;gap:.4rem;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--text)">
-            ⬆ Restore from File
-            <input type="file" id="restore-file" accept=".json" onchange="Settings.restoreBackup()" style="display:none" />
-          </label>
-        </div>
-        <div class="msg ok" id="restore-ok" style="margin-top:.6rem"></div>
-        <div class="msg err" id="restore-err" style="margin-top:.6rem"></div>
-      </div>
-        <div class="setting-block-sub">Update the password used to log in to this admin panel. You will need to use the new password on your next login. Requires your current password to confirm.</div>
-        <div class="form-row">
-          <div class="form-group" style="margin-bottom:0">
-            <label>Current Password</label>
-            <input type="password" id="key-current" placeholder="Current admin password" autocomplete="current-password" />
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label>New Password <span style="font-weight:400;color:var(--muted)">(min 6 characters)</span></label>
-            <input type="password" id="key-new" placeholder="New admin password" autocomplete="new-password" />
-          </div>
-          <div class="form-group" style="margin-bottom:0">
-            <label>Confirm New Password</label>
-            <input type="password" id="key-confirm" placeholder="Repeat new password" autocomplete="new-password" />
-          </div>
-        </div>
-        <button class="btn btn-outline" style="margin-top:.8rem" onclick="Settings.changeKey()">Change Password</button>
-        <div class="msg ok" id="key-ok" style="margin-top:.5rem"></div>
-        <div class="msg err" id="key-err" style="margin-top:.5rem"></div>
-      </div>
     </div><!-- /page-settings -->
 
     <!-- ── PAGE: Email Config ── -->
@@ -885,52 +853,6 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 
 <!-- Decline -->
-<!-- Payment Details Modal -->
-<div class="modal-overlay" id="pay-modal">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-title">💳 Payment Details</div>
-    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
-      <strong id="pay-customer-name"></strong> &nbsp;·&nbsp; <span id="pay-pkg"></span><br>
-      <span id="pay-price-label" style="font-size:.75rem;color:var(--muted2)"></span>
-    </div>
-    <input type="hidden" id="pay-token"/>
-    <div class="form-group">
-      <label>Payment Status</label>
-      <select id="pay-status" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);font-size:.85rem;outline:none">
-        <option value="unpaid">✕ Unpaid</option>
-        <option value="partial">⚠ Partial Payment</option>
-        <option value="paid">✓ Fully Paid</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Payment Method</label>
-      <select id="pay-method" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;background:var(--white);font-size:.85rem;outline:none">
-        <option value="">— Select method —</option>
-        <option>WeChat Pay</option>
-        <option>Alipay</option>
-        <option>Bank Transfer</option>
-        <option>PayPal</option>
-        <option>Wise</option>
-        <option>Crypto</option>
-        <option>Cash</option>
-        <option>Other</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Amount Paid</label>
-      <input type="number" id="pay-amount" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;outline:none;box-sizing:border-box"/>
-    </div>
-    <div class="form-group" style="margin-bottom:1.1rem">
-      <label>Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-      <input type="text" id="pay-note" placeholder="e.g. Receipt #1234, partial pending…" style="width:100%;padding:.5rem .75rem;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;outline:none;box-sizing:border-box"/>
-    </div>
-    <div style="display:flex;gap:.6rem">
-      <button class="btn btn-primary" style="flex:1" onclick="Customers.savePayment()">Save</button>
-      <button class="btn btn-outline" onclick="Customers.closePayment()">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="decline-modal">
   <div class="modal">
     <div class="modal-title">Decline Activation Request</div>
@@ -957,6 +879,36 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="Modals.closeSession()">Close</button>
       <button class="btn btn-primary" onclick="Modals.copySession()">Copy Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Customer / Package -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">Edit Customer &amp; Package</div>
+    <div class="modal-sub">Update package details mid-subscription without re-issuing the activation link.</div>
+    <input type="hidden" id="edit-token"/>
+    <div class="form-row">
+      <div class="form-group"><label>Customer Name</label><input type="text" id="edit-name"/></div>
+      <div class="form-group"><label>Package</label><input type="text" id="edit-package" placeholder="e.g. 1 Month Pro"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email</label><input type="email" id="edit-email"/></div>
+      <div class="form-group"><label>WeChat</label><input type="text" id="edit-wechat"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Price</label><input type="number" id="edit-price" min="0" step="0.01"/></div>
+      <div class="form-group"><label>Subscription Length (days)</label><input type="number" id="edit-days" min="1" step="1"/></div>
+    </div>
+    <div class="form-group">
+      <label>Subscription Expiry Date</label>
+      <input type="date" id="edit-expiry"/>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:.3rem">This is when the subscription ends. "Length" only sets the total used by the usage bar.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="Modals.closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="Modals.confirmEdit()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -1056,6 +1008,12 @@
         <div style="flex:1"><label>Colour</label><input type="color" id="prod-color" value="#2563eb" style="height:2.4rem;padding:.2rem .3rem;cursor:pointer"/></div>
         <label class="toggle" style="margin-bottom:.35rem"><input type="checkbox" id="prod-active" checked/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;font-weight:600;margin-left:.4rem">Active</span></label>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>Activation Page Name <span style="font-weight:400;color:var(--muted)">(Portal title shown to the customer)</span></label>
+      <input id="prod-portal-name" placeholder="e.g. Premium AI Activation — leave blank to use the default"/>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Appears as the heading on this product's activation page instead of the fixed "Claude" / "ChatGPT" label. Leave blank to keep the default.</div>
     </div>
 
     <div style="margin-bottom:.8rem">
