@@ -329,25 +329,30 @@ function applyTemplateVars(text, token) {
 function calcRevenue(tokens) {
   const byProduct  = {};
   const byReseller = {};
-  let total        = 0;
-  let resellerTotal= 0;
-  let directTotal  = 0;
+  const byMethod   = {};
+  let total = 0, resellerTotal = 0, directTotal = 0, refundedTotal = 0, refundedCount = 0;
   for (const t of Object.values(tokens)) {
-    if (!t.approved || !t.price) continue;
+    if (!t.approved) continue;
+    // "Amount received" is the source of truth; fall back to list price if not recorded
+    const amt = (t.amountReceived != null && t.amountReceived !== '') ? Number(t.amountReceived) : (Number(t.price) || 0);
+    if (!amt) continue;
+    if (t.refunded) { refundedTotal += amt; refundedCount++; continue; } // refunds don't count toward revenue
     const pid = t.productId || 'unknown';
-    byProduct[pid] = (byProduct[pid] || 0) + t.price;
-    total += t.price;
+    byProduct[pid] = (byProduct[pid] || 0) + amt;
+    const m = t.paymentMethod || 'Unspecified';
+    byMethod[m] = (byMethod[m] || 0) + amt;
+    total += amt;
     if (t.resellerId) {
       const rid = t.resellerId;
       if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0 };
-      byReseller[rid].total += t.price;
+      byReseller[rid].total += amt;
       byReseller[rid].count++;
-      resellerTotal += t.price;
+      resellerTotal += amt;
     } else {
-      directTotal += t.price;
+      directTotal += amt;
     }
   }
-  return { total, byProduct, byReseller, resellerTotal, directTotal };
+  return { total, byProduct, byReseller, byMethod, resellerTotal, directTotal, refundedTotal, refundedCount };
 }
 
 // ── Email ──────────────────────────────────────────────────────────────────────
@@ -697,9 +702,11 @@ app.post('/admin/refund', (req, res) => {
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const tokens = loadTokens();
   if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  const _amt = (tokens[token].amountReceived != null && tokens[token].amountReceived !== '') ? Number(tokens[token].amountReceived) : (Number(tokens[token].price) || 0);
   tokens[token].refunded   = true;
   tokens[token].refundedAt = new Date().toISOString();
   tokens[token].refundNote = refundNote || '';
+  tokens[token].refundAmount = _amt;
   // Deactivate the subscription
   tokens[token].deactivated   = true;
   tokens[token].deactivatedAt = tokens[token].deactivatedAt || new Date().toISOString();
@@ -709,7 +716,7 @@ app.post('/admin/refund', (req, res) => {
 
 // ── Edit token fields ──────────────────────────────────────────────────────────
 app.post('/admin/edit-token', (req, res) => {
-  const { adminKey, token, customerName, email, wechat, packageType, subscriptionExpiresAt, approvedAt, price, subscriptionDays, subscriptionKey } = req.body;
+  const { adminKey, token, customerName, email, wechat, packageType, subscriptionExpiresAt, approvedAt, price, subscriptionDays, subscriptionKey, amountReceived, paymentMethod } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const tokens = loadTokens();
   if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
@@ -721,6 +728,8 @@ app.post('/admin/edit-token', (req, res) => {
   if (subscriptionExpiresAt !== undefined) t.subscriptionExpiresAt = subscriptionExpiresAt;
   if (approvedAt     !== undefined) t.approvedAt            = approvedAt;
   if (price          !== undefined) t.price                 = parseFloat(price);
+  if (amountReceived !== undefined) t.amountReceived        = (amountReceived === '' || amountReceived == null) ? null : parseFloat(amountReceived);
+  if (paymentMethod  !== undefined) t.paymentMethod         = paymentMethod;
   if (subscriptionDays !== undefined) t.subscriptionDays    = parseInt(subscriptionDays);
   if (subscriptionKey !== undefined && subscriptionKey !== '') {
     // Record the old key as used in key store if changed
