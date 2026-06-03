@@ -3,12 +3,16 @@ const { v4: uuidv4 } = require('uuid');
 const fs         = require('fs');
 const path       = require('path');
 const nodemailer = require('nodemailer');
+const crypto     = require('crypto');
+const multer     = require('multer');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_KEY         = process.env.ADMIN_KEY || 'dtc2024';
-let   ADMIN_KEY_OVERRIDE = null; // set at runtime via /admin/change-key
-const DATA_DIR          = path.join(__dirname, 'data');
+const DATA_DIR          = process.env.DATA_DIR
+                          || (process.env.NODE_ENV === 'production'
+                              ? '/opt/render/project/src/data'
+                              : path.join(__dirname, 'data'));
 const TOKENS_FILE       = path.join(DATA_DIR, 'tokens.json');
 const SESSIONS_FILE     = path.join(DATA_DIR, 'sessions.txt');
 const EMAIL_CONFIG      = path.join(DATA_DIR, 'emailConfig.json');
@@ -19,17 +23,44 @@ const PRODUCTS_FILE     = path.join(DATA_DIR, 'products.json');
 const TEMPLATES_FILE    = path.join(DATA_DIR, 'emailTemplates.json');
 const SETTINGS_FILE     = path.join(DATA_DIR, 'settings.json');
 const LANDING_FILE      = path.join(DATA_DIR, 'landingContent.json');
+const KEYS_FILE         = path.join(DATA_DIR, 'keys.json');
+const PAYMENTS_FILE     = path.join(DATA_DIR, 'payments.json');
+const UPLOADS_DIR       = path.join(DATA_DIR, 'uploads');
+const ADMINS_FILE       = path.join(DATA_DIR, 'admins.json');
+const USERS_FILE        = path.join(DATA_DIR, 'users.json');
+const SESSIONS_MAP_FILE = path.join(DATA_DIR, 'sessions_map.json');
 
 const LINK_EXPIRY_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
 if (!fs.existsSync(DATA_DIR))       fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(UPLOADS_DIR))    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(TOKENS_FILE))    fs.writeFileSync(TOKENS_FILE,  JSON.stringify({}));
 if (!fs.existsSync(SESSIONS_FILE))  fs.writeFileSync(SESSIONS_FILE, '');
 if (!fs.existsSync(EMAIL_CONFIG))   fs.writeFileSync(EMAIL_CONFIG,  JSON.stringify({}));
 if (!fs.existsSync(EMAIL_LOG))      fs.writeFileSync(EMAIL_LOG,     JSON.stringify([]));
-// Load persisted admin key override (survives restarts)
-try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); if (s.adminKey) ADMIN_KEY_OVERRIDE = s.adminKey; } catch {}
-if (!fs.existsSync(SETTINGS_FILE))  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ currency: 'USD', currencySymbol: '$', currencyName: 'US Dollar', activationEmailTemplateId: 'welcome' }, null, 2));
+if (!fs.existsSync(SETTINGS_FILE))  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ currency: 'USD', currencySymbol: '$', currencyName: 'US Dollar', activationEmailTemplateId: 'welcome', whatsapp: '', portalSlides: [] }, null, 2));
+if (!fs.existsSync(KEYS_FILE))      fs.writeFileSync(KEYS_FILE, JSON.stringify({}));
+if (!fs.existsSync(SESSIONS_MAP_FILE)) fs.writeFileSync(SESSIONS_MAP_FILE, JSON.stringify({}));
+if (!fs.existsSync(USERS_FILE)) {
+  // Default superadmin — password 'dtc2024' stored as plain initially; user should change it
+  fs.writeFileSync(USERS_FILE, JSON.stringify([
+    {
+      id: 'user-superadmin',
+      username: 'admin',
+      passwordHash: _hashPassword('dtc2024'),
+      name: 'Super Admin',
+      role: 'superadmin',
+      active: true,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: null,
+      permissions: ['all'],
+    }
+  ], null, 2));
+}
+if (!fs.existsSync(PAYMENTS_FILE))  fs.writeFileSync(PAYMENTS_FILE, JSON.stringify([]));
+if (!fs.existsSync(ADMINS_FILE))    fs.writeFileSync(ADMINS_FILE, JSON.stringify([
+  { id: 'admin-1', name: 'Admin', role: 'Owner', paymentMethods: [] }
+]));
 if (!fs.existsSync(LANDING_FILE))   fs.writeFileSync(LANDING_FILE, JSON.stringify({
   heroTitle:       'Your Gateway to <span>AI & Academic</span> Excellence',
   heroSubtitle:    'Digital Tools Corner (DTC) provides affordable, reliable access to premium AI and academic subscription tools for students, researchers, and professionals worldwide.',
@@ -111,6 +142,36 @@ if (!fs.existsSync(INSTRUCTIONS_FILE)) {
 
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
+
+// ── Image uploads (slideshow images, etc.) ───────────────────────────────────
+const _ALLOWED_IMG = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+const _imgStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename:    (req, file, cb) => {
+    let ext = (path.extname(file.originalname || '') || '').toLowerCase().replace(/[^.a-z0-9]/g, '');
+    if (!ext || ext.length > 6) ext = '.img';
+    cb(null, uuidv4() + ext);
+  },
+});
+const _imgUpload = multer({
+  storage: _imgStorage,
+  limits:  { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  fileFilter: (req, file, cb) => {
+    if (_ALLOWED_IMG.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Only image files (JPG, PNG, WEBP, GIF, SVG) are allowed.'));
+  },
+});
+
+app.post('/admin/upload-image', (req, res) => {
+  // Authorise from the query string before any file is written to disk
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  _imgUpload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Upload failed.' });
+    if (!req.file) return res.status(400).json({ error: 'No file received.' });
+    res.json({ success: true, url: '/uploads/' + req.file.filename });
+  });
+});
 
 // ── File helpers ───────────────────────────────────────────────────────────────
 const loadTokens      = () => JSON.parse(fs.readFileSync(TOKENS_FILE,  'utf8'));
@@ -125,15 +186,92 @@ const loadNotify      = () => JSON.parse(fs.readFileSync(NOTIFY_FILE,  'utf8'));
 const saveNotify      = n  => fs.writeFileSync(NOTIFY_FILE,  JSON.stringify(n, null, 2));
 const loadProducts    = () => JSON.parse(fs.readFileSync(PRODUCTS_FILE,'utf8'));
 const saveProducts    = p  => fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(p, null, 2));
-const isAdmin = k => {
-  if (ADMIN_KEY_OVERRIDE) return k === ADMIN_KEY_OVERRIDE;
-  const saved = (() => { try { return loadSettings().adminKey; } catch { return null; } })();
-  return k === (saved || ADMIN_KEY);
-};
+const isAdmin         = k  => k === ADMIN_KEY;
 const loadTemplates   = () => JSON.parse(fs.readFileSync(TEMPLATES_FILE,'utf8'));
 const saveTemplates   = t  => fs.writeFileSync(TEMPLATES_FILE, JSON.stringify(t, null, 2));
 const loadSettings    = () => JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8'));
 const saveSettings    = s  => fs.writeFileSync(SETTINGS_FILE, JSON.stringify(s, null, 2));
+const loadKeys        = () => { try { return JSON.parse(fs.readFileSync(KEYS_FILE,'utf8')); } catch { return {}; } };
+const saveKeys        = k  => fs.writeFileSync(KEYS_FILE, JSON.stringify(k, null, 2));
+const loadPayments    = () => { try { return JSON.parse(fs.readFileSync(PAYMENTS_FILE,'utf8')); } catch { return []; } };
+const savePayments    = p  => fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(p, null, 2));
+const loadAdmins      = () => { try { return JSON.parse(fs.readFileSync(ADMINS_FILE,'utf8')); } catch { return []; } };
+const saveAdmins      = a  => fs.writeFileSync(ADMINS_FILE, JSON.stringify(a, null, 2));
+
+// ── Simple password hashing (SHA-256 + salt) ───────────────────────────────────
+function _hashPassword(plain) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.createHash('sha256').update(salt + plain).digest('hex');
+  return salt + ':' + hash;
+}
+function _verifyPassword(plain, stored) {
+  const [salt, hash] = stored.split(':');
+  return crypto.createHash('sha256').update(salt + plain).digest('hex') === hash;
+}
+
+const loadUsers       = () => { try { return JSON.parse(fs.readFileSync(USERS_FILE,'utf8')); } catch { return []; } };
+const saveUsers       = u  => fs.writeFileSync(USERS_FILE, JSON.stringify(u, null, 2));
+const loadSessionsMap = () => { try { return JSON.parse(fs.readFileSync(SESSIONS_MAP_FILE,'utf8')); } catch { return {}; } };
+const saveSessionsMap = s  => fs.writeFileSync(SESSIONS_MAP_FILE, JSON.stringify(s, null, 2));
+
+// ── Resolve a request to a user (supports legacy ADMIN_KEY + new session tokens) ─
+function resolveUser(req) {
+  const body = req.body || {};
+  const query = req.query || {};
+  const key = body.adminKey || query.adminKey || '';
+
+  // Legacy single-key — treat as superadmin
+  if (key === ADMIN_KEY) {
+    return { id: 'legacy', role: 'superadmin', name: 'Admin', permissions: ['all'] };
+  }
+
+  // New session-token auth
+  const sessions = loadSessionsMap();
+  const session  = sessions[key];
+  if (!session) return null;
+
+  // Check expiry (24h sessions)
+  if (Date.now() > session.expiresAt) {
+    delete sessions[key]; saveSessionsMap(sessions);
+    return null;
+  }
+
+  const users = loadUsers();
+  const user  = users.find(u => u.id === session.userId && u.active);
+  if (!user) return null;
+
+  // Refresh session expiry on activity
+  sessions[key].expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+  sessions[key].lastSeen  = new Date().toISOString();
+  saveSessionsMap(sessions);
+
+  return user;
+}
+
+// ── Permission check ────────────────────────────────────────────────────────────
+const ROLE_PERMISSIONS = {
+  superadmin: ['all'],
+  admin:      ['dashboard','customers','keys','payments','staff','revenue','resellers','products','instructions','notifications','settings','campaigns','email'],
+  manager:    ['dashboard','customers','keys','payments','staff','revenue','resellers'],
+  agent:      ['dashboard','customers','keys','payments'],
+  viewer:     ['dashboard','customers','revenue'],
+};
+
+function hasPermission(user, section) {
+  if (!user) return false;
+  const perms = user.permissions || ROLE_PERMISSIONS[user.role] || [];
+  return perms.includes('all') || perms.includes(section);
+}
+
+function requireAuth(section) {
+  return (req, res, next) => {
+    const user = resolveUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    if (section && !hasPermission(user, section)) return res.status(403).json({ error: 'Forbidden: insufficient permissions.' });
+    req.dtcUser = user;
+    next();
+  };
+}
 const loadLanding     = () => JSON.parse(fs.readFileSync(LANDING_FILE,'utf8'));
 const saveLanding     = c  => fs.writeFileSync(LANDING_FILE, JSON.stringify(c, null, 2));
 
@@ -194,26 +332,22 @@ function calcRevenue(tokens) {
   let total        = 0;
   let resellerTotal= 0;
   let directTotal  = 0;
-  let totalRefunded= 0;
   for (const t of Object.values(tokens)) {
     if (!t.approved || !t.price) continue;
-    const pid      = t.productId || 'unknown';
-    const refunded = t.amountRefunded || 0;
-    const net      = Math.max(0, t.price - refunded);
-    byProduct[pid] = (byProduct[pid] || 0) + net;
-    total         += net;
-    totalRefunded += refunded;
+    const pid = t.productId || 'unknown';
+    byProduct[pid] = (byProduct[pid] || 0) + t.price;
+    total += t.price;
     if (t.resellerId) {
       const rid = t.resellerId;
       if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0 };
-      byReseller[rid].total += net;
+      byReseller[rid].total += t.price;
       byReseller[rid].count++;
-      resellerTotal += net;
+      resellerTotal += t.price;
     } else {
-      directTotal += net;
+      directTotal += t.price;
     }
   }
-  return { total, totalRefunded, byProduct, byReseller, resellerTotal, directTotal };
+  return { total, byProduct, byReseller, resellerTotal, directTotal };
 }
 
 // ── Email ──────────────────────────────────────────────────────────────────────
@@ -247,7 +381,6 @@ const expiredTemplate  = ({ customerName, packageType }) => baseEmail(`<h2 style
 
 async function checkSubscriptionEmails() {
   const cfg = loadEmailCfg(); if (!cfg.host || !cfg.user || !cfg.pass) return;
-  const settings = loadSettings(); if (settings.autoRemindersDisabled) return;
   const tokens = loadTokens(); const now = new Date(); let changed = false;
   for (const [token, t] of Object.entries(tokens)) {
     if (!t.approved || !t.subscriptionExpiresAt || !t.email) continue;
@@ -306,7 +439,7 @@ app.get('/admin/revenue', (req, res) => {
 
 // ── Generate link ──────────────────────────────────────────────────────────────
 app.post('/admin/generate', (req, res) => {
-  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName } = req.body;
+  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   if (!customerName)  return res.status(400).json({ error: 'Customer name is required.' });
   if (!productId)     return res.status(400).json({ error: 'Product is required.' });
@@ -330,23 +463,37 @@ app.post('/admin/generate', (req, res) => {
     customerName,
     productId,
     productName:      product.name,
+    portalName:       product.portalName || '',
     packageType:      packageLabel,
     price:            parseFloat(price),
     currency:         loadSettings().currency || 'USD',
     currencySymbol:   loadSettings().currencySymbol || '$',
     resellerId:       resellerId   || null,
     resellerName:     resellerName || null,
-    product:          product.type,           // kept for backward-compat
+    product:          product.type,
     credentialsMode:  product.credentialsMode || false,
     loginDetails:     product.loginDetails    || '',
     instructionSetId: instrId,
     postInstructionSetId: postId,
+    subscriptionKey:  subscriptionKey || null,
     createdAt:    new Date().toISOString(),
     expiresAt,
     durationDays,
     used: false, approved: false, declined: false, deactivated: false,
   };
   saveTokens(tokens);
+
+  // Register key as used if provided
+  if (subscriptionKey) {
+    const keysData = loadKeys();
+    if (!keysData[subscriptionKey]) keysData[subscriptionKey] = { key: subscriptionKey, product: product.type, addedAt: new Date().toISOString() };
+    keysData[subscriptionKey].usedBy       = token;
+    keysData[subscriptionKey].customerName = customerName;
+    keysData[subscriptionKey].packageType  = packageLabel;
+    keysData[subscriptionKey].assignedAt   = new Date().toISOString();
+    saveKeys(keysData);
+  }
+
   const link = `${req.protocol}://${req.get('host')}/submit?token=${token}`;
   res.json({ link, token, expiresAt, price: parseFloat(price) });
 });
@@ -382,17 +529,19 @@ app.get('/api/validate-token', (req, res) => {
 
   if (t.used) {
     const { pre, post } = getInstrSets(t);
-    return res.json({ valid: true, submitted: true, approved: t.approved || false, approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
+    const portalName = t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '';
+    return res.json({ valid: true, submitted: true, approved: t.approved || false, approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
   }
   if (t.expiresAt && new Date() > new Date(t.expiresAt)) return res.status(410).json({ valid: false, error: 'This activation link has expired. Please contact support for a new link.' });
 
   const { pre, post } = getInstrSets(t);
-  res.json({ valid: true, submitted: false, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', credentialsMode: t.credentialsMode || false, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
+  const portalName = t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '';
+  res.json({ valid: true, submitted: false, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
 });
 
 // ── Submit ─────────────────────────────────────────────────────────────────────
 app.post('/api/submit', (req, res) => {
-  const { token, orgId, sessionData, wechat, email, country } = req.body;
+  const { token, orgId, sessionData, wechat, email } = req.body;
   const tokens = loadTokens();
   if (!token || !tokens[token]) return res.status(404).json({ success: false, error: 'Invalid link.' });
   const t = tokens[token];
@@ -430,23 +579,29 @@ app.post('/api/submit', (req, res) => {
   if (Object.keys(errors).length) return res.status(400).json({ success: false, errors });
 
   const timestamp = new Date().toISOString();
-  const sym = (loadSettings().currencySymbol || '$');
-  let lines = ['══════════════════════════════════════════════════════', `Submitted At : ${timestamp}`, `Customer     : ${t.customerName}`, `Package      : ${t.packageType}`, `Price        : ${sym}${t.price || 0}`];
+  let lines = ['══════════════════════════════════════════════════════', `Submitted At : ${timestamp}`, `Customer     : ${t.customerName}`, `Package      : ${t.packageType}`, `Price        : $${t.price || 0}`];
   if (t.credentialsMode) { lines.push('── Credentials provided by DTC ────────────────────────'); }
   else if (t.product === 'chatgpt') { lines.push('── Session Data ───────────────────────────────────────', sessionData.trim()); }
   else { lines.push(`Org ID       : ${orgId ? orgId.trim() : '—'}`); }
-  lines.push(`WeChat       : ${wechat.trim()}`, `Email        : ${email.trim()}`, `Country      : ${(country||'').trim()||'—'}`, '══════════════════════════════════════════════════════', '');
+  lines.push(`WeChat       : ${wechat.trim()}`, `Email        : ${email.trim()}`, '══════════════════════════════════════════════════════', '');
   fs.appendFileSync(SESSIONS_FILE, lines.join('\n'));
 
   tokens[token].used = true; tokens[token].submittedAt = timestamp;
   tokens[token].wechat = wechat.trim(); tokens[token].email = email.trim();
-  tokens[token].country = (country || '').trim();
   if (!t.credentialsMode) {
     if (t.product === 'chatgpt') tokens[token].sessionData = sessionData.trim();
     else tokens[token].orgId = orgId ? orgId.trim() : '';
   }
   saveTokens(tokens);
   res.json({ success: true });
+});
+
+// ── Public portal config (slideshow + WhatsApp) for the activation page ──────────
+app.get('/api/portal-config', (req, res) => {
+  let s = {};
+  try { s = loadSettings(); } catch (e) { s = {}; }
+  const slides = Array.isArray(s.portalSlides) ? s.portalSlides : [];
+  res.json({ whatsapp: s.whatsapp || '', slides });
 });
 
 // ── Poll status ────────────────────────────────────────────────────────────────
@@ -460,10 +615,10 @@ app.get('/api/status', (req, res) => {
   res.json({
     status: t.declined ? 'declined' : t.approved ? 'activated' : t.used ? 'processing' : 'pending',
     packageType: t.packageType, customerName: t.customerName, product: t.product || 'claude',
+    portalName: t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '',
     credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '',
     approvedAt: t.approvedAt || null, declineReason: t.declineReason || '',
     orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '',
-    country: t.country || '',
     subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30,
     processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps,
     postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps,
@@ -512,48 +667,420 @@ app.post('/admin/decline', (req, res) => {
   saveTokens(tokens); res.json({ success: true });
 });
 
-// ── Customer list (for autocomplete in link generation) ───────────────────────
-app.get('/admin/customers-list', (req, res) => {
-  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  const tokens = loadTokens();
-  // Collect unique customer names from approved, non-hidden tokens, most recent first
-  const seen = new Map(); // name -> token data
-  Object.entries(tokens)
-    .filter(([, t]) => t.approved && t.email && !t.hidden)
-    .sort((a, b) => new Date(b[1].approvedAt || 0) - new Date(a[1].approvedAt || 0))
-    .forEach(([tok, t]) => {
-      const key = t.customerName.trim().toLowerCase();
-      if (!seen.has(key)) seen.set(key, { token: tok, customerName: t.customerName, email: t.email || '', wechat: t.wechat || '', packageType: t.packageType, subscriptionExpiresAt: t.subscriptionExpiresAt });
-    });
-  res.json({ customers: Array.from(seen.values()) });
-});
-
-// ── Soft-delete customer (hide all their tokens) ───────────────────────────────
-app.post('/admin/delete-customer', (req, res) => {
-  const { adminKey, customerName } = req.body;
+// ── Delete token (soft-delete) ─────────────────────────────────────────────────
+app.post('/admin/delete-token', (req, res) => {
+  const { adminKey, token } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  if (!customerName) return res.status(400).json({ error: 'customerName required.' });
   const tokens = loadTokens();
-  const key = customerName.trim().toLowerCase();
-  let count = 0;
-  for (const tok of Object.keys(tokens)) {
-    if (tokens[tok].customerName.trim().toLowerCase() === key) {
-      tokens[tok].hidden = true;
-      tokens[tok].hiddenAt = new Date().toISOString();
-      count++;
+  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  // Free up any subscription key that was tied to this token
+  const usedKey = tokens[token].subscriptionKey;
+  if (usedKey) {
+    const keysData = loadKeys();
+    if (keysData[usedKey] && keysData[usedKey].usedBy === token) {
+      keysData[usedKey].usedBy = null;
+      keysData[usedKey].customerName = null;
+      keysData[usedKey].packageType = null;
+      keysData[usedKey].assignedAt = null;
+      saveKeys(keysData);
     }
   }
+  // Permanently remove the record
+  delete tokens[token];
   saveTokens(tokens);
-  res.json({ success: true, hidden: count });
+  res.json({ success: true });
 });
 
-// ── Sessions data ──────────────────────────────────────────────────────────────
+// ── Refund token ────────────────────────────────────────────────────────────────
+app.post('/admin/refund', (req, res) => {
+  const { adminKey, token, refundNote } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const tokens = loadTokens();
+  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  tokens[token].refunded   = true;
+  tokens[token].refundedAt = new Date().toISOString();
+  tokens[token].refundNote = refundNote || '';
+  // Deactivate the subscription
+  tokens[token].deactivated   = true;
+  tokens[token].deactivatedAt = tokens[token].deactivatedAt || new Date().toISOString();
+  saveTokens(tokens);
+  res.json({ success: true });
+});
+
+// ── Edit token fields ──────────────────────────────────────────────────────────
+app.post('/admin/edit-token', (req, res) => {
+  const { adminKey, token, customerName, email, wechat, packageType, subscriptionExpiresAt, approvedAt, price, subscriptionDays, subscriptionKey } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const tokens = loadTokens();
+  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  const t = tokens[token];
+  if (customerName   !== undefined) t.customerName          = customerName;
+  if (email          !== undefined) t.email                 = email;
+  if (wechat         !== undefined) t.wechat                = wechat;
+  if (packageType    !== undefined) t.packageType           = packageType;
+  if (subscriptionExpiresAt !== undefined) t.subscriptionExpiresAt = subscriptionExpiresAt;
+  if (approvedAt     !== undefined) t.approvedAt            = approvedAt;
+  if (price          !== undefined) t.price                 = parseFloat(price);
+  if (subscriptionDays !== undefined) t.subscriptionDays    = parseInt(subscriptionDays);
+  if (subscriptionKey !== undefined && subscriptionKey !== '') {
+    // Record the old key as used in key store if changed
+    const oldKey = t.subscriptionKey;
+    t.subscriptionKey = subscriptionKey;
+    // Update key registry
+    const keysData = loadKeys();
+    if (oldKey && keysData[oldKey]) { keysData[oldKey].usedBy = null; keysData[oldKey].customerName = null; keysData[oldKey].packageType = null; keysData[oldKey].assignedAt = null; }
+    if (!keysData[subscriptionKey]) keysData[subscriptionKey] = { key: subscriptionKey, product: t.product || 'claude', addedAt: new Date().toISOString() };
+    keysData[subscriptionKey].usedBy       = token;
+    keysData[subscriptionKey].customerName = t.customerName || '';
+    keysData[subscriptionKey].packageType  = t.packageType  || '';
+    keysData[subscriptionKey].assignedAt   = new Date().toISOString();
+    saveKeys(keysData);
+  }
+  saveTokens(tokens);
+  res.json({ success: true });
+});
+
+// ── Keys CRUD ──────────────────────────────────────────────────────────────────
+app.get('/admin/keys', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const keysData = loadKeys();
+  const product  = req.query.product;
+  let keys = Object.values(keysData);
+  if (product) keys = keys.filter(k => k.product === product);
+  keys.sort((a, b) => {
+    if (!a.usedBy && b.usedBy) return -1;
+    if (a.usedBy && !b.usedBy) return 1;
+    return (a.key||'').localeCompare(b.key||'');
+  });
+  res.json({ keys });
+});
+
+app.post('/admin/keys/add', (req, res) => {
+  const { adminKey, product, keys } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!Array.isArray(keys) || !keys.length) return res.status(400).json({ error: 'No keys provided.' });
+  const keysData = loadKeys();
+  let added = 0, skipped = 0;
+  keys.forEach(k => {
+    const key = String(k).trim();
+    if (!key) return;
+    if (keysData[key]) { skipped++; return; }
+    keysData[key] = { key, product: product || 'claude', addedAt: new Date().toISOString(), usedBy: null };
+    added++;
+  });
+  saveKeys(keysData);
+  res.json({ success: true, added, skipped });
+});
+
+app.post('/admin/keys/delete', (req, res) => {
+  const { adminKey, key } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const keysData = loadKeys();
+  if (!keysData[key]) return res.status(404).json({ error: 'Key not found.' });
+  delete keysData[key];
+  saveKeys(keysData);
+  res.json({ success: true });
+});
+
+app.post('/admin/keys/delete-unused', (req, res) => {
+  const { adminKey, product } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const keysData = loadKeys();
+  Object.keys(keysData).forEach(k => {
+    if (!keysData[k].usedBy && (!product || keysData[k].product === product)) delete keysData[k];
+  });
+  saveKeys(keysData);
+  res.json({ success: true });
+});
+
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// USER AUTH — login / logout / session / user management
+// ════════════════════════════════════════════════════════════════════════════
+
+app.post('/admin/user-login', (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
+  const users = loadUsers();
+  const user  = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.active);
+  if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+  if (!_verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Invalid username or password.' });
+
+  // Create session
+  const sessionToken = uuidv4();
+  const sessions = loadSessionsMap();
+  sessions[sessionToken] = {
+    userId:    user.id,
+    createdAt: new Date().toISOString(),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+    lastSeen:  new Date().toISOString(),
+    ip:        req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown',
+    userAgent: req.headers['user-agent'] || 'unknown',
+  };
+  saveSessionsMap(sessions);
+
+  // Update lastLoginAt
+  const idx = users.findIndex(u => u.id === user.id);
+  if (idx >= 0) { users[idx].lastLoginAt = new Date().toISOString(); saveUsers(users); }
+
+  const perms = user.permissions || ROLE_PERMISSIONS[user.role] || [];
+  res.json({
+    sessionToken,
+    user: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms },
+  });
+});
+
+app.post('/admin/user-logout', (req, res) => {
+  const { sessionToken } = req.body;
+  if (sessionToken) {
+    const sessions = loadSessionsMap();
+    delete sessions[sessionToken];
+    saveSessionsMap(sessions);
+  }
+  res.json({ success: true });
+});
+
+app.post('/admin/user-verify', (req, res) => {
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Session expired or invalid.' });
+  const perms = user.permissions || ROLE_PERMISSIONS[user.role] || [];
+  res.json({ valid: true, user: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms } });
+});
+
+// User management — superadmin / admin only
+app.get('/admin/users', requireAuth('settings'), (req, res) => {
+  if (!hasPermission(req.dtcUser, 'all') && req.dtcUser.role !== 'superadmin' && req.dtcUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden.' });
+  }
+  const users = loadUsers().map(u => ({ ...u, passwordHash: undefined }));
+  res.json({ users });
+});
+
+app.post('/admin/users/save', requireAuth('settings'), (req, res) => {
+  const actor = req.dtcUser;
+  if (actor.role !== 'superadmin' && actor.role !== 'admin') return res.status(403).json({ error: 'Forbidden.' });
+  const { user } = req.body;
+  if (!user || !user.username || !user.name) return res.status(400).json({ error: 'Username and name required.' });
+
+  const users = loadUsers();
+
+  // Prevent non-superadmin creating superadmin
+  if (user.role === 'superadmin' && actor.role !== 'superadmin') return res.status(403).json({ error: 'Only superadmins can create superadmin accounts.' });
+
+  const idx = users.findIndex(u => u.id === user.id);
+  if (idx >= 0) {
+    // Edit existing
+    const existing = users[idx];
+    // Prevent demoting/editing a superadmin unless you are one
+    if (existing.role === 'superadmin' && actor.role !== 'superadmin') return res.status(403).json({ error: 'Cannot edit superadmin.' });
+    users[idx] = {
+      ...existing,
+      username:    user.username,
+      name:        user.name,
+      role:        user.role || existing.role,
+      active:      user.active !== undefined ? user.active : existing.active,
+      permissions: user.permissions || ROLE_PERMISSIONS[user.role] || existing.permissions,
+      updatedAt:   new Date().toISOString(),
+    };
+    if (user.newPassword) users[idx].passwordHash = _hashPassword(user.newPassword);
+  } else {
+    // New user
+    if (!user.newPassword) return res.status(400).json({ error: 'Password required for new user.' });
+    const dupUser = users.find(u => u.username.toLowerCase() === user.username.toLowerCase());
+    if (dupUser) return res.status(400).json({ error: 'Username already exists.' });
+    users.push({
+      id:           'user-' + uuidv4().slice(0,8),
+      username:     user.username,
+      passwordHash: _hashPassword(user.newPassword),
+      name:         user.name,
+      role:         user.role || 'agent',
+      active:       true,
+      permissions:  user.permissions || ROLE_PERMISSIONS[user.role || 'agent'] || [],
+      createdAt:    new Date().toISOString(),
+      lastLoginAt:  null,
+    });
+  }
+  saveUsers(users);
+  res.json({ success: true, users: users.map(u => ({ ...u, passwordHash: undefined })) });
+});
+
+app.post('/admin/users/delete', requireAuth('settings'), (req, res) => {
+  const actor = req.dtcUser;
+  if (actor.role !== 'superadmin' && actor.role !== 'admin') return res.status(403).json({ error: 'Forbidden.' });
+  const { id } = req.body;
+  const users = loadUsers();
+  const target = users.find(u => u.id === id);
+  if (target && target.role === 'superadmin' && actor.role !== 'superadmin') return res.status(403).json({ error: 'Cannot delete superadmin.' });
+  // Prevent self-delete
+  if (actor.id === id) return res.status(400).json({ error: 'Cannot delete your own account.' });
+  const filtered = users.filter(u => u.id !== id);
+  saveUsers(filtered);
+  // Invalidate all sessions for this user
+  const sessions = loadSessionsMap();
+  Object.keys(sessions).forEach(k => { if (sessions[k].userId === id) delete sessions[k]; });
+  saveSessionsMap(sessions);
+  res.json({ success: true, users: filtered.map(u => ({ ...u, passwordHash: undefined })) });
+});
+
+app.post('/admin/users/change-password', (req, res) => {
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  const { currentPassword, newPassword, targetUserId } = req.body;
+  const users = loadUsers();
+
+  // Changing own password
+  if (!targetUserId || targetUserId === user.id) {
+    const self = users.find(u => u.id === user.id);
+    if (!self) return res.status(404).json({ error: 'User not found.' });
+    if (!_verifyPassword(currentPassword, self.passwordHash)) return res.status(401).json({ error: 'Current password incorrect.' });
+    self.passwordHash = _hashPassword(newPassword);
+    saveUsers(users);
+    return res.json({ success: true });
+  }
+
+  // Admin changing another user's password
+  if (user.role !== 'superadmin' && user.role !== 'admin') return res.status(403).json({ error: 'Forbidden.' });
+  const target = users.find(u => u.id === targetUserId);
+  if (!target) return res.status(404).json({ error: 'User not found.' });
+  target.passwordHash = _hashPassword(newPassword);
+  saveUsers(users);
+  res.json({ success: true });
+});
+
+app.get('/admin/users/sessions', requireAuth('settings'), (req, res) => {
+  if (req.dtcUser.role !== 'superadmin' && req.dtcUser.role !== 'admin') return res.status(403).json({ error: 'Forbidden.' });
+  const sessions = loadSessionsMap();
+  const users    = loadUsers();
+  const active   = Object.entries(sessions)
+    .filter(([, s]) => Date.now() < s.expiresAt)
+    .map(([token, s]) => {
+      const u = users.find(u => u.id === s.userId);
+      return { token: token.slice(0,8)+'…', userId: s.userId, userName: u ? u.name : 'Unknown', role: u ? u.role : '?', lastSeen: s.lastSeen, ip: s.ip };
+    });
+  res.json({ sessions: active });
+});
+
+app.post('/admin/users/revoke-sessions', requireAuth('settings'), (req, res) => {
+  if (req.dtcUser.role !== 'superadmin' && req.dtcUser.role !== 'admin') return res.status(403).json({ error: 'Forbidden.' });
+  const { userId } = req.body;
+  const sessions = loadSessionsMap();
+  Object.keys(sessions).forEach(k => { if (!userId || sessions[k].userId === userId) delete sessions[k]; });
+  saveSessionsMap(sessions);
+  res.json({ success: true });
+});
+
+// ── sessions-data: now also returns current user context ──────────────────────
+// (legacy endpoint — still used by old auth flow)
+
+// ════════════════════════════════════════════════════════════════════════════
+// ADMINS (staff who receive payments)
+// ════════════════════════════════════════════════════════════════════════════
+app.get('/admin/admins', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  res.json({ admins: loadAdmins() });
+});
+app.post('/admin/admins/save', (req, res) => {
+  const { adminKey, admin } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!admin || !admin.name) return res.status(400).json({ error: 'Name is required.' });
+  const admins = loadAdmins();
+  const idx = admins.findIndex(a => a.id === admin.id);
+  if (idx >= 0) { admins[idx] = { ...admins[idx], ...admin }; }
+  else { admins.push({ ...admin, id: admin.id || ('admin-' + uuidv4().slice(0,8)), createdAt: new Date().toISOString() }); }
+  saveAdmins(admins);
+  res.json({ success: true, admins });
+});
+app.post('/admin/admins/delete', (req, res) => {
+  const { adminKey, id } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const admins = loadAdmins().filter(a => a.id !== id);
+  saveAdmins(admins);
+  res.json({ success: true });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// PAYMENTS
+// ════════════════════════════════════════════════════════════════════════════
+app.get('/admin/payments', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  res.json({ payments: loadPayments(), admins: loadAdmins() });
+});
+app.post('/admin/payments/add', (req, res) => {
+  const { adminKey, payment } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!payment || !payment.amount) return res.status(400).json({ error: 'Amount is required.' });
+  if (!payment.adminId)            return res.status(400).json({ error: 'Receiving admin is required.' });
+  const payments = loadPayments();
+  const id = 'pay-' + uuidv4().slice(0,8);
+  const record = {
+    id, amount: parseFloat(payment.amount),
+    currency: payment.currency || 'USD', currencySymbol: payment.currencySymbol || '$',
+    method: payment.method || 'Unknown',
+    adminId: payment.adminId, adminName: payment.adminName || '',
+    customerName: payment.customerName || '', customerEmail: payment.customerEmail || '',
+    tokenRef: payment.tokenRef || null, note: payment.note || '',
+    paidAt: payment.paidAt || new Date().toISOString(),
+    recordedAt: new Date().toISOString(), status: payment.status || 'received',
+  };
+  payments.unshift(record);
+  savePayments(payments);
+  if (record.tokenRef) {
+    const tokens = loadTokens();
+    if (tokens[record.tokenRef]) {
+      tokens[record.tokenRef].paymentId = id; tokens[record.tokenRef].paymentMethod = record.method;
+      tokens[record.tokenRef].paidToAdmin = record.adminId; tokens[record.tokenRef].paidToAdminName = record.adminName;
+      saveTokens(tokens);
+    }
+  }
+  res.json({ success: true, payment: record });
+});
+app.post('/admin/payments/edit', (req, res) => {
+  const { adminKey, id, updates } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const payments = loadPayments();
+  const idx = payments.findIndex(p => p.id === id);
+  if (idx < 0) return res.status(404).json({ error: 'Not found.' });
+  payments[idx] = { ...payments[idx], ...updates, id };
+  savePayments(payments);
+  res.json({ success: true, payment: payments[idx] });
+});
+app.post('/admin/payments/delete', (req, res) => {
+  const { adminKey, id } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const payments = loadPayments().filter(p => p.id !== id);
+  savePayments(payments);
+  res.json({ success: true });
+});
+app.get('/admin/payments/summary', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const payments = loadPayments().filter(p => p.status !== 'refunded');
+  const admins   = loadAdmins();
+  const byAdmin  = {};
+  payments.forEach(p => {
+    if (!byAdmin[p.adminId]) {
+      const adm = admins.find(a => a.id === p.adminId);
+      byAdmin[p.adminId] = { adminId: p.adminId, adminName: p.adminName || (adm&&adm.name) || 'Unknown', total: 0, count: 0, byMethod: {} };
+    }
+    byAdmin[p.adminId].total += p.amount;
+    byAdmin[p.adminId].count++;
+    const m = p.method || 'Unknown';
+    byAdmin[p.adminId].byMethod[m] = (byAdmin[p.adminId].byMethod[m] || 0) + p.amount;
+  });
+  res.json({ summary: Object.values(byAdmin), total: payments.reduce((s,p)=>s+p.amount,0), count: payments.length });
+});
+
 app.post('/admin/sessions-data', (req, res) => {
-  const { adminKey } = req.body; if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
   const allTokens = loadTokens();
-  // Filter out soft-deleted (hidden) tokens for the admin UI
-  const tokens = Object.fromEntries(Object.entries(allTokens).filter(([, t]) => !t.hidden));
-  res.json({ tokens, emailLog: loadEmailLog(), revenue: calcRevenue(allTokens) });
+  const tokens = Object.fromEntries(Object.entries(allTokens).filter(([, t]) => !t.deleted));
+  const perms  = user.permissions || ROLE_PERMISSIONS[user.role] || [];
+  res.json({
+    tokens, emailLog: loadEmailLog(), revenue: calcRevenue(allTokens),
+    currentUser: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms },
+  });
 });
 
 // ── Instructions ───────────────────────────────────────────────────────────────
@@ -623,7 +1150,7 @@ app.post('/admin/email-templates/delete', (req, res) => {
 
 // ── Bulk email send ────────────────────────────────────────────────────────────
 app.post('/admin/bulk-email', async (req, res) => {
-  const { adminKey, templateId, customSubject, customBody, recipientFilter, tokenList, customEmails } = req.body;
+  const { adminKey, templateId, customSubject, customBody, recipientFilter, tokenList } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
 
   const cfg = loadEmailCfg();
@@ -647,7 +1174,7 @@ app.post('/admin/bulk-email', async (req, res) => {
   if (tokenList && tokenList.length) {
     // Specific tokens selected by admin
     recipients = tokenList.map(tok => tokens[tok]).filter(t => t && t.email);
-  } else if (recipientFilter !== 'none') {
+  } else {
     // Filter-based
     const filter = recipientFilter || 'all-with-email';
     for (const t of Object.values(tokens)) {
@@ -664,19 +1191,6 @@ app.post('/admin/bulk-email', async (req, res) => {
       }
       if (filter === 'submitted' && t.used && !t.approved) { recipients.push(t); continue; }
     }
-  }
-
-  // Append any manually entered custom emails (not in token list)
-  if (customEmails && Array.isArray(customEmails)) {
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const existingEmails = new Set(recipients.map(r => (r.email || '').toLowerCase()));
-    customEmails.forEach(addr => {
-      const trimmed = (addr || '').trim();
-      if (EMAIL_RE.test(trimmed) && !existingEmails.has(trimmed.toLowerCase())) {
-        recipients.push({ email: trimmed, customerName: trimmed, packageType: '', product: 'custom' });
-        existingEmails.add(trimmed.toLowerCase());
-      }
-    });
   }
 
   if (!recipients.length) return res.status(400).json({ error: 'No recipients match this filter.' });
@@ -769,18 +1283,6 @@ app.post('/admin/settings', (req, res) => {
   res.json({ success: true });
 });
 
-// ── Change admin key ───────────────────────────────────────────────────────────
-app.post('/admin/change-key', (req, res) => {
-  const { adminKey, newKey } = req.body;
-  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Current key is incorrect.' });
-  if (!newKey || newKey.trim().length < 6) return res.status(400).json({ error: 'New key must be at least 6 characters.' });
-  const current = loadSettings();
-  saveSettings({ ...current, adminKey: newKey.trim() });
-  // Hot-swap the in-memory key so admin stays logged in
-  ADMIN_KEY_OVERRIDE = newKey.trim();
-  res.json({ success: true });
-});
-
 // ── Resellers list ─────────────────────────────────────────────────────────────
 app.get('/admin/resellers', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
@@ -825,315 +1327,7 @@ app.post('/admin/landing-content', (req, res) => {
 });
 
 // ── Pages ──────────────────────────────────────────────────────────────────────
-// ── Backup — download all data as a single JSON bundle ────────────────────────
-app.get('/admin/backup', (req, res) => {
-  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const readJson = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; } };
-    const bundle = {
-      _meta:        { exportedAt: new Date().toISOString(), version: '1.0' },
-      tokens:       readJson(TOKENS_FILE),
-      emailConfig:  readJson(EMAIL_CONFIG),
-      emailLog:     readJson(EMAIL_LOG),
-      instructions: readJson(INSTRUCTIONS_FILE),
-      notifications:readJson(NOTIFY_FILE),
-      products:     readJson(PRODUCTS_FILE),
-      emailTemplates: readJson(TEMPLATES_FILE),
-      settings:     readJson(SETTINGS_FILE),
-      landingContent: readJson(LANDING_FILE),
-    };
-    const filename = `dtc-backup-${new Date().toISOString().slice(0,10)}.json`;
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(JSON.stringify(bundle, null, 2));
-  } catch(e) {
-    res.status(500).json({ error: 'Backup failed: ' + e.message });
-  }
-});
-
-// ── Restore — upload a backup bundle and overwrite data files ─────────────────
-app.post('/admin/restore', (req, res) => {
-  const { adminKey, bundle } = req.body;
-  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  if (!bundle || typeof bundle !== 'object') return res.status(400).json({ error: 'Invalid backup file.' });
-  try {
-    const writeJson = (f, data) => { if (data !== null && data !== undefined) fs.writeFileSync(f, JSON.stringify(data, null, 2)); };
-    writeJson(TOKENS_FILE,        bundle.tokens);
-    writeJson(EMAIL_CONFIG,       bundle.emailConfig);
-    writeJson(EMAIL_LOG,          bundle.emailLog);
-    writeJson(INSTRUCTIONS_FILE,  bundle.instructions);
-    writeJson(NOTIFY_FILE,        bundle.notifications);
-    writeJson(PRODUCTS_FILE,      bundle.products);
-    writeJson(TEMPLATES_FILE,     bundle.emailTemplates);
-    writeJson(SETTINGS_FILE,      bundle.settings);
-    writeJson(LANDING_FILE,       bundle.landingContent);
-    // Reload admin key override from restored settings
-    try { const s = JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); if (s.adminKey) ADMIN_KEY_OVERRIDE = s.adminKey; } catch {}
-    res.json({ success: true });
-  } catch(e) {
-    res.status(500).json({ error: 'Restore failed: ' + e.message });
-  }
-});
-
-// ── Payment records — add a payment or refund entry ──────────────────────────
-app.post('/admin/payment', (req, res) => {
-  const { adminKey, token, type, paymentMethod, amount, note } = req.body;
-  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  const tokens = loadTokens();
-  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
-
-  const t = tokens[token];
-  if (!t.paymentRecords) t.paymentRecords = [];
-
-  const record = {
-    id:        Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    type:      type === 'refund' ? 'refund' : 'payment',
-    amount:    Math.abs(parseFloat(amount) || 0),
-    method:    paymentMethod || '',
-    note:      note || '',
-    createdAt: new Date().toISOString(),
-  };
-  t.paymentRecords.push(record);
-
-  // Recompute derived summary fields for quick display
-  const payments = t.paymentRecords.filter(r => r.type === 'payment').reduce((s, r) => s + r.amount, 0);
-  const refunds  = t.paymentRecords.filter(r => r.type === 'refund').reduce((s, r) => s + r.amount, 0);
-  const net      = payments - refunds;
-  const price    = t.price || 0;
-  t.amountPaid   = payments;
-  t.amountRefunded = refunds;
-  t.netAmountPaid  = net;
-  t.paymentStatus  = refunds >= price ? 'refunded'
-                   : refunds > 0      ? (net <= 0 ? 'refunded' : 'partial-refund')
-                   : net >= price     ? 'paid'
-                   : net > 0          ? 'partial'
-                   : 'unpaid';
-  t.paymentUpdatedAt = new Date().toISOString();
-
-  saveTokens(tokens);
-  res.json({ success: true, record, paymentStatus: t.paymentStatus, amountPaid: payments, amountRefunded: refunds, netAmountPaid: net });
-});
-
-// ── Delete a single payment record ────────────────────────────────────────────
-app.post('/admin/payment/delete', (req, res) => {
-  const { adminKey, token, recordId } = req.body;
-  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  const tokens = loadTokens();
-  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
-  const t = tokens[token];
-  t.paymentRecords = (t.paymentRecords || []).filter(r => r.id !== recordId);
-  // Recompute summaries
-  const payments = t.paymentRecords.filter(r => r.type === 'payment').reduce((s, r) => s + r.amount, 0);
-  const refunds  = t.paymentRecords.filter(r => r.type === 'refund').reduce((s, r) => s + r.amount, 0);
-  const net      = payments - refunds;
-  const price    = t.price || 0;
-  t.amountPaid     = payments;
-  t.amountRefunded = refunds;
-  t.netAmountPaid  = net;
-  t.paymentStatus  = refunds >= price ? 'refunded'
-                   : refunds > 0      ? (net <= 0 ? 'refunded' : 'partial-refund')
-                   : net >= price     ? 'paid'
-                   : net > 0          ? 'partial'
-                   : 'unpaid';
-  t.paymentUpdatedAt = new Date().toISOString();
-  saveTokens(tokens);
-  res.json({ success: true });
-});
-
-// ── Renewal request (customer clicks "I want to renew" on status page) ────────
-app.post('/api/request-renewal', async (req, res) => {
-  const { token } = req.body;
-  const tokens = loadTokens();
-  if (!token || !tokens[token]) return res.status(404).json({ error: 'Invalid token.' });
-  const t = tokens[token];
-  if (!t.approved) return res.status(400).json({ error: 'Subscription not activated.' });
-  const cfg = loadEmailCfg();
-  if (!cfg.host || !cfg.user || !cfg.pass) return res.status(503).json({ error: 'Email not configured on server.' });
-  const expiry = t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
-  const html = baseEmail(`
-    <h2 style="color:#1e293b;margin:0 0 12px">🔄 Renewal Request</h2>
-    <p style="color:#475569;margin:0 0 16px">A customer has requested renewal from the status portal.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
-      <tr><td style="padding:8px 0;color:#64748b;width:120px">Name</td><td style="padding:8px 0;color:#1e293b;font-weight:600">${t.customerName}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">Package</td><td style="padding:8px 0;color:#1e293b;font-weight:600">${t.packageType}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">WeChat</td><td style="padding:8px 0;color:#1e293b">${t.wechat||'—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">Email</td><td style="padding:8px 0;color:#1e293b">${t.email||'—'}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">Expires</td><td style="padding:8px 0;color:#d97706;font-weight:600">${expiry}</td></tr>
-      <tr><td style="padding:8px 0;color:#64748b">Country</td><td style="padding:8px 0;color:#1e293b">${t.country||'—'}</td></tr>
-    </table>
-    <p style="margin:16px 0 0;font-size:.8rem;color:#94a3b8">Generate a new activation link in the admin panel and send it to this customer.</p>
-  `);
-  const r = await sendEmail({ to: cfg.user, subject: `Renewal Request — ${t.customerName} — DTC`, html, type: 'renewal_request', token });
-  if (r.ok) res.json({ success: true });
-  else res.status(500).json({ error: r.error });
-});
-
-// ── OTP store (in-memory, expires 10 min) ────────────────────────────────────
-const _otpStore = new Map();
-const _genOtp   = () => Math.floor(100000 + Math.random() * 900000).toString();
-
-app.post('/api/send-otp', async (req, res) => {
-  const { email, purpose } = req.body;
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email.' });
-  const tokens = loadTokens();
-  const hasRecord = Object.values(tokens).some(t => (t.email||'').toLowerCase() === email.toLowerCase());
-  const code = _genOtp();
-  _otpStore.set(email.toLowerCase(), { code, expires: Date.now() + 10 * 60 * 1000 });
-  if (hasRecord) {
-    const label = purpose === 'find-link' ? 'Activation Link Lookup' : purpose === 'portal' ? 'Customer Portal' : 'Subscription History';
-    const html  = baseEmail(`<h2 style="color:#1e293b;margin:0 0 12px">Your verification code</h2>
-      <p style="color:#475569;margin:0 0 20px">Use this code to access your ${label}. It expires in 10 minutes.</p>
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:20px;text-align:center;margin-bottom:16px">
-        <div style="font-size:2rem;font-weight:800;font-family:monospace;color:#2563eb;letter-spacing:.2em">${code}</div>
-      </div>
-      <p style="font-size:.78rem;color:#94a3b8;margin:0">If you did not request this, you can ignore this email.</p>`);
-    await sendEmail({ to: email, subject: `Your DTC verification code: ${code}`, html, type: 'otp' });
-  }
-  res.json({ success: true });
-});
-
-app.post('/api/history', (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) return res.status(400).json({ error: 'Missing fields.' });
-  const rec = _otpStore.get(email.toLowerCase());
-  if (!rec || rec.code !== otp || Date.now() > rec.expires) return res.status(401).json({ error: 'Invalid or expired code.' });
-  _otpStore.delete(email.toLowerCase());
-  const tokens = loadTokens();
-  const history = Object.entries(tokens)
-    .filter(([, t]) => (t.email||'').toLowerCase() === email.toLowerCase() && t.approved && !t.hidden)
-    .sort((a, b) => new Date(b[1].approvedAt||0) - new Date(a[1].approvedAt||0))
-    .map(([, t]) => ({
-      customerName: t.customerName, packageType: t.packageType, product: t.product||'claude',
-      approvedAt: t.approvedAt, subscriptionExpiresAt: t.subscriptionExpiresAt,
-      durationDays: t.durationDays||30, country: t.country||'',
-    }));
-  res.json({ history });
-});
-
-app.post('/api/find-link', async (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) return res.status(400).json({ error: 'Missing fields.' });
-  const rec = _otpStore.get(email.toLowerCase());
-  if (!rec || rec.code !== otp || Date.now() > rec.expires) return res.status(401).json({ error: 'Invalid or expired code.' });
-  _otpStore.delete(email.toLowerCase());
-  const tokens = loadTokens();
-  const cfg    = loadEmailCfg();
-  const pending = Object.entries(tokens).filter(([, t]) =>
-    (t.email||'').toLowerCase() === email.toLowerCase() && !t.approved && !t.deactivated && !t.declined
-  );
-  if (!pending.length) return res.json({ success: true, found: 0 });
-  if (!cfg.host || !cfg.user || !cfg.pass) return res.status(503).json({ error: 'Email not configured.' });
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const linksHtml = pending.map(([tok, t]) =>
-    `<div style="background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:8px">
-      <div style="font-size:.75rem;color:#64748b;margin-bottom:4px">${t.packageType} &middot; Created ${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB') : '—'}</div>
-      <a href="${baseUrl}/submit?token=${tok}" style="color:#2563eb;font-size:.82rem;word-break:break-all">${baseUrl}/submit?token=${tok}</a>
-    </div>`).join('');
-  const html = baseEmail(`<h2 style="color:#1e293b;margin:0 0 12px">Your activation link${pending.length>1?'s':''}</h2>
-    <p style="color:#475569;margin:0 0 16px">Here ${pending.length>1?'are your pending activation links':'is your pending activation link'}:</p>
-    ${linksHtml}
-    <p style="font-size:.78rem;color:#94a3b8;margin:12px 0 0">If your link has expired, please contact DTC to request a new one.</p>`);
-  await sendEmail({ to: email, subject: 'Your DTC activation link', html, type: 'link_resend' });
-  res.json({ success: true, found: pending.length });
-});
-
-// ── Portal sessions (email-verified, 24hr expiry) ─────────────────────────────
-const _portalSessions = new Map(); // sessionToken -> { email, expires }
-const _mkPortalToken  = () => require('crypto').randomBytes(32).toString('hex');
-
-app.post('/api/portal-login', (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) return res.status(400).json({ error: 'Missing fields.' });
-  const rec = _otpStore.get(email.toLowerCase());
-  if (!rec || rec.code !== otp || Date.now() > rec.expires)
-    return res.status(401).json({ error: 'Invalid or expired code. Please request a new one.' });
-  _otpStore.delete(email.toLowerCase());
-
-  // Build full subscription data for this email
-  const tokens  = loadTokens();
-  const settings= loadSettings();
-  const sym     = settings.currencySymbol || '$';
-
-  const subscriptions = Object.entries(tokens)
-    .filter(([, t]) => (t.email||'').toLowerCase() === email.toLowerCase() && !t.hidden)
-    .sort((a, b) => new Date(b[1].approvedAt || b[1].createdAt || 0) - new Date(a[1].approvedAt || a[1].createdAt || 0))
-    .map(([tok, t]) => ({
-      token:       tok,
-      status:      t.declined ? 'declined' : t.approved ? 'activated' : t.used ? 'processing' : 'pending',
-      customerName:t.customerName,
-      packageType: t.packageType,
-      product:     t.product || 'claude',
-      approvedAt:  t.approvedAt  || null,
-      createdAt:   t.createdAt   || null,
-      submittedAt: t.submittedAt || null,
-      subscriptionExpiresAt: t.subscriptionExpiresAt || null,
-      durationDays:t.durationDays || 30,
-      wechat:      t.wechat   || '',
-      country:     t.country  || '',
-      price:       t.price    || 0,
-      currencySymbol: t.currencySymbol || sym,
-      paymentStatus:   t.paymentStatus   || null,
-      amountPaid:      t.amountPaid      || 0,
-      amountRefunded:  t.amountRefunded  || 0,
-      netAmountPaid:   t.netAmountPaid   || 0,
-      paymentRecords:  (t.paymentRecords || []).sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)),
-      declineReason: t.declineReason || '',
-    }));
-
-  const customerName = subscriptions.find(s => s.customerName)?.customerName || '';
-  const sessionToken = _mkPortalToken();
-  _portalSessions.set(sessionToken, { email: email.toLowerCase(), expires: Date.now() + 24 * 60 * 60 * 1000 });
-
-  res.json({ success: true, sessionToken, customerName, email, subscriptions });
-});
-
-// ── Portal refresh (re-fetch data with existing session token) ────────────────
-app.post('/api/portal-refresh', (req, res) => {
-  const { sessionToken } = req.body;
-  if (!sessionToken) return res.status(401).json({ error: 'No session.' });
-  const sess = _portalSessions.get(sessionToken);
-  if (!sess || Date.now() > sess.expires) return res.status(401).json({ error: 'Session expired. Please log in again.' });
-
-  const tokens   = loadTokens();
-  const settings = loadSettings();
-  const sym      = settings.currencySymbol || '$';
-  const email    = sess.email;
-
-  const subscriptions = Object.entries(tokens)
-    .filter(([, t]) => (t.email||'').toLowerCase() === email && !t.hidden)
-    .sort((a, b) => new Date(b[1].approvedAt || b[1].createdAt || 0) - new Date(a[1].approvedAt || a[1].createdAt || 0))
-    .map(([tok, t]) => ({
-      token:       tok,
-      status:      t.declined ? 'declined' : t.approved ? 'activated' : t.used ? 'processing' : 'pending',
-      customerName:t.customerName,
-      packageType: t.packageType,
-      product:     t.product || 'claude',
-      approvedAt:  t.approvedAt  || null,
-      createdAt:   t.createdAt   || null,
-      submittedAt: t.submittedAt || null,
-      subscriptionExpiresAt: t.subscriptionExpiresAt || null,
-      durationDays:t.durationDays || 30,
-      wechat:      t.wechat   || '',
-      country:     t.country  || '',
-      price:       t.price    || 0,
-      currencySymbol: t.currencySymbol || sym,
-      paymentStatus:   t.paymentStatus   || null,
-      amountPaid:      t.amountPaid      || 0,
-      amountRefunded:  t.amountRefunded  || 0,
-      netAmountPaid:   t.netAmountPaid   || 0,
-      paymentRecords:  (t.paymentRecords || []).sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)),
-      declineReason: t.declineReason || '',
-    }));
-
-  res.json({ subscriptions });
-});
-  res.json({ subscriptions });
-});
-
-app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
-app.get('/history',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
-app.get('/find-link', (req, res) => res.sendFile(path.join(__dirname, 'public', 'find-link.html')));
+app.get('/submit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'form.html')));
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/',       (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.listen(PORT, () => { console.log(`\n✅  DTC — Digital Tools Corner\n🌐  http://localhost:${PORT}\n`); });

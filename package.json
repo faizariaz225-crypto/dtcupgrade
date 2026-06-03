@@ -1,16 +1,21 @@
 {
-  "name": "session-portal",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "dtc-admin",
+  "version": "3.0.0",
+  "description": "DTC Digital Tools Corner — Admin Panel",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "build": "echo 'No build step required — static frontend served by Express'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "keywords": [],
-  "author": "",
+  "author": "DTC",
   "license": "ISC",
   "dependencies": {
     "express": "^5.2.1",
+    "multer": "^2.1.1",
     "nodemailer": "^8.0.4",
     "uuid": "^13.0.0"
   }
