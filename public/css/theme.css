@@ -102,12 +102,18 @@ select option { background: var(--white); }
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all .18s;
+  transition: transform .16s cubic-bezier(.34,1.56,.64,1), box-shadow .18s ease, background .18s ease, border-color .18s ease;
   white-space: nowrap;
   letter-spacing: .01em;
+  position: relative;
+  overflow: hidden;
 }
-.btn:hover:not(:disabled) { transform: translateY(-1px); }
+.btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,.12); }
+.btn:active:not(:disabled) { transform: translateY(0) scale(.97); box-shadow: 0 2px 6px rgba(15,23,42,.12); transition-duration: .05s; }
 .btn:disabled             { opacity: .5; cursor: not-allowed; transform: none; }
+/* Sheen sweep on hover */
+.btn::after { content: ''; position: absolute; top: 0; left: -120%; width: 60%; height: 100%; background: linear-gradient(120deg, transparent, rgba(255,255,255,.45), transparent); transform: skewX(-20deg); transition: left .55s ease; pointer-events: none; }
+.btn:hover:not(:disabled)::after { left: 140%; }
 
 .btn-primary   { background: var(--blue);       color: #fff; }
 .btn-primary:hover:not(:disabled)  { background: var(--blue-dark); box-shadow: 0 4px 14px rgba(37,99,235,.3); }
