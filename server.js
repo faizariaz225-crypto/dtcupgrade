@@ -535,7 +535,7 @@ app.get('/api/validate-token', (req, res) => {
   if (t.used) {
     const { pre, post } = getInstrSets(t);
     const portalName = t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '';
-    return res.json({ valid: true, submitted: true, approved: t.approved || false, approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
+    return res.json({ valid: true, submitted: true, approved: t.approved || false, stage: t.approved ? 'approved' : (t.declined ? 'declined' : (t.stage || 'submitted')), approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
   }
   if (t.expiresAt && new Date() > new Date(t.expiresAt)) return res.status(410).json({ valid: false, error: 'This activation link has expired. Please contact support for a new link.' });
 
@@ -619,6 +619,7 @@ app.get('/api/status', (req, res) => {
   const notify = loadNotify();
   res.json({
     status: t.declined ? 'declined' : t.approved ? 'activated' : t.used ? 'processing' : 'pending',
+    stage:  t.declined ? 'declined' : t.approved ? 'approved'  : t.used ? (t.stage || 'submitted') : 'pending',
     packageType: t.packageType, customerName: t.customerName, product: t.product || 'claude',
     portalName: t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '',
     credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '',
@@ -632,12 +633,27 @@ app.get('/api/status', (req, res) => {
 });
 
 // ── Approve ────────────────────────────────────────────────────────────────────
+// ── Set verification stage (admin-controlled pipeline) ───────────────────────────
+app.post('/admin/set-stage', (req, res) => {
+  const { adminKey, token, stage } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const allowed = ['submitted', 'verifying', 'verified', 'processing'];
+  if (!allowed.includes(stage)) return res.status(400).json({ error: 'Invalid stage.' });
+  const tokens = loadTokens();
+  if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
+  tokens[token].stage = stage;
+  tokens[token].stageAt = new Date().toISOString();
+  saveTokens(tokens);
+  res.json({ success: true, stage });
+});
+
 app.post('/admin/approve', async (req, res) => {
   const { adminKey, token } = req.body; if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const tokens = loadTokens(); if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
   if (tokens[token].approved) return res.json({ success: true });
   const days = getDurationDays(tokens[token].productId, tokens[token].packageType);
   tokens[token].approved = true; tokens[token].declined = false;
+  tokens[token].stage = 'approved';
   tokens[token].approvedAt = new Date().toISOString();
   tokens[token].subscriptionExpiresAt = new Date(Date.now() + days*24*60*60*1000).toISOString();
   tokens[token].subscriptionDays = days;
