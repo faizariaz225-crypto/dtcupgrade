@@ -35,22 +35,42 @@
     /* ── Promotional slideshow ─────────────────────────────────────────────── */
     #promo-rail{width:100%;max-width:520px;margin:1.75rem auto 0}
     .promo-head{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.6rem;text-align:center}
-    .promo-stage{position:relative;overflow:hidden;border-radius:14px;border:1px solid var(--border);background:var(--white);box-shadow:0 6px 24px rgba(37,99,235,.08);cursor:pointer;transition:transform .2s,box-shadow .2s}
-    .promo-stage:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(37,99,235,.16)}
-    .promo-slides{display:flex;transition:transform .5s ease}
-    .promo-slide{flex:0 0 100%;min-width:100%}
-    .promo-img{height:150px;background-size:cover;background-position:center;background-color:var(--blue-light)}
-    .promo-img-none{background:linear-gradient(135deg,rgba(37,99,235,.12),rgba(99,102,241,.10))}
-    .promo-body{padding:.85rem 1rem}
-    .promo-title{font-size:.95rem;font-weight:700;color:var(--text);line-height:1.3}
-    .promo-text{font-size:.78rem;color:var(--muted);margin-top:.25rem;line-height:1.5}
-    .promo-cta{display:flex;align-items:center;justify-content:center;gap:.45rem;font-size:.74rem;font-weight:600;color:#fff;background:#25d366;padding:.6rem}
-    .promo-wa-dot{width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.35)}
-    .promo-dots{display:flex;justify-content:center;gap:.4rem;margin-top:.65rem}
-    .promo-dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:background .2s,transform .2s}
-    .promo-dot.active{background:var(--blue);transform:scale(1.25)}
+    .promo-stage{position:relative;overflow:hidden;border-radius:18px;height:400px;cursor:pointer;box-shadow:0 14px 40px rgba(0,0,0,.20)}
+    .promo-slides{position:absolute;inset:0}
+    .promo-slide{position:absolute;inset:0;opacity:0;transition:opacity .8s ease}
+    .promo-slide.on{opacity:1}
+    .promo-img{position:absolute;inset:0;background-size:cover;background-position:center;background-color:var(--blue-light)}
+    .promo-slide.on .promo-img{animation:promoKB 7s ease-out forwards}
+    .promo-img-none{background:linear-gradient(150deg,#1e3a8a,#4338ca 55%,#6d28d9)}
+    .promo-scrim{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,0) 38%,rgba(0,0,0,.55) 66%,rgba(0,0,0,.84))}
+    .promo-badge{position:absolute;top:28px;right:14px;background:rgba(255,255,255,.20);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);border:1px solid rgba(255,255,255,.4);border-radius:14px;padding:6px 12px;color:#fff;line-height:1;font-weight:700;font-size:1.15rem}
+    .promo-tag{position:absolute;top:32px;left:14px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;font-size:.64rem;font-weight:700;letter-spacing:.05em;border-radius:11px;padding:4px 10px;text-transform:uppercase}
+    .promo-cap{position:absolute;left:18px;right:18px;bottom:72px;color:#fff}
+    .promo-title{font-size:1.4rem;font-weight:700;line-height:1.18;text-shadow:0 1px 10px rgba(0,0,0,.35)}
+    .promo-text{font-size:.86rem;color:rgba(255,255,255,.88);margin-top:.3rem;line-height:1.45}
+    .promo-bars{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:5px;z-index:4}
+    .promo-bar{flex:1;height:3px;border-radius:3px;background:rgba(255,255,255,.35);overflow:hidden}
+    .promo-bar>i{display:block;height:100%;width:0;background:#fff;border-radius:3px}
+    .promo-cta{position:absolute;left:14px;right:14px;bottom:14px;z-index:4;display:flex;align-items:center;justify-content:center;gap:.5rem;height:46px;border:none;border-radius:23px;background:#25d366;color:#053d23;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;animation:promoPulse 2.4s infinite}
+    .promo-cta svg{flex:0 0 auto}
+    @keyframes promoKB{from{transform:scale(1.04)}to{transform:scale(1.14)}}
+    @keyframes promoPulse{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,.45)}70%{box-shadow:0 0 0 12px rgba(37,211,102,0)}}
+    /* ── Activation confirmation overlay ───────────────────────────────────── */
+    .ac-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1.2rem;animation:acFade .2s ease}
+    .ac-box{background:var(--white);border-radius:18px;max-width:420px;width:100%;padding:1.8rem 1.6rem 1.5rem;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:acPop .26s cubic-bezier(.34,1.56,.64,1)}
+    .ac-icon{width:54px;height:54px;border-radius:50%;background:var(--warn-bg,#fffbeb);color:var(--warn,#d97706);display:flex;align-items:center;justify-content:center;font-size:1.7rem;margin:0 auto .9rem}
+    .ac-title{font-size:1.15rem;font-weight:700;color:var(--text);margin-bottom:.5rem}
+    .ac-text{font-size:.86rem;color:var(--muted);line-height:1.6;margin-bottom:1.3rem}
+    .ac-actions{display:flex;gap:.6rem}
+    .ac-btn{flex:1;padding:.75rem;border-radius:11px;font-family:inherit;font-size:.86rem;font-weight:700;cursor:pointer;border:none;transition:transform .14s ease,filter .14s ease}
+    .ac-btn:active{transform:scale(.97)}
+    .ac-cancel{background:#f1f5f9;color:var(--text)}
+    .ac-cancel:hover{background:#e2e8f0}
+    .ac-go{background:#16a34a;color:#fff}
+    .ac-go:hover{filter:brightness(1.07)}
+    @keyframes acFade{from{opacity:0}to{opacity:1}}
+    @keyframes acPop{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
     @media(min-width:1024px){
-      /* Split layout: activation portal on the left half, slideshow fills the right half */
       body{ padding-right:50vw; }
       #promo-rail{
         position:fixed; top:0; right:0; width:50vw; height:100vh; margin:0; max-width:none;
@@ -60,18 +80,13 @@
         border-left:1px solid var(--border);
       }
       #promo-rail .promo-head{ flex:0 0 auto; font-size:.95rem; letter-spacing:.14em; text-align:center; margin-bottom:.1rem; }
-      /* Stage grows to fill the whole panel */
-      #promo-rail .promo-stage{ flex:1 1 auto; width:100%; max-width:none; min-height:0; display:flex; flex-direction:column; border-radius:18px; }
-      #promo-rail .promo-slides{ flex:1 1 auto; min-height:0; }
-      #promo-rail .promo-slide{ height:100%; display:flex; flex-direction:column; }
-      /* Image expands to fill all remaining height */
-      #promo-rail .promo-img{ flex:1 1 auto; height:auto; min-height:0; }
-      #promo-rail .promo-body{ flex:0 0 auto; padding:1.4rem 1.6rem; }
-      #promo-rail .promo-title{ font-size:1.6rem; }
+      #promo-rail .promo-stage{ flex:1 1 auto; height:auto; min-height:0; border-radius:20px; }
+      #promo-rail .promo-cap{ bottom:90px; left:24px; right:24px; }
+      #promo-rail .promo-title{ font-size:2rem; }
       #promo-rail .promo-text{ font-size:1.05rem; margin-top:.5rem; }
-      #promo-rail .promo-cta{ flex:0 0 auto; font-size:1rem; padding:1.05rem; }
-      #promo-rail .promo-dots{ flex:0 0 auto; margin-top:.2rem; }
-      #promo-rail .promo-dot{ width:9px; height:9px; }
+      #promo-rail .promo-badge{ font-size:1.4rem; padding:8px 15px; top:34px; right:18px; }
+      #promo-rail .promo-tag{ font-size:.72rem; top:38px; left:18px; }
+      #promo-rail .promo-cta{ height:52px; font-size:1.05rem; left:18px; right:18px; bottom:18px; }
     }
     .brand{text-align:center;margin-bottom:2rem;animation:fadeDown .5s ease both}
     .brand-logo{display:inline-flex;align-items:center;gap:.6rem;margin-bottom:.4rem}
@@ -390,10 +405,23 @@
       </div>
 
       <div class="divider"></div>
-      <button class="btn-submit" id="submit-btn" disabled onclick="handleSubmit()">
-        <span class="btn-text">Submit Details →</span>
+      <button class="btn-submit" id="submit-btn" disabled onclick="confirmActivate()">
+        <span class="btn-text">Activate →</span>
         <div class="spinner"></div>
       </button>
+    </div>
+
+    <!-- Activation confirmation warning -->
+    <div id="activate-confirm" class="ac-overlay" style="display:none">
+      <div class="ac-box">
+        <div class="ac-icon">⚠</div>
+        <div class="ac-title">Please confirm before activating</div>
+        <p class="ac-text">Check that your details are correct. Activation is <strong>irreversible</strong> — once you activate, your details are locked in and cannot be changed. If anything is wrong, you would need to re-verify before activating again.</p>
+        <div class="ac-actions">
+          <button class="ac-btn ac-cancel" onclick="closeActivateConfirm()">Go back &amp; check</button>
+          <button class="ac-btn ac-go" onclick="proceedActivate()">Yes, activate now</button>
+        </div>
+      </div>
     </div>
 
     <!-- Processing -->
@@ -413,9 +441,10 @@
         <div class="oc-row"><span class="oc-label">Status</span><span class="pill pill-proc"><span class="pd"></span>Under Review</span></div>
       </div>
       <div class="timeline">
-        <div class="tl-item"><div class="tl-dot done">✓</div><div class="tl-body"><div class="tl-title">Details Submitted</div><div class="tl-sub">Your information has been received.</div></div></div>
-        <div class="tl-item"><div class="tl-dot spin" id="tl2-dot">◎</div><div class="tl-body"><div class="tl-title" id="tl2-title">Under Review</div><div class="tl-sub" id="tl2-sub">Our system is verifying your account.</div></div></div>
-        <div class="tl-item"><div class="tl-dot wait" id="tl3-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl3-title">Activation Pending</div><div class="tl-sub" id="tl3-sub">Your package will be activated after verification.</div></div></div>
+        <div class="tl-item"><div class="tl-dot done" id="tl1-dot">✓</div><div class="tl-body"><div class="tl-title" id="tl1-title">Details Submitted</div><div class="tl-sub" id="tl1-sub">Your information has been received.</div></div></div>
+        <div class="tl-item"><div class="tl-dot wait" id="tl2-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl2-title">Verification</div><div class="tl-sub" id="tl2-sub">Our team is checking your account details.</div></div></div>
+        <div class="tl-item"><div class="tl-dot wait" id="tl3-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl3-title">Verification Approved</div><div class="tl-sub" id="tl3-sub">Your details have been confirmed.</div></div></div>
+        <div class="tl-item"><div class="tl-dot wait" id="tl4-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl4-title">Processing</div><div class="tl-sub" id="tl4-sub">Activating your subscription.</div></div></div>
       </div>
     </div>
 
@@ -512,16 +541,20 @@
 <aside id="promo-rail" style="display:none">
   <div class="promo-head">Current Subscriptions</div>
   <div class="promo-stage" id="promo-stage" role="button" tabindex="0" title="Chat with us on WhatsApp">
+    <div class="promo-bars" id="promo-bars"></div>
     <div class="promo-slides" id="promo-slides"></div>
-    <div class="promo-cta"><span class="promo-wa-dot"></span>Tap to order on WhatsApp</div>
+    <button class="promo-cta" type="button" id="promo-cta">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#053d23" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+      Order on WhatsApp
+    </button>
   </div>
-  <div class="promo-dots" id="promo-dots"></div>
 </aside>
 
 <script>
-  /* ── Promotional slideshow ─────────────────────────────────────────────── */
+  /* ── Promotional slideshow (animated full-bleed) ───────────────────────── */
   (function () {
     let slides = [], waLink = '', idx = 0, timer = null;
+    const DUR = 4500;
 
     const esc2 = (s) => String(s == null ? '' : s)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -533,47 +566,54 @@
       const digits = v.replace(/[^0-9]/g, '');
       return digits ? 'https://wa.me/' + digits : '';
     };
-
     const openWhatsApp = () => { if (waLink) window.open(waLink, '_blank', 'noopener'); };
 
+    const fillBars = (active) => {
+      const bars = document.querySelectorAll('#promo-bars .promo-bar > i');
+      bars.forEach((b, k) => { b.style.transition = 'none'; b.style.width = (k < active ? '100%' : '0'); });
+      const cur = bars[active];
+      if (cur) { void cur.offsetWidth; cur.style.transition = 'width ' + DUR + 'ms linear'; cur.style.width = '100%'; }
+    };
+
     const show = (n) => {
-      const track = document.getElementById('promo-slides');
-      if (!track) return;
+      if (!slides.length) return;
       idx = (n + slides.length) % slides.length;
-      track.style.transform = `translateX(-${idx * 100}%)`;
-      document.querySelectorAll('#promo-dots .promo-dot').forEach((d, i) =>
-        d.classList.toggle('active', i === idx));
+      document.querySelectorAll('#promo-slides .promo-slide').forEach((el, i) => el.classList.toggle('on', i === idx));
+      fillBars(idx);
     };
 
     const startAuto = () => {
       if (timer) clearInterval(timer);
-      if (slides.length > 1) timer = setInterval(() => show(idx + 1), 5000);
+      if (slides.length > 1) timer = setInterval(() => show(idx + 1), DUR);
     };
+
+    const slideHtml = (s) => `
+      <div class="promo-slide">
+        ${s.image ? `<div class="promo-img" style="background-image:url('${esc2(s.image)}')"></div>` : '<div class="promo-img promo-img-none"></div>'}
+        <div class="promo-scrim"></div>
+        ${s.tag   ? `<div class="promo-tag">${esc2(s.tag)}</div>` : ''}
+        ${s.price ? `<div class="promo-badge">${esc2(s.price)}</div>` : ''}
+        <div class="promo-cap">
+          <div class="promo-title">${esc2(s.title)}</div>
+          ${s.text ? `<div class="promo-text">${esc2(s.text)}</div>` : ''}
+        </div>
+      </div>`;
 
     const render = () => {
       const rail  = document.getElementById('promo-rail');
       const track = document.getElementById('promo-slides');
-      const dots  = document.getElementById('promo-dots');
+      const bars  = document.getElementById('promo-bars');
+      if (!rail || !track) return;
       if (!slides.length) { rail.style.display = 'none'; return; }
 
-      track.innerHTML = slides.map(s => `
-        <div class="promo-slide">
-          ${s.image ? `<div class="promo-img" style="background-image:url('${esc2(s.image)}')"></div>` : '<div class="promo-img promo-img-none"></div>'}
-          <div class="promo-body">
-            <div class="promo-title">${esc2(s.title)}</div>
-            ${s.text ? `<div class="promo-text">${esc2(s.text)}</div>` : ''}
-          </div>
-        </div>`).join('');
-
-      dots.innerHTML = slides.length > 1
-        ? slides.map((_, i) => `<span class="promo-dot${i === 0 ? ' active' : ''}" data-i="${i}"></span>`).join('')
-        : '';
-      dots.querySelectorAll('.promo-dot').forEach(d =>
-        d.addEventListener('click', (e) => { e.stopPropagation(); show(+d.dataset.i); startAuto(); }));
+      track.innerHTML = slides.map(slideHtml).join('');
+      bars.innerHTML  = slides.length > 1 ? slides.map(() => '<div class="promo-bar"><i></i></div>').join('') : '';
 
       const stage = document.getElementById('promo-stage');
+      const cta   = document.getElementById('promo-cta');
       stage.addEventListener('click', openWhatsApp);
       stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') openWhatsApp(); });
+      if (cta) cta.addEventListener('click', (e) => { e.stopPropagation(); openWhatsApp(); });
 
       rail.style.display = '';
       show(0);
@@ -600,7 +640,7 @@
   let currentProduct= 'claude';
   let state = {
     orgId:'', sessionData:'', wechat:'', email:'',
-    packageType:'', product:'claude', portalName:'',
+    packageType:'', product:'claude', portalName:'', stage:'submitted',
     credentialsMode: false, loginDetails: '',
     subscriptionExpiresAt: null, subscriptionDays: null,
     approvedSteps:[], processingText:'', approvedText:'',
@@ -728,7 +768,7 @@
         state.wechat      = d.wechat;
         state.email       = d.email;
         if (d.approved) showActivated(d.approvedAt, d.subscriptionExpiresAt);
-        else { showProcessing(); startPolling(); }
+        else { state.stage = d.stage || 'submitted'; showProcessing(); startPolling(); }
       } else {
         document.getElementById('cust-name').textContent = d.customerName;
         document.getElementById('pkg-label').textContent = d.packageType;
@@ -818,6 +858,14 @@
     );
   };
 
+  // ── Activate (with irreversible confirmation) ─────────────────────────────
+  const confirmActivate = () => {
+    if (document.getElementById('submit-btn').disabled) return;
+    document.getElementById('activate-confirm').style.display = 'flex';
+  };
+  const closeActivateConfirm = () => { document.getElementById('activate-confirm').style.display = 'none'; };
+  const proceedActivate = () => { closeActivateConfirm(); handleSubmit(); };
+
   // ── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     const isGpt     = currentProduct === 'chatgpt';
@@ -832,6 +880,7 @@
       const d = await r.json();
       if (d.success) {
         state.orgId = orgId; state.sessionData = sessionData; state.wechat = wechat; state.email = email;
+        state.stage = 'submitted';
         showProcessing(); startPolling();
       } else {
         if (d.errors) {
@@ -854,12 +903,78 @@
     document.getElementById('proc-data').textContent = isGpt
       ? (state.sessionData ? 'Session data received' : '—')
       : (state.orgId ? state.orgId.slice(0,18)+'…' : '—');
-    if (state.processingText) document.querySelector('#screen-processing .state-sub').textContent = state.processingText;
     show('screen-processing');
+    applyStage(state.stage || 'submitted');
+    // Ask to alert the customer when activation completes (even if they switch tabs)
+    requestNotifPermission();
+  };
+
+  // ── Verification stepper (reflects admin-set stage) ───────────────────────
+  const STAGE_META = {
+    submitted:  { pill: 'Submitted',             sub: 'Your details have been received and are awaiting verification.' },
+    verifying:  { pill: 'Verifying',             sub: 'Our team is verifying your account details now.' },
+    verified:   { pill: 'Verification Approved', sub: 'Your details are verified. Preparing your activation.' },
+    processing: { pill: 'Processing',            sub: 'We are activating your subscription. Almost done!' },
+  };
+  const _setDot = (id, st) => {
+    const dot = document.getElementById(id + '-dot');
+    const ttl = document.getElementById(id + '-title');
+    if (dot) { dot.className = 'tl-dot ' + st; dot.textContent = st === 'done' ? '✓' : st === 'spin' ? '◎' : '○'; }
+    if (ttl) ttl.classList.toggle('dim', st === 'wait');
+  };
+  const applyStage = (stage) => {
+    const order = ['submitted','verifying','verified','processing','approved'];
+    const i = Math.max(0, order.indexOf(stage));
+    _setDot('tl1', 'done');
+    _setDot('tl2', i > 1 ? 'done' : i === 1 ? 'spin' : 'wait');
+    _setDot('tl3', i > 2 ? 'done' : i === 2 ? 'spin' : 'wait');
+    _setDot('tl4', i > 3 ? 'done' : i === 3 ? 'spin' : 'wait');
+    const meta = STAGE_META[stage] || STAGE_META.submitted;
+    const pill = document.querySelector('#screen-processing .pill.pill-proc');
+    if (pill) pill.innerHTML = '<span class="pd"></span>' + meta.pill;
+    const msg = document.getElementById('proc-msg');
+    if (msg && !state.processingText) msg.textContent = meta.sub;
+  };
+
+  // ── Activation desktop notification (fires when approved while tab is hidden) ──
+  let _activationNotified = false;
+  const requestNotifPermission = () => {
+    try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) {}
+  };
+
+  const notifyActivated = (approvedAt, subscriptionExpiresAt) => {
+    try {
+      if (_activationNotified) return;
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      // Only pop a notification when the customer isn't actively looking at the page
+      if (document.visibilityState === 'visible' && document.hasFocus && document.hasFocus()) return;
+      _activationNotified = true;
+
+      const isGpt  = state.product === 'chatgpt';
+      const portal = (state.portalName && state.portalName.trim())
+        ? state.portalName.trim()
+        : (isGpt ? 'ChatGPT Plus' : 'Claude Pro');
+      const exp    = subscriptionExpiresAt || state.subscriptionExpiresAt;
+
+      const lines = [];
+      if (state.customerName) lines.push('Hi ' + state.customerName + ',');
+      if (state.packageType)  lines.push('Package: ' + state.packageType);
+      if (exp) lines.push('Active until ' + new Date(exp).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }));
+      lines.push((state.loginDetails || state.accessLink)
+        ? 'Tap to view your login details.'
+        : 'Tap to open your activation page.');
+
+      const n = new Notification('🎉 ' + portal + ' is now active!', {
+        body: lines.join('\n'),
+        tag: 'dtc-activated',
+        requireInteraction: true,
+      });
+      n.onclick = () => { try { window.focus(); } catch (e) {} try { n.close(); } catch (e) {} };
+    } catch (e) { /* notifications unavailable */ }
   };
 
   const startPolling = () => {
-    pollTimer = setInterval(async () => {
+    const poll = async () => {
       try {
         const r = await fetch(`/api/status?token=${linkToken}`);
         const d = await r.json();
@@ -880,12 +995,19 @@
             postApprovedText: d.postApprovedText||state.postApprovedText,
             postApprovedSteps: d.postApprovedSteps||state.postApprovedSteps,
           });
+          notifyActivated(d.approvedAt, d.subscriptionExpiresAt);
           showActivated(d.approvedAt, d.subscriptionExpiresAt);
         } else if (d.status === 'declined') {
           clearInterval(pollTimer); showDeclined(d.declineReason);
+        } else {
+          // Still in the verification pipeline — reflect the admin's current stage
+          state.stage = d.stage || 'submitted';
+          applyStage(state.stage);
         }
       } catch {}
-    }, 5000);
+    };
+    poll();                          // update immediately
+    pollTimer = setInterval(poll, 5000);
   };
 
   const showActivated = (approvedAt, subscriptionExpiresAt) => {
