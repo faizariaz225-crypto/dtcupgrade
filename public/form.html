@@ -50,22 +50,27 @@
     .promo-dot{width:7px;height:7px;border-radius:50%;background:#cbd5e1;cursor:pointer;transition:background .2s,transform .2s}
     .promo-dot.active{background:var(--blue);transform:scale(1.25)}
     @media(min-width:1024px){
-      /* Split layout: activation portal on the left half, slideshow on the right half */
+      /* Split layout: activation portal on the left half, slideshow fills the right half */
       body{ padding-right:50vw; }
       #promo-rail{
         position:fixed; top:0; right:0; width:50vw; height:100vh; margin:0; max-width:none;
-        display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1rem;
-        padding:2.5rem; z-index:40; overflow:hidden;
+        display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start; gap:.9rem;
+        padding:1.6rem; z-index:40; overflow:hidden;
         background:linear-gradient(160deg,rgba(37,99,235,.10),rgba(99,102,241,.09));
         border-left:1px solid var(--border);
       }
-      #promo-rail .promo-head{ font-size:.95rem; letter-spacing:.14em; margin-bottom:.2rem; }
-      #promo-rail .promo-stage{ width:100%; max-width:480px; border-radius:18px; }
-      #promo-rail .promo-img{ height:320px; }
-      #promo-rail .promo-body{ padding:1.3rem 1.5rem; }
-      #promo-rail .promo-title{ font-size:1.5rem; }
-      #promo-rail .promo-text{ font-size:1rem; margin-top:.5rem; }
-      #promo-rail .promo-cta{ font-size:.95rem; padding:1rem; }
+      #promo-rail .promo-head{ flex:0 0 auto; font-size:.95rem; letter-spacing:.14em; text-align:center; margin-bottom:.1rem; }
+      /* Stage grows to fill the whole panel */
+      #promo-rail .promo-stage{ flex:1 1 auto; width:100%; max-width:none; min-height:0; display:flex; flex-direction:column; border-radius:18px; }
+      #promo-rail .promo-slides{ flex:1 1 auto; min-height:0; }
+      #promo-rail .promo-slide{ height:100%; display:flex; flex-direction:column; }
+      /* Image expands to fill all remaining height */
+      #promo-rail .promo-img{ flex:1 1 auto; height:auto; min-height:0; }
+      #promo-rail .promo-body{ flex:0 0 auto; padding:1.4rem 1.6rem; }
+      #promo-rail .promo-title{ font-size:1.6rem; }
+      #promo-rail .promo-text{ font-size:1.05rem; margin-top:.5rem; }
+      #promo-rail .promo-cta{ flex:0 0 auto; font-size:1rem; padding:1.05rem; }
+      #promo-rail .promo-dots{ flex:0 0 auto; margin-top:.2rem; }
       #promo-rail .promo-dot{ width:9px; height:9px; }
     }
     .brand{text-align:center;margin-bottom:2rem;animation:fadeDown .5s ease both}
