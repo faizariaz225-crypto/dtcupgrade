@@ -80,11 +80,6 @@ const Auth = (() => {
     safeRun('BulkEmail.init', BulkEmail.init);
     safeRun('Resellers',      Resellers.render);
     Notifications.init();
-
-    // Auto-refresh: poll server every 60 seconds silently
-    setInterval(async () => {
-      try { await Dashboard.reload(); } catch(e) { console.warn('[auto-refresh]', e.message); }
-    }, 60 * 1000);
   };
 
   // Silent error boundary — logs to console, never crashes login

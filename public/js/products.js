@@ -38,7 +38,7 @@ const Products = (() => {
           ${p.packages.map(pk => `
             <div class="pkg-row">
               <span class="pkg-label">${esc(pk.label)}</span>
-              <span class="pkg-price">${(Store.settings||{}).currencySymbol||'$'}${pk.price}</span>
+              <span class="pkg-price">$${pk.price}</span>
               <span class="pkg-duration">${pk.durationDays}d</span>
             </div>`).join('')}
         </div>
@@ -61,6 +61,7 @@ const Products = (() => {
     document.getElementById('prod-id').value           = p ? p.id : 'prod-' + Date.now();
     document.getElementById('prod-name').value         = p ? p.name : '';
     document.getElementById('prod-desc').value         = p ? (p.description || '') : '';
+    document.getElementById('prod-portal-name').value  = p ? (p.portalName || '') : '';
     document.getElementById('prod-type').value         = p ? (p.type || 'session') : 'session';
     document.getElementById('prod-color').value        = p ? (p.color || '#2563eb') : '#2563eb';
     document.getElementById('prod-active').checked     = p ? (p.active !== false) : true;
@@ -83,7 +84,7 @@ const Products = (() => {
   const _pkgRowHtml = (pk, i) => `
     <div class="pkg-edit-row" data-idx="${i}">
       <input class="pkg-label-input" placeholder="e.g. Pro — 1 Month" value="${esc(pk.label || '')}"/>
-      <div class="pkg-price-wrap"><span class="pkg-currency">${(Store.settings||{}).currencySymbol||'$'}</span><input class="pkg-price-input" type="number" min="0.01" step="0.01" placeholder="Price" value="${pk.price || ''}"/></div>
+      <div class="pkg-price-wrap"><span class="pkg-currency">$</span><input class="pkg-price-input" type="number" min="0.01" step="0.01" placeholder="Price" value="${pk.price || ''}"/></div>
       <div style="display:flex;align-items:center;gap:.3rem"><input class="pkg-dur-input" type="number" min="1" placeholder="Days" value="${pk.durationDays || ''}"/><span style="font-size:.7rem;color:var(--muted)">days</span></div>
       <button class="btn btn-danger btn-sm" onclick="Products.removePkgRow(this)" style="flex-shrink:0">✕</button>
     </div>`;
@@ -131,6 +132,7 @@ const Products = (() => {
     const product = {
       id, name,
       description:     document.getElementById('prod-desc').value.trim(),
+      portalName:      document.getElementById('prod-portal-name').value.trim(),
       type:            document.getElementById('prod-type').value,
       color:           document.getElementById('prod-color').value,
       active:          document.getElementById('prod-active').checked,

@@ -41,6 +41,47 @@ const Modals = (() => {
     navigator.clipboard.writeText(val).then(() => alert('Session data copied!'));
   };
 
+  // ── Edit customer / package modal ──────────────────────────────────────────
+  const openEdit = (token) => {
+    const t = Store.tokens[token];
+    if (!t) return;
+    document.getElementById('edit-token').value   = token;
+    document.getElementById('edit-name').value    = t.customerName || '';
+    document.getElementById('edit-email').value   = t.email || '';
+    document.getElementById('edit-wechat').value  = t.wechat || '';
+    document.getElementById('edit-package').value = t.packageType || '';
+    document.getElementById('edit-price').value   = (t.price != null ? t.price : '');
+    document.getElementById('edit-days').value    = t.subscriptionDays || t.durationDays || 30;
+    const exp = t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt) : null;
+    document.getElementById('edit-expiry').value  = exp && !isNaN(exp) ? exp.toISOString().slice(0, 10) : '';
+    document.getElementById('edit-modal').classList.add('open');
+  };
+
+  const closeEdit = () => document.getElementById('edit-modal').classList.remove('open');
+
+  const confirmEdit = async () => {
+    const token        = document.getElementById('edit-token').value;
+    const customerName = document.getElementById('edit-name').value.trim();
+    const email        = document.getElementById('edit-email').value.trim();
+    const wechat       = document.getElementById('edit-wechat').value.trim();
+    const packageType  = document.getElementById('edit-package').value.trim();
+    const priceVal     = document.getElementById('edit-price').value;
+    const daysVal      = document.getElementById('edit-days').value;
+    const expiryVal    = document.getElementById('edit-expiry').value; // yyyy-mm-dd
+
+    if (!customerName) { alert('Customer name is required.'); return; }
+
+    const payload = { adminKey: Store.adminKey, token, customerName, email, wechat, packageType };
+    if (priceVal !== '') payload.price = parseFloat(priceVal);
+    if (daysVal  !== '') payload.subscriptionDays = parseInt(daysVal, 10);
+    if (expiryVal)       payload.subscriptionExpiresAt = new Date(expiryVal + 'T23:59:59').toISOString();
+
+    const d = await api('/admin/edit-token', payload);
+    closeEdit();
+    if (d && d.success) Dashboard.reload();
+    else alert('Failed to update: ' + ((d && d.error) || 'unknown error'));
+  };
+
   // ── Click-outside close on all modals ────────────────────────────────────
   const init = () => {
     document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -50,5 +91,5 @@ const Modals = (() => {
     });
   };
 
-  return { init, openDecline, closeDecline, confirmDecline, viewSession, closeSession, copySession };
+  return { init, openDecline, closeDecline, confirmDecline, viewSession, closeSession, copySession, openEdit, closeEdit, confirmEdit };
 })();

@@ -25,8 +25,112 @@ const Settings = (() => {
     _renderCurrencyDropdown(d.currency);
     _renderActivationTemplateDropdown(d.activationEmailTemplateId);
     _updateCurrencyPreview(d);
-    const reminderEl = document.getElementById('auto-reminders-enabled');
-    if (reminderEl) reminderEl.checked = !d.autoRemindersDisabled;
+    _renderPortal(d);
+  };
+
+  // ── Activation portal: WhatsApp + slides ───────────────────────────────────
+  const _renderPortal = (d) => {
+    const wa = document.getElementById('portal-whatsapp');
+    if (wa) wa.value = d.whatsapp || '';
+    _renderSlides(Array.isArray(d.portalSlides) ? d.portalSlides : []);
+  };
+
+  const _slideRowHtml = (s) => `
+    <div class="slide-edit-row">
+      <div class="slide-edit-head">
+        <span class="slide-idx">Slide</span>
+        <button class="btn btn-delete btn-sm" onclick="Settings.removeSlide(this)">Remove</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0"><label>Title</label><input class="slide-title" placeholder="e.g. Claude Pro — 1 Month" value="${esc(s.title || '')}"/></div>
+        <div class="form-group" style="margin-bottom:0"><label>Subtitle / Price</label><input class="slide-text" placeholder="e.g. Only $15 · Tap to order on WhatsApp" value="${esc(s.text || '')}"/></div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Image <span style="font-weight:400;color:var(--muted)">(upload a file or paste a URL)</span></label>
+        <div class="slide-image-controls">
+          <div class="slide-thumb" style="${s.image ? `background-image:url('${esc(s.image)}')` : ''}"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:.45rem">
+            <input class="slide-image" placeholder="https://…/promo.jpg" value="${esc(s.image || '')}" oninput="Settings.syncThumb(this)"/>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="file" accept="image/*" class="slide-file" style="display:none" onchange="Settings.uploadSlideImage(this)"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="this.parentElement.querySelector('.slide-file').click()">Upload Image</button>
+              <span class="slide-upload-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const _renderSlides = (slides) => {
+    const wrap = document.getElementById('portal-slides-rows');
+    if (!wrap) return;
+    wrap.innerHTML = slides.length
+      ? slides.map(s => _slideRowHtml(s)).join('')
+      : '<div style="font-size:.74rem;color:var(--muted);padding:.4rem 0">No slides yet. Click "+ Add Slide" to create one.</div>';
+  };
+
+  const addSlide = () => {
+    const wrap = document.getElementById('portal-slides-rows');
+    if (!wrap) return;
+    if (wrap.querySelector('.slide-edit-row') === null) wrap.innerHTML = '';
+    const div = document.createElement('div');
+    div.innerHTML = _slideRowHtml({ title: '', text: '', image: '' });
+    wrap.appendChild(div.firstElementChild);
+  };
+
+  const removeSlide = (btn) => {
+    const row = btn.closest('.slide-edit-row');
+    if (row) row.remove();
+    const wrap = document.getElementById('portal-slides-rows');
+    if (wrap && !wrap.querySelector('.slide-edit-row')) _renderSlides([]);
+  };
+
+  const syncThumb = (input) => {
+    const row = input.closest('.slide-edit-row');
+    const thumb = row && row.querySelector('.slide-thumb');
+    if (thumb) thumb.style.backgroundImage = input.value.trim() ? `url('${input.value.trim()}')` : '';
+  };
+
+  const uploadSlideImage = async (fileInput) => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    const row    = fileInput.closest('.slide-edit-row');
+    const status = row.querySelector('.slide-upload-status');
+    const urlInp = row.querySelector('.slide-image');
+    if (!/^image\//.test(file.type)) { status.textContent = 'Not an image file.'; return; }
+    if (file.size > 5 * 1024 * 1024) { status.textContent = 'Too large (max 5 MB).'; return; }
+
+    status.textContent = 'Uploading…';
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const r = await fetch('/admin/upload-image?adminKey=' + encodeURIComponent(Store.adminKey), { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d && d.success && d.url) {
+        urlInp.value = d.url;
+        syncThumb(urlInp);
+        status.textContent = '✓ Uploaded';
+        setTimeout(() => { status.textContent = ''; }, 2500);
+      } else {
+        status.textContent = '✕ ' + ((d && d.error) || 'Upload failed.');
+      }
+    } catch (e) {
+      status.textContent = '✕ Upload failed.';
+    } finally {
+      fileInput.value = '';
+    }
+  };
+
+  const _collectSlides = () => {
+    const rows = document.querySelectorAll('#portal-slides-rows .slide-edit-row');
+    const slides = [];
+    rows.forEach(row => {
+      const title = row.querySelector('.slide-title').value.trim();
+      const text  = row.querySelector('.slide-text').value.trim();
+      const image = row.querySelector('.slide-image').value.trim();
+      if (title || text || image) slides.push({ title, text, image });
+    });
+    return slides;
   };
 
   const _renderCurrencyDropdown = (currentCode) => {
@@ -57,14 +161,14 @@ const Settings = (() => {
   const save = async () => {
     const currCode = document.getElementById('currency-select')?.value || 'USD';
     const tmplId   = document.getElementById('activation-template-select')?.value || '';
-    const remindersDisabled = !(document.getElementById('auto-reminders-enabled')?.checked ?? true);
     const c = CURRENCIES.find(x => x.code === currCode) || CURRENCIES[0];
     const settings = {
       currency:                   c.code,
       currencySymbol:             c.symbol,
       currencyName:               c.name,
       activationEmailTemplateId:  tmplId,
-      autoRemindersDisabled:      remindersDisabled,
+      whatsapp:                   document.getElementById('portal-whatsapp')?.value.trim() || '',
+      portalSlides:               _collectSlides(),
     };
     const d = await api('/admin/settings', { adminKey: Store.adminKey, settings });
     showMsg('settings-ok', 'settings-err', d && d.success,
@@ -72,36 +176,6 @@ const Settings = (() => {
     if (d && d.success) {
       Store.setSettings({ ...(Store.settings || {}), ...settings });
       _updateCurrencyPreview(settings);
-      // Re-render pages that show prices so currency change is immediate
-      try { Dashboard.render(); } catch(e) {}
-      try { Revenue.render();   } catch(e) {}
-      try { Products.render();  } catch(e) {}
-    }
-  };
-
-  const changeKey = async () => {
-    const current  = document.getElementById('key-current')?.value  || '';
-    const newKey   = document.getElementById('key-new')?.value      || '';
-    const confirm  = document.getElementById('key-confirm')?.value  || '';
-    const okEl     = document.getElementById('key-ok');
-    const errEl    = document.getElementById('key-err');
-    okEl.classList.remove('show'); errEl.classList.remove('show');
-
-    if (!current)                    { errEl.textContent = 'Please enter your current password.'; errEl.classList.add('show'); return; }
-    if (newKey.length < 6)           { errEl.textContent = 'New password must be at least 6 characters.'; errEl.classList.add('show'); return; }
-    if (newKey !== confirm)          { errEl.textContent = 'New passwords do not match.'; errEl.classList.add('show'); return; }
-
-    const d = await api('/admin/change-key', { adminKey: Store.adminKey, newKey });
-    if (d && d.success) {
-      Store.setAdminKey(newKey);
-      okEl.textContent = '✓ Password changed. Use the new password next time you log in.';
-      okEl.classList.add('show');
-      document.getElementById('key-current').value = '';
-      document.getElementById('key-new').value     = '';
-      document.getElementById('key-confirm').value = '';
-    } else {
-      errEl.textContent = (d && d.error) || 'Failed to change password.';
-      errEl.classList.add('show');
     }
   };
 
@@ -111,60 +185,5 @@ const Settings = (() => {
     _renderActivationTemplateDropdown(current);
   };
 
-  const downloadBackup = (e) => {
-    e.preventDefault();
-    const key = encodeURIComponent(Store.adminKey);
-    const a = document.createElement('a');
-    a.href = `/admin/backup?adminKey=${key}`;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  const restoreBackup = async () => {
-    const fileInput = document.getElementById('restore-file');
-    const okEl  = document.getElementById('restore-ok');
-    const errEl = document.getElementById('restore-err');
-    okEl.classList.remove('show'); errEl.classList.remove('show');
-
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    let bundle;
-    try {
-      const text = await file.text();
-      bundle = JSON.parse(text);
-    } catch {
-      errEl.textContent = 'Invalid file — could not parse JSON.';
-      errEl.classList.add('show');
-      fileInput.value = '';
-      return;
-    }
-
-    if (!bundle._meta || !bundle.tokens) {
-      errEl.textContent = 'This does not look like a valid DTC backup file.';
-      errEl.classList.add('show');
-      fileInput.value = '';
-      return;
-    }
-
-    if (!confirm(`Restore backup from ${bundle._meta.exportedAt?.slice(0,10) || 'unknown date'}?\n\nThis will overwrite ALL current data. This cannot be undone.`)) {
-      fileInput.value = '';
-      return;
-    }
-
-    const d = await api('/admin/restore', { adminKey: Store.adminKey, bundle });
-    fileInput.value = '';
-    if (d && d.success) {
-      okEl.textContent = '✓ Restore complete. Reloading data…';
-      okEl.classList.add('show');
-      setTimeout(async () => { await Dashboard.reload(); okEl.textContent = '✓ Data restored and reloaded successfully.'; }, 1200);
-    } else {
-      errEl.textContent = (d && d.error) || 'Restore failed.';
-      errEl.classList.add('show');
-    }
-  };
-
-  return { load, save, changeKey, downloadBackup, restoreBackup, refreshTemplateDropdown, CURRENCIES };
+  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, CURRENCIES };
 })();

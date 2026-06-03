@@ -87,29 +87,20 @@ const BulkEmail = (() => {
     const tokens  = Store.tokens || {};
     let count     = 0;
     const now     = new Date();
-
-    if (filter === 'individual') {
-      count = _selectedTokens.size;
-    } else {
-      for (const t of Object.values(tokens)) {
-        if (!t.email) continue;
-        if (filter === 'all-with-email')                                    { count++; continue; }
-        if (filter === 'activated'   && t.approved)                         { count++; continue; }
-        if (filter === 'expiring'    && t.approved && t.subscriptionExpiresAt) {
-          const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
-          if (d >= 0 && d <= 30)                                            { count++; continue; }
-        }
-        if (filter === 'expired' && t.approved && t.subscriptionExpiresAt) {
-          const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
-          if (d < 0)                                                        { count++; continue; }
-        }
-        if (filter === 'submitted' && t.used && !t.approved)                { count++; continue; }
+    for (const t of Object.values(tokens)) {
+      if (!t.email) continue;
+      if (filter === 'all-with-email')                                    { count++; continue; }
+      if (filter === 'activated'   && t.approved)                         { count++; continue; }
+      if (filter === 'expiring'    && t.approved && t.subscriptionExpiresAt) {
+        const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
+        if (d >= 0 && d <= 30)                                            { count++; continue; }
       }
+      if (filter === 'expired' && t.approved && t.subscriptionExpiresAt) {
+        const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
+        if (d < 0)                                                        { count++; continue; }
+      }
+      if (filter === 'submitted' && t.used && !t.approved)                { count++; continue; }
     }
-
-    // Add custom emails that aren't already in the count
-    count += _customEmails.length;
-
     const el = document.getElementById('recipient-count');
     if (el) el.textContent = count + ' recipient' + (count !== 1 ? 's' : '');
     return count;
@@ -238,96 +229,6 @@ const BulkEmail = (() => {
     } else alert('Failed to delete.');
   };
 
-  // ── Individual customer picker state ──────────────────────────────────────
-  let _selectedTokens = new Set(); // tokens checked in individual picker
-  let _customEmails   = [];        // manually typed extra addresses
-
-  // ── Filter change handler ──────────────────────────────────────────────────
-  const onFilterChange = () => {
-    const filter = document.getElementById('recipient-filter')?.value;
-    const picker = document.getElementById('individual-picker');
-    if (picker) picker.style.display = filter === 'individual' ? '' : 'none';
-    if (filter === 'individual') _buildIndividualList();
-    _renderRecipientCount();
-  };
-
-  // ── Build individual picker list ───────────────────────────────────────────
-  const _buildIndividualList = () => {
-    const tokens  = Store.tokens || {};
-    const query   = (document.getElementById('individual-search')?.value || '').toLowerCase();
-    const wrap    = document.getElementById('individual-list');
-    if (!wrap) return;
-
-    // Deduplicate by customer name (most recent approved)
-    const seen = new Map();
-    Object.entries(tokens)
-      .filter(([, t]) => t.email)
-      .sort((a, b) => new Date(b[1].approvedAt || 0) - new Date(a[1].approvedAt || 0))
-      .forEach(([tok, t]) => {
-        const key = (t.customerName || '').trim().toLowerCase();
-        if (!seen.has(key)) seen.set(key, [tok, t]);
-      });
-
-    const entries = Array.from(seen.values()).filter(([, t]) => {
-      if (!query) return true;
-      return (t.customerName || '').toLowerCase().includes(query) ||
-             (t.email || '').toLowerCase().includes(query);
-    });
-
-    wrap.innerHTML = entries.map(([tok, t]) => {
-      const checked = _selectedTokens.has(tok) ? 'checked' : '';
-      return `<label style="display:flex;align-items:center;gap:.5rem;padding:.3rem .4rem;border-radius:6px;cursor:pointer;font-size:.8rem;color:var(--text);background:${checked ? 'var(--blue-light)' : 'transparent'}">
-        <input type="checkbox" value="${tok}" ${checked} onchange="BulkEmail.toggleIndividual('${tok}', this.checked)" style="accent-color:var(--blue);width:14px;height:14px;flex-shrink:0" />
-        <span style="font-weight:600">${esc(t.customerName)}</span>
-        <span style="color:var(--muted);font-size:.72rem">${esc(t.email)}</span>
-      </label>`;
-    }).join('') || '<div style="font-size:.78rem;color:var(--muted);padding:.3rem .4rem">No customers found.</div>';
-
-    _updateSelectedBar();
-  };
-
-  const filterIndividualList = () => _buildIndividualList();
-
-  const toggleIndividual = (tok, checked) => {
-    if (checked) _selectedTokens.add(tok); else _selectedTokens.delete(tok);
-    _buildIndividualList();
-    _renderRecipientCount();
-  };
-
-  const _updateSelectedBar = () => {
-    const bar = document.getElementById('individual-selected-bar');
-    if (!bar) return;
-    const n = _selectedTokens.size;
-    bar.textContent = n ? `${n} customer${n !== 1 ? 's' : ''} selected` : '';
-  };
-
-  // ── Custom email tags ──────────────────────────────────────────────────────
-  const _renderCustomEmailTags = () => {
-    const wrap = document.getElementById('custom-email-tags');
-    if (!wrap) return;
-    wrap.innerHTML = _customEmails.map((addr, i) =>
-      `<span style="display:inline-flex;align-items:center;gap:.25rem;background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:99px;padding:.15rem .55rem;font-size:.72rem;color:var(--blue);font-weight:600">
-        ${esc(addr)}
-        <button onclick="BulkEmail.removeCustomEmail(${i})" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:.85rem;line-height:1;padding:0;margin-left:.1rem">✕</button>
-      </span>`
-    ).join('');
-    _renderRecipientCount();
-  };
-
-  const handleCustomEmailKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomEmail(); } };
-
-  const addCustomEmail = () => {
-    const inp = document.getElementById('custom-email-input');
-    if (!inp) return;
-    const val = inp.value.trim();
-    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!EMAIL_RE.test(val)) { inp.style.borderColor = '#dc2626'; setTimeout(() => inp.style.borderColor = '', 1200); return; }
-    if (!_customEmails.includes(val)) { _customEmails.push(val); _renderCustomEmailTags(); }
-    inp.value = '';
-  };
-
-  const removeCustomEmail = (i) => { _customEmails.splice(i, 1); _renderCustomEmailTags(); };
-
   // ── Send ───────────────────────────────────────────────────────────────────
   const send = async () => {
     if (_isSending) return;
@@ -341,7 +242,7 @@ const BulkEmail = (() => {
 
     if (!subject) { errEl.textContent = 'Subject is required.'; errEl.classList.add('show'); return; }
     if (!body)    { errEl.textContent = 'Email body is required.'; errEl.classList.add('show'); return; }
-    if (!count)   { errEl.textContent = 'No recipients selected.'; errEl.classList.add('show'); return; }
+    if (!count)   { errEl.textContent = 'No recipients match this filter.'; errEl.classList.add('show'); return; }
 
     if (!confirm(`Send this email to ${count} recipient${count !== 1 ? 's' : ''}? This cannot be undone.`)) return;
 
@@ -349,18 +250,12 @@ const BulkEmail = (() => {
     const btn = document.getElementById('send-bulk-btn');
     if (btn) { btn.disabled = true; btn.textContent = `Sending to ${count} recipients…`; }
 
-    const payload = {
-      adminKey:        Store.adminKey,
-      customSubject:   subject,
-      customBody:      body,
-      recipientFilter: filter === 'individual' ? 'none' : filter,
-      customEmails:    _customEmails.length ? _customEmails : undefined,
-    };
-    if (filter === 'individual' && _selectedTokens.size) {
-      payload.tokenList = Array.from(_selectedTokens);
-    }
-
-    const d = await api('/admin/bulk-email', payload);
+    const d = await api('/admin/bulk-email', {
+      adminKey: Store.adminKey,
+      customSubject: subject,
+      customBody:    body,
+      recipientFilter: filter,
+    });
 
     _isSending = false;
     if (btn) { btn.disabled = false; btn.textContent = '📤 Send Email'; }
@@ -404,7 +299,5 @@ const BulkEmail = (() => {
     selectTemplate, newTemplate, editTemplate, closeTemplateEditor, saveTemplate, deleteTemplate,
     send, insertVar, loadSelectedTemplate,
     _renderRecipientCount,
-    onFilterChange, filterIndividualList, toggleIndividual,
-    handleCustomEmailKey, addCustomEmail, removeCustomEmail,
   };
 })();

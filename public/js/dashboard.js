@@ -3,26 +3,40 @@
 
 const Dashboard = (() => {
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // ── Stats (cumulative funnel) ───────────────────────────────────────────────
+  // The activation journey is a funnel: Generated → Opened → Submitted → Activated.
+  // Each later stage implies every earlier stage was reached, so the tiles are
+  // counted cumulatively (Total ≥ Opened ≥ Submitted ≥ Activated). A link that has
+  // been submitted still counts toward "Opened"; one that's been activated still
+  // counts toward both "Opened" and "Submitted".
   const _updateStats = (entries) => {
-    const cnt = { all:0, pending:0, accessed:0, submitted:0, activated:0, expired:0, declined:0, deactivated:0 };
-    entries.forEach(([,, s]) => { cnt.all++; cnt[s] = (cnt[s] || 0) + 1; });
-    document.getElementById('s-all').textContent  = cnt.all;
-    document.getElementById('s-pend').textContent = cnt.pending;
-    document.getElementById('s-acc').textContent  = cnt.accessed;
-    document.getElementById('s-sub').textContent  = cnt.submitted;
-    document.getElementById('s-act').textContent  = cnt.activated;
-    document.getElementById('s-exp').textContent  = (cnt.expired || 0) + (cnt.declined || 0);
-    // Revenue stat — net of refunds
-    const rev = Store.revenue || { total: 0, totalRefunded: 0 };
+    let all = 0, opened = 0, submitted = 0, activated = 0, declined = 0, expired = 0;
+    entries.forEach(([, t, s]) => {
+      all++;
+      // A submission (used) — and therefore approval or decline, which only happen
+      // after a submission — guarantees the link was opened first.
+      const everSubmitted = !!t.used || !!t.submittedAt || !!t.approved || !!t.declined;
+      const everOpened    = (t.accessCount || 0) > 0 || !!t.firstAccessedAt || everSubmitted;
+      const everActivated = !!t.approved;
+      if (everOpened)    opened++;
+      if (everSubmitted) submitted++;
+      if (everActivated) activated++;
+      if (t.declined)    declined++;
+      if (s === 'expired') expired++; // activation link lapsed before it was ever used
+    });
+    const notOpened = all - opened;
+
+    document.getElementById('s-all').textContent  = all;
+    document.getElementById('s-pend').textContent = notOpened;          // Not Opened
+    document.getElementById('s-acc').textContent  = opened;             // Opened (cumulative)
+    document.getElementById('s-sub').textContent  = submitted;          // Submitted (cumulative)
+    document.getElementById('s-act').textContent  = activated;          // Activated (cumulative)
+    document.getElementById('s-exp').textContent  = expired + declined; // Expired / Declined
+
+    // Revenue stat
+    const rev = Store.revenue || { total: 0 };
     const revEl = document.getElementById('s-rev');
-    const sym = (Store.settings || {}).currencySymbol || '$';
-    if (revEl) {
-      revEl.textContent = sym + rev.total.toFixed(2);
-      revEl.title = rev.totalRefunded > 0 ? `${sym}${rev.totalRefunded.toFixed(2)} refunded` : '';
-    }
-    const refEl = document.getElementById('s-refunded');
-    if (refEl) refEl.textContent = sym + (rev.totalRefunded || 0).toFixed(2);
+    if (revEl) revEl.textContent = '$' + rev.total.toFixed(2);
   };
 
   // ── Sub expiry cell ────────────────────────────────────────────────────────
@@ -47,12 +61,13 @@ const Dashboard = (() => {
 
   // ── Action cell ────────────────────────────────────────────────────────────
   const _actionCell = (t, token, status) => {
-    if (t.deactivated) return `<div><span class="badge b-deact">⊘ Deactivated</span><div style="font-size:.62rem;color:#6b7280;font-family:'JetBrains Mono',monospace;margin-top:.2rem">⊘ ${t.deactivatedAt ? fmtFull(new Date(t.deactivatedAt)) : '—'}</div><button class="action-btn react" style="margin-top:.4rem" onclick="Dashboard.reactivate('${token}')">↑ Reactivate</button></div>`;
-    if (t.approved)    return `<div><span class="badge b-act">✓ Activated</span><div style="font-size:.62rem;color:var(--success);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✓ ${fmtFull(new Date(t.approvedAt))}</div><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button></div>`;
-    if (t.declined)    return `<div><span class="badge b-dec">✕ Declined</span><div style="font-size:.62rem;color:var(--error);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✕ ${fmtFull(new Date(t.declinedAt))}</div><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button></div>`;
-    if (status === 'submitted') return `<div class="action-wrap"><button class="approve-btn" id="ab-${token}" onclick="Dashboard.approve('${token}')">✓ Approve</button><button class="decline-btn" id="db-${token}" onclick="Modals.openDecline('${token}')">✕ Decline</button><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button></div>`;
-    if (!t.used) return `<div><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button></div>`;
-    return '<span style="color:var(--muted2);font-size:.65rem">—</span>';
+    const del = `<button class="action-btn delete" onclick="Dashboard.deleteLink('${token}')">Delete</button>`;
+    if (t.deactivated) return `<div><span class="badge b-deact">⊘ Deactivated</span><div style="font-size:.62rem;color:#6b7280;font-family:'JetBrains Mono',monospace;margin-top:.2rem">⊘ ${t.deactivatedAt ? fmtFull(new Date(t.deactivatedAt)) : '—'}</div><button class="action-btn react" style="margin-top:.4rem" onclick="Dashboard.reactivate('${token}')">↑ Reactivate</button>${del}</div>`;
+    if (t.approved)    return `<div><span class="badge b-act">✓ Activated</span><div style="font-size:.62rem;color:var(--success);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✓ ${fmtFull(new Date(t.approvedAt))}</div><button class="action-btn edit" style="margin-top:.4rem" onclick="Modals.openEdit('${token}')">✏ Edit</button><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    if (t.declined)    return `<div><span class="badge b-dec">✕ Declined</span><div style="font-size:.62rem;color:var(--error);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✕ ${fmtFull(new Date(t.declinedAt))}</div><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    if (status === 'submitted') return `<div class="action-wrap"><button class="approve-btn" id="ab-${token}" onclick="Dashboard.approve('${token}')">✓ Approve</button><button class="decline-btn" id="db-${token}" onclick="Modals.openDecline('${token}')">✕ Decline</button><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    if (!t.used) return `<div><button class="action-btn deact" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    return `<div>${del}</div>`;
   };
 
   // ── Log row ────────────────────────────────────────────────────────────────
@@ -64,19 +79,11 @@ const Dashboard = (() => {
   // ── Render ─────────────────────────────────────────────────────────────────
   const render = () => {
     const filter  = Store.dashFilter;
-    const search  = (document.getElementById('dash-search')?.value || '').toLowerCase().trim();
     const entries = Object.entries(Store.tokens)
       .map(([tok, t]) => [tok, t, getLinkStatus(t)])
       .sort((a, b) => new Date(b[1].createdAt || 0) - new Date(a[1].createdAt || 0));
     _updateStats(entries);
-    let filtered = filter === 'all' ? entries : entries.filter(([,, s]) => s === filter);
-    if (search) {
-      filtered = filtered.filter(([, t]) =>
-        (t.customerName || '').toLowerCase().includes(search) ||
-        (t.email        || '').toLowerCase().includes(search) ||
-        (t.wechat       || '').toLowerCase().includes(search)
-      );
-    }
+    const filtered = filter === 'all' ? entries : entries.filter(([,, s]) => s === filter);
     const wrap = document.getElementById('dash-tbl');
     if (!filtered.length) { wrap.innerHTML = '<div class="empty">No links match this filter.</div>'; return; }
 
@@ -94,7 +101,7 @@ const Dashboard = (() => {
       const prodTag  = `<span class="prod-tag" style="background:${dotColor}20;border:1px solid ${dotColor}40;color:${dotColor}">${esc(t.productName || t.product || 'Claude')}</span>`;
 
       // Price badge
-      const priceBadge = t.price ? `<span class="price-badge">${t.currencySymbol||sym}${t.price.toFixed(2)}</span>` : '';
+      const priceBadge = t.price ? `<span class="price-badge">$${t.price.toFixed(2)}</span>` : '';
 
       const ac     = t.accessCount || 0;
       const hasLog = (t.accessLog || []).length > 0;
@@ -144,12 +151,6 @@ const Dashboard = (() => {
     try { Customers.render(); } catch(e) { console.warn(e); }
     try { EmailLog.render(); } catch(e) { console.warn(e); }
     try { Revenue.render(); } catch(e) { console.warn(e); }
-    // Stamp last-updated time
-    const el = document.getElementById('dash-last-updated');
-    if (el) {
-      const now = new Date();
-      el.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
   };
 
   // ── Generate link ──────────────────────────────────────────────────────────
@@ -168,7 +169,7 @@ const Dashboard = (() => {
     if (!customerName) { errEl.textContent = 'Customer name is required.'; errEl.classList.add('show'); return; }
     if (!productId)    { errEl.textContent = 'Please select a product.'; errEl.classList.add('show'); return; }
     if (!packageLabel) { errEl.textContent = 'Please select a package.'; errEl.classList.add('show'); return; }
-    if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than 0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
+    if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than $0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
 
     const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined });
     if (!d || d.error) { errEl.textContent = (d && d.error) || 'Failed to generate link.'; errEl.classList.add('show'); return; }
@@ -198,6 +199,14 @@ const Dashboard = (() => {
   const reactivate = async (token) => {
     const d = await api('/admin/reactivate', { adminKey: Store.adminKey, token });
     if (d && d.success) reload(); else alert('Failed.');
+  };
+
+  const deleteLink = async (token) => {
+    const t = Store.tokens[token] || {};
+    const who = t.customerName ? ` for ${t.customerName}` : '';
+    if (!confirm(`Permanently delete this link${who}? This removes the record completely and cannot be undone.`)) return;
+    const d = await api('/admin/delete-token', { adminKey: Store.adminKey, token });
+    if (d && d.success) reload(); else alert('Failed to delete.');
   };
 
   const toggleLog = (token) => {
@@ -230,7 +239,7 @@ const Dashboard = (() => {
     if (selectedProd) {
       selectedProd.packages.forEach(pk => {
         const o = document.createElement('option');
-        o.value = pk.label; o.textContent = `${pk.label} — ${(Store.settings||{}).currencySymbol||'$'}${pk.price}`;
+        o.value = pk.label; o.textContent = `${pk.label} — $${pk.price}`;
         pkgSel.appendChild(o);
       });
     }
@@ -238,33 +247,6 @@ const Dashboard = (() => {
     // Instruction dropdowns
     _buildInstrOptions('gen-instr-set',      selectedProd);
     _buildInstrOptions('gen-post-instr-set', selectedProd);
-
-    // Customer name autocomplete datalist
-    _refreshCustomerDatalist();
-  };
-
-  // Populate the customer name autocomplete datalist from existing customers
-  const _refreshCustomerDatalist = async () => {
-    let dl = document.getElementById('cust-name-list');
-    if (!dl) {
-      dl = document.createElement('datalist');
-      dl.id = 'cust-name-list';
-      document.body.appendChild(dl);
-      const inp = document.getElementById('cust-name');
-      if (inp) inp.setAttribute('list', 'cust-name-list');
-    }
-    try {
-      const d = await api(`/admin/customers-list?adminKey=${encodeURIComponent(Store.adminKey)}`);
-      if (d && d.customers) {
-        dl.innerHTML = '';
-        d.customers.forEach(c => {
-          const o = document.createElement('option');
-          o.value = c.customerName;
-          o.label = c.email ? `${c.customerName} (${c.email})` : c.customerName;
-          dl.appendChild(o);
-        });
-      }
-    } catch(e) { /* silently ignore */ }
   };
 
   // Called when product changes — auto-fill price
@@ -303,5 +285,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter };
 })();
