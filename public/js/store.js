@@ -15,6 +15,7 @@ const Store = (() => {
   let _templates     = [];
   let _tokens        = {};
   let _emailLog      = [];
+  let _customers     = [];
   let _instructions  = { sets: {} };
   let _dashFilter    = 'all';
   let _custFilter    = 'all';
@@ -62,11 +63,18 @@ const Store = (() => {
     get templates()    { return _templates; },
     setTemplates(t)    { _templates = t || []; },
 
+    // ── Customers (registry) ─────────────────────────────────────────────────
+    get customers()    { return _customers; },
+    setCustomers(c)    { _customers = c || []; },
+
     // ── Bulk load after login ─────────────────────────────────────────────────
-    load({ tokens, emailLog, revenue }) {
+    load({ tokens, emailLog, revenue, customers, settings }) {
       this.setTokens(tokens);
       this.setEmailLog(emailLog);
       if (revenue) this.setRevenue(revenue);
+      if (customers) this.setCustomers(customers);
+      // Merge currency + payment methods so every page reflects the configured currency
+      if (settings) _settings = { ..._settings, ...settings };
     },
   };
 })();

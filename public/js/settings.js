@@ -32,6 +32,8 @@ const Settings = (() => {
   const _renderPortal = (d) => {
     const wa = document.getElementById('portal-whatsapp');
     if (wa) wa.value = d.whatsapp || '';
+    const pm = document.getElementById('payment-methods');
+    if (pm) pm.value = (Array.isArray(d.paymentMethods) ? d.paymentMethods : []).join('\n');
     _renderSlides(Array.isArray(d.portalSlides) ? d.portalSlides : []);
   };
 
@@ -175,6 +177,7 @@ const Settings = (() => {
       activationEmailTemplateId:  tmplId,
       whatsapp:                   document.getElementById('portal-whatsapp')?.value.trim() || '',
       portalSlides:               _collectSlides(),
+      paymentMethods:             (document.getElementById('payment-methods')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
     };
     const d = await api('/admin/settings', { adminKey: Store.adminKey, settings });
     showMsg('settings-ok', 'settings-err', d && d.success,
@@ -182,6 +185,7 @@ const Settings = (() => {
     if (d && d.success) {
       Store.setSettings({ ...(Store.settings || {}), ...settings });
       _updateCurrencyPreview(settings);
+      try { if (window.Dashboard && Dashboard.reload) Dashboard.reload(); } catch (e) {}
     }
   };
 
@@ -191,5 +195,34 @@ const Settings = (() => {
     _renderActivationTemplateDropdown(current);
   };
 
-  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, CURRENCIES };
+  const downloadBackup = () => {
+    window.open('/admin/backup?adminKey=' + encodeURIComponent(Store.adminKey), '_blank');
+  };
+
+  const restoreBackup = (input) => {
+    const file = input.files && input.files[0];
+    const status = document.getElementById('restore-status');
+    if (!file) return;
+    if (!confirm('Restore from this backup? This OVERWRITES all current data and cannot be undone.')) { input.value = ''; return; }
+    status.textContent = 'Restoring…';
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const backup = JSON.parse(reader.result);
+        const d = await api('/admin/restore', { adminKey: Store.adminKey, backup });
+        if (d && d.success) {
+          status.textContent = `✓ Restored ${d.restored} file(s). Reloading…`;
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          status.textContent = '✕ ' + ((d && d.error) || 'Restore failed.');
+        }
+      } catch (e) {
+        status.textContent = '✕ Invalid backup file.';
+      }
+      input.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, downloadBackup, restoreBackup, CURRENCIES };
 })();

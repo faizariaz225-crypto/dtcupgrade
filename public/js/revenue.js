@@ -7,9 +7,10 @@ const Revenue = (() => {
     const tokens   = Store.tokens;
     const products = Store.products || [];
     const rev      = Store.revenue  || { total: 0, byProduct: {} };
+    const sym      = (Store.settings || {}).currencySymbol || '$';
 
     // Stats
-    document.getElementById('rev-total').textContent   = '$' + rev.total.toFixed(2);
+    document.getElementById('rev-total').textContent   = sym + rev.total.toFixed(2);
 
     // Per-product breakdown
     const wrap = document.getElementById('rev-breakdown');
@@ -43,7 +44,7 @@ const Revenue = (() => {
           <span class="rev-row-name">${esc(t.customerName)}</span>
           <span class="rev-row-pkg">${esc(t.packageType)}</span>
           <span class="rev-row-date">${t.approvedAt ? fmt(t.approvedAt) : '—'}</span>
-          <span class="rev-row-price">$${t.price.toFixed(2)}</span>
+          <span class="rev-row-price">${sym}${t.price.toFixed(2)}</span>
         </div>`).join('');
 
       return `<div class="rev-product-block">
@@ -53,7 +54,7 @@ const Revenue = (() => {
             <span class="rev-product-name">${esc(g.name)}</span>
             <span class="rev-count">${g.count} sale${g.count !== 1 ? 's' : ''}</span>
           </div>
-          <span class="rev-product-total" style="color:${color}">$${g.total.toFixed(2)}</span>
+          <span class="rev-product-total" style="color:${color}">${sym}${g.total.toFixed(2)}</span>
         </div>
         <div class="rev-bar-wrap">
           <div class="rev-bar"><div class="rev-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>

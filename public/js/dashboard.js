@@ -36,9 +36,9 @@ const Dashboard = (() => {
     // Revenue stat
     const rev = Store.revenue || { total: 0 };
     const revEl = document.getElementById('s-rev');
-    if (revEl) revEl.textContent = '$' + (rev.total || 0).toFixed(2);
+    if (revEl) revEl.textContent = _sym() + (rev.total || 0).toFixed(2);
     const refEl = document.getElementById('s-refund');
-    if (refEl) refEl.textContent = (rev.refundedTotal ? `· −$${rev.refundedTotal.toFixed(2)} refunded` : '');
+    if (refEl) refEl.textContent = (rev.refundedTotal ? `· −${_sym()}${rev.refundedTotal.toFixed(2)} refunded` : '');
   };
 
   // ── Sub expiry cell ────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ const Dashboard = (() => {
       const prodTag  = `<span class="prod-tag" style="background:${dotColor}20;border:1px solid ${dotColor}40;color:${dotColor}">${esc(t.productName || t.product || 'Claude')}</span>`;
 
       // Price badge
-      const priceBadge = t.price ? `<span class="price-badge">$${t.price.toFixed(2)}</span>` : '';
+      const priceBadge = t.price ? `<span class="price-badge">${_sym()}${t.price.toFixed(2)}</span>` : '';
 
       const ac     = t.accessCount || 0;
       const hasLog = (t.accessLog || []).length > 0;
@@ -171,6 +171,7 @@ const Dashboard = (() => {
     try { EmailLog.render(); } catch(e) { console.warn(e); }
     try { Revenue.render(); } catch(e) { console.warn(e); }
     try { _checkNewSubmissions(); } catch(e) { console.warn(e); }
+    try { refreshCustomerPicker(); refreshPaymentMethods(); _applyCurrencyUi(); } catch(e) { console.warn(e); }
     _stampUpdated();
   };
 
@@ -325,18 +326,22 @@ const Dashboard = (() => {
     const postInstr     = document.getElementById('gen-post-instr-set').value;
     const resellerId    = document.getElementById('gen-reseller-id')?.value.trim() || null;
     const resellerName  = document.getElementById('gen-reseller-name')?.value.trim() || null;
+    const customerId    = document.getElementById('gen-customer')?.value || undefined;
+    const email         = document.getElementById('gen-email')?.value.trim() || '';
+    const wechat        = document.getElementById('gen-wechat')?.value.trim() || '';
+    const paymentMethod = document.getElementById('gen-method')?.value || '';
     const errEl         = document.getElementById('gen-err');
     errEl.classList.remove('show');
 
     if (!customerName) { errEl.textContent = 'Customer name is required.'; errEl.classList.add('show'); return; }
     if (!productId)    { errEl.textContent = 'Please select a product.'; errEl.classList.add('show'); return; }
     if (!packageLabel) { errEl.textContent = 'Please select a package.'; errEl.classList.add('show'); return; }
-    if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than $0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
+    if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than 0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
 
-    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined });
+    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined, resellerId, resellerName, customerId, email, wechat, paymentMethod });
     if (!d || d.error) { errEl.textContent = (d && d.error) || 'Failed to generate link.'; errEl.classList.add('show'); return; }
     document.getElementById('gen-link').textContent = d.link;
-    const sym = (Store.settings||{}).currencySymbol||'$';
+    const sym = _sym();
     document.getElementById('gen-price-display').textContent = sym + parseFloat(price).toFixed(2);
     document.getElementById('link-result').classList.add('show');
     document.getElementById('copy-btn').textContent = 'Copy';
@@ -406,7 +411,7 @@ const Dashboard = (() => {
     if (selectedProd) {
       selectedProd.packages.forEach(pk => {
         const o = document.createElement('option');
-        o.value = pk.label; o.textContent = `${pk.label} — $${pk.price}`;
+        o.value = pk.label; o.textContent = `${pk.label} — ${_sym()}${pk.price}`;
         pkgSel.appendChild(o);
       });
     }
@@ -414,6 +419,93 @@ const Dashboard = (() => {
     // Instruction dropdowns
     _buildInstrOptions('gen-instr-set',      selectedProd);
     _buildInstrOptions('gen-post-instr-set', selectedProd);
+
+    // Customer picker + payment methods + currency
+    refreshCustomerPicker();
+    refreshPaymentMethods();
+    _applyCurrencyUi();
+  };
+
+  const _sym = () => (Store.settings || {}).currencySymbol || '$';
+
+  const _applyCurrencyUi = () => {
+    const ic = document.querySelector('.price-currency-icon');
+    if (ic) ic.textContent = _sym();
+    const lbl = document.querySelector('#page-dashboard label');
+    // price label "(USD)" → reflect configured currency code
+    document.querySelectorAll('.price-cur-code').forEach(el => { el.textContent = (Store.settings || {}).currency || 'USD'; });
+  };
+
+  // ── Existing-customer picker (dedup) ─────────────────────────────────────────
+  let _custCache = [];
+  const refreshCustomerPicker = () => {
+    _custCache = (Store.customers || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    _renderCustomerOptions('');
+  };
+  const _renderCustomerOptions = (q) => {
+    const sel = document.getElementById('gen-customer');
+    if (!sel) return;
+    const cur = sel.value;
+    const qq = (q || '').toLowerCase();
+    const list = _custCache.filter(c => !qq ||
+      (c.name || '').toLowerCase().includes(qq) ||
+      (c.email || '').toLowerCase().includes(qq) ||
+      (c.wechat || '').toLowerCase().includes(qq) ||
+      (c.id || '').toLowerCase().includes(qq));
+    sel.innerHTML = '<option value="">➕ New customer</option>' + list.map(c => {
+      const contact = c.email || c.wechat || '';
+      return `<option value="${c.id}">${esc(c.name || 'Unnamed')}${contact ? ' — ' + esc(contact) : ''} · ${esc(c.id)}</option>`;
+    }).join('');
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+  };
+  const filterCustomers = () => _renderCustomerOptions(document.getElementById('gen-cust-search').value);
+  const onCustomerPick = () => {
+    const id = document.getElementById('gen-customer').value;
+    const c  = _custCache.find(x => x.id === id);
+    const nameEl = document.getElementById('cust-name');
+    const emailEl = document.getElementById('gen-email');
+    const wechatEl = document.getElementById('gen-wechat');
+    if (c) {
+      nameEl.value = c.name || '';
+      emailEl.value = c.email || '';
+      wechatEl.value = c.wechat || '';
+    } else {
+      nameEl.value = ''; emailEl.value = ''; wechatEl.value = '';
+    }
+  };
+
+  const refreshPaymentMethods = () => {
+    const methods = (Store.settings || {}).paymentMethods || [];
+    ['gen-method', 'edit-method'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— Select —</option>' + methods.map(m => `<option>${esc(m)}</option>`).join('');
+      if (cur) sel.value = cur;
+    });
+  };
+
+  // ── Pre-fill the Generate form (used by "Renew") ─────────────────────────────
+  const prefillGenerate = (data) => {
+    refreshCustomerPicker();
+    const custSel = document.getElementById('gen-customer');
+    if (custSel && data.customerId && [...custSel.options].some(o => o.value === data.customerId)) {
+      custSel.value = data.customerId;
+      onCustomerPick();
+    } else {
+      if (document.getElementById('cust-name'))  document.getElementById('cust-name').value  = data.customerName || '';
+      if (document.getElementById('gen-email'))  document.getElementById('gen-email').value  = data.email  || '';
+      if (document.getElementById('gen-wechat')) document.getElementById('gen-wechat').value = data.wechat || '';
+    }
+    const prodSel = document.getElementById('gen-product');
+    if (prodSel && data.productId) { prodSel.value = data.productId; refreshDropdowns(data.productId); }
+    const pkgSel = document.getElementById('pkg');
+    if (pkgSel && data.packageLabel) { pkgSel.value = data.packageLabel; onPackageChange(); }
+    if (data.price != null && document.getElementById('gen-price')) document.getElementById('gen-price').value = data.price;
+    refreshPaymentMethods();
+    if (data.paymentMethod && document.getElementById('gen-method')) document.getElementById('gen-method').value = data.paymentMethod;
+    const card = document.getElementById('gen-product');
+    if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   // Called when product changes — auto-fill price
@@ -452,5 +544,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate };
 })();
