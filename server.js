@@ -26,6 +26,7 @@ const LANDING_FILE      = path.join(DATA_DIR, 'landingContent.json');
 const KEYS_FILE         = path.join(DATA_DIR, 'keys.json');
 const PAYMENTS_FILE     = path.join(DATA_DIR, 'payments.json');
 const UPLOADS_DIR       = path.join(DATA_DIR, 'uploads');
+const CUSTOMERS_FILE    = path.join(DATA_DIR, 'customers.json');
 const ADMINS_FILE       = path.join(DATA_DIR, 'admins.json');
 const USERS_FILE        = path.join(DATA_DIR, 'users.json');
 const SESSIONS_MAP_FILE = path.join(DATA_DIR, 'sessions_map.json');
@@ -38,7 +39,8 @@ if (!fs.existsSync(TOKENS_FILE))    fs.writeFileSync(TOKENS_FILE,  JSON.stringif
 if (!fs.existsSync(SESSIONS_FILE))  fs.writeFileSync(SESSIONS_FILE, '');
 if (!fs.existsSync(EMAIL_CONFIG))   fs.writeFileSync(EMAIL_CONFIG,  JSON.stringify({}));
 if (!fs.existsSync(EMAIL_LOG))      fs.writeFileSync(EMAIL_LOG,     JSON.stringify([]));
-if (!fs.existsSync(SETTINGS_FILE))  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ currency: 'USD', currencySymbol: '$', currencyName: 'US Dollar', activationEmailTemplateId: 'welcome', whatsapp: '', portalSlides: [] }, null, 2));
+if (!fs.existsSync(SETTINGS_FILE))  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ currency: 'USD', currencySymbol: '$', currencyName: 'US Dollar', activationEmailTemplateId: 'welcome', whatsapp: '', portalSlides: [], paymentMethods: ['Cash','Bank Transfer','Alipay','WeChat Pay','PayPal','Card','Crypto'] }, null, 2));
+if (!fs.existsSync(CUSTOMERS_FILE)) fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify([], null, 2));
 if (!fs.existsSync(KEYS_FILE))      fs.writeFileSync(KEYS_FILE, JSON.stringify({}));
 if (!fs.existsSync(SESSIONS_MAP_FILE)) fs.writeFileSync(SESSIONS_MAP_FILE, JSON.stringify({}));
 if (!fs.existsSync(USERS_FILE)) {
@@ -195,6 +197,33 @@ const loadKeys        = () => { try { return JSON.parse(fs.readFileSync(KEYS_FIL
 const saveKeys        = k  => fs.writeFileSync(KEYS_FILE, JSON.stringify(k, null, 2));
 const loadPayments    = () => { try { return JSON.parse(fs.readFileSync(PAYMENTS_FILE,'utf8')); } catch { return []; } };
 const savePayments    = p  => fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(p, null, 2));
+
+// ── Customer registry (groups subscriptions, prevents duplicates) ────────────────
+const loadCustomers   = () => { try { return JSON.parse(fs.readFileSync(CUSTOMERS_FILE,'utf8')); } catch { return []; } };
+const saveCustomers   = c  => fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify(c, null, 2));
+const _norm           = s  => (s == null ? '' : String(s)).trim().toLowerCase();
+function findOrCreateCustomer({ customerId, name, email, wechat }) {
+  const customers = loadCustomers();
+  let cust = null;
+  if (customerId)            cust = customers.find(c => c.id === customerId);
+  if (!cust && _norm(email))  cust = customers.find(c => _norm(c.email)  && _norm(c.email)  === _norm(email));
+  if (!cust && _norm(wechat)) cust = customers.find(c => _norm(c.wechat) && _norm(c.wechat) === _norm(wechat));
+  if (cust) {
+    if (name   && !cust.name)   cust.name   = name;
+    if (email  && !cust.email)  cust.email  = email;
+    if (wechat && !cust.wechat) cust.wechat = wechat;
+    saveCustomers(customers);
+    return cust;
+  }
+  cust = {
+    id: 'C' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 900 + 100),
+    name: name || '', email: email || '', wechat: wechat || '',
+    createdAt: new Date().toISOString(),
+  };
+  customers.push(cust);
+  saveCustomers(customers);
+  return cust;
+}
 const loadAdmins      = () => { try { return JSON.parse(fs.readFileSync(ADMINS_FILE,'utf8')); } catch { return []; } };
 const saveAdmins      = a  => fs.writeFileSync(ADMINS_FILE, JSON.stringify(a, null, 2));
 
@@ -385,14 +414,27 @@ const reminderTemplate = ({ customerName, packageType, expiryDate, daysLeft }) =
 const expiredTemplate  = ({ customerName, packageType }) => baseEmail(`<h2 style="color:#1e293b;margin:0 0 16px">Your subscription has ended</h2><p style="color:#64748b">Hi ${customerName}, your <strong>${packageType}</strong> has expired. Contact us on WeChat or at <a href="mailto:dtc@dtc1.shop">dtc@dtc1.shop</a> to renew.</p>`);
 
 async function checkSubscriptionEmails() {
-  const cfg = loadEmailCfg(); if (!cfg.host || !cfg.user || !cfg.pass) return;
   const tokens = loadTokens(); const now = new Date(); let changed = false;
+  const cfg = loadEmailCfg(); const emailOn = !!(cfg.host && cfg.user && cfg.pass);
   for (const [token, t] of Object.entries(tokens)) {
-    if (!t.approved || !t.subscriptionExpiresAt || !t.email) continue;
+    if (!t.approved || !t.subscriptionExpiresAt) continue;
     const expiry = new Date(t.subscriptionExpiresAt);
     const daysLeft = Math.ceil((expiry - now) / (1000*60*60*24));
-    if (daysLeft === 5 && !t.reminder5Sent) { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 5 days — DTC`, html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expiry.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}), daysLeft: 5 }), type: 'reminder_5d', token }); if (r.ok) { tokens[token].reminder5Sent = true; changed = true; } }
-    if (daysLeft <= 0 && !t.expiredEmailSent) { const r = await sendEmail({ to: t.email, subject: `Subscription expired — DTC`, html: expiredTemplate({ customerName: t.customerName, packageType: t.packageType }), type: 'expired', token }); if (r.ok) { tokens[token].expiredEmailSent = true; changed = true; } }
+
+    // Auto-deactivate the moment a subscription lapses (runs even without email configured)
+    if (daysLeft <= 0 && !t.deactivated && !t.refunded) {
+      tokens[token].deactivated = true;
+      tokens[token].deactivatedAt = now.toISOString();
+      tokens[token].deactivationReason = 'expired';
+      changed = true;
+    }
+
+    if (emailOn && t.email) {
+      const expStr = expiry.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+      if (daysLeft === 30 && !t.reminder30Sent) { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 30 days — DTC`, html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 30 }), type: 'reminder_30d', token }); if (r.ok) { tokens[token].reminder30Sent = true; changed = true; } }
+      if (daysLeft === 5  && !t.reminder5Sent)  { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 5 days — DTC`,  html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 5  }), type: 'reminder_5d',  token }); if (r.ok) { tokens[token].reminder5Sent  = true; changed = true; } }
+      if (daysLeft <= 0   && !t.expiredEmailSent){ const r = await sendEmail({ to: t.email, subject: `Subscription expired — DTC`, html: expiredTemplate({ customerName: t.customerName, packageType: t.packageType }), type: 'expired', token }); if (r.ok) { tokens[token].expiredEmailSent = true; changed = true; } }
+    }
   }
   if (changed) saveTokens(tokens);
 }
@@ -444,7 +486,7 @@ app.get('/admin/revenue', (req, res) => {
 
 // ── Generate link ──────────────────────────────────────────────────────────────
 app.post('/admin/generate', (req, res) => {
-  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey } = req.body;
+  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey, customerId, email, wechat, paymentMethod } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   if (!customerName)  return res.status(400).json({ error: 'Customer name is required.' });
   if (!productId)     return res.status(400).json({ error: 'Product is required.' });
@@ -457,6 +499,9 @@ app.post('/admin/generate', (req, res) => {
   const product = products.find(p => p.id === productId);
   if (!product) return res.status(400).json({ error: 'Product not found.' });
 
+  // Resolve (or create) the customer so subscriptions group under one record
+  const customer = findOrCreateCustomer({ customerId, name: customerName, email, wechat });
+
   const token     = uuidv4();
   const tokens    = loadTokens();
   const expiresAt = new Date(Date.now() + LINK_EXPIRY_MS).toISOString();
@@ -466,6 +511,10 @@ app.post('/admin/generate', (req, res) => {
 
   tokens[token] = {
     customerName,
+    customerId:       customer.id,
+    email:            email  || '',
+    wechat:           wechat || '',
+    paymentMethod:    paymentMethod || '',
     productId,
     productName:      product.name,
     portalName:       product.portalName || '',
@@ -593,6 +642,18 @@ app.post('/api/submit', (req, res) => {
 
   tokens[token].used = true; tokens[token].submittedAt = timestamp;
   tokens[token].wechat = wechat.trim(); tokens[token].email = email.trim();
+  // Backfill the customer registry record with contact details (helps future dedup + history)
+  if (tokens[token].customerId) {
+    try {
+      const customers = loadCustomers();
+      const cust = customers.find(c => c.id === tokens[token].customerId);
+      if (cust) {
+        if (!cust.email)  cust.email  = email.trim();
+        if (!cust.wechat) cust.wechat = wechat.trim();
+        saveCustomers(customers);
+      }
+    } catch (e) {}
+  }
   if (!t.credentialsMode) {
     if (t.product === 'chatgpt') tokens[token].sessionData = sessionData.trim();
     else tokens[token].orgId = orgId ? orgId.trim() : '';
@@ -1102,8 +1163,11 @@ app.post('/admin/sessions-data', (req, res) => {
   const allTokens = loadTokens();
   const tokens = Object.fromEntries(Object.entries(allTokens).filter(([, t]) => !t.deleted));
   const perms  = user.permissions || ROLE_PERMISSIONS[user.role] || [];
+  const s = (() => { try { return loadSettings(); } catch { return {}; } })();
   res.json({
     tokens, emailLog: loadEmailLog(), revenue: calcRevenue(allTokens),
+    customers: loadCustomers(),
+    settings: { currency: s.currency || 'USD', currencySymbol: s.currencySymbol || '$', currencyName: s.currencyName || '', paymentMethods: Array.isArray(s.paymentMethods) ? s.paymentMethods : [] },
     currentUser: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms },
   });
 });
@@ -1145,6 +1209,52 @@ app.post('/admin/send-reminder', async (req, res) => {
   const expiryStr = expiry ? expiry.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
   const html = type==='expired' ? expiredTemplate({ customerName:t.customerName, packageType:t.packageType }) : reminderTemplate({ customerName:t.customerName, packageType:t.packageType, expiryDate:expiryStr, daysLeft });
   res.json(await sendEmail({ to: t.email, subject: type==='expired' ? 'Subscription expired — DTC' : `Reminder: ${daysLeft} days left — DTC`, html, type:'manual_'+type, token }));
+});
+
+// ── Update a customer record (notes + tags) ──────────────────────────────────────
+app.post('/admin/customer/update', (req, res) => {
+  const { adminKey, customerId, note, tags, name, email, wechat } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const customers = loadCustomers();
+  const c = customers.find(x => x.id === customerId);
+  if (!c) return res.status(404).json({ error: 'Customer not found.' });
+  if (note  !== undefined) c.note  = note;
+  if (tags  !== undefined) c.tags  = Array.isArray(tags) ? tags : [];
+  if (name  !== undefined) c.name  = name;
+  if (email !== undefined) c.email = email;
+  if (wechat!== undefined) c.wechat= wechat;
+  saveCustomers(customers);
+  res.json({ success: true, customer: c });
+});
+
+// ── One-click backup & restore ────────────────────────────────────────────────
+const BACKUP_FILES = {
+  'tokens.json': TOKENS_FILE, 'customers.json': CUSTOMERS_FILE, 'products.json': PRODUCTS_FILE,
+  'settings.json': SETTINGS_FILE, 'keys.json': KEYS_FILE, 'payments.json': PAYMENTS_FILE,
+  'instructions.json': INSTRUCTIONS_FILE, 'landingContent.json': LANDING_FILE,
+  'emailTemplates.json': TEMPLATES_FILE, 'notifications.json': NOTIFY_FILE, 'emailLog.json': EMAIL_LOG,
+};
+app.get('/admin/backup', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const files = {};
+  for (const [name, p] of Object.entries(BACKUP_FILES)) {
+    try { if (fs.existsSync(p)) files[name] = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) {}
+  }
+  const bundle = { app: 'dtcmodular', version: 1, exportedAt: new Date().toISOString(), files };
+  res.setHeader('Content-Disposition', `attachment; filename="dtc-backup-${new Date().toISOString().slice(0,10)}.json"`);
+  res.setHeader('Content-Type', 'application/json');
+  res.send(JSON.stringify(bundle, null, 2));
+});
+app.post('/admin/restore', (req, res) => {
+  const { adminKey, backup } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!backup || !backup.files || typeof backup.files !== 'object') return res.status(400).json({ error: 'Invalid backup file.' });
+  let restored = 0;
+  for (const [name, content] of Object.entries(backup.files)) {
+    if (!BACKUP_FILES[name]) continue; // only known files
+    try { fs.writeFileSync(BACKUP_FILES[name], JSON.stringify(content, null, 2)); restored++; } catch (e) {}
+  }
+  res.json({ success: true, restored });
 });
 
 // ── Email Templates CRUD ──────────────────────────────────────────────────────
