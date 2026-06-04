@@ -112,6 +112,13 @@
     .cmore-log-hdr { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; padding-bottom: .3rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; }
     .cmore-log-row { color: var(--muted); padding: .22rem 0; border-bottom: 1px solid #eef2f7; }
     .cmore-log-row:last-child { border-bottom: none; }
+    .cust-history { margin: .2rem 0 .9rem; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .cust-history-hdr { background: #f8faff; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: .45rem .7rem; border-bottom: 1px solid var(--border); }
+    .cust-history-row { display: grid; grid-template-columns: 1fr 1fr .8fr 1.1fr; gap: .5rem; font-size: .72rem; color: var(--text); padding: .45rem .7rem; border-bottom: 1px solid #eef2f7; }
+    .cust-history-row:last-child { border-bottom: none; }
+    .ptag { background: #fff; border: 1.5px solid var(--border); color: var(--muted); border-radius: 16px; padding: .3rem .8rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: 'Inter',sans-serif; transition: all .15s; }
+    .ptag:hover { border-color: var(--blue-mid); }
+    .ptag.on { background: var(--blue); border-color: var(--blue); color: #fff; }
 
     /* ── Activation Portal slide editor ────────────────────────────────────── */
     .slide-edit-row { border: 1.5px solid var(--border); border-radius: 10px; padding: .8rem .9rem; margin-bottom: .7rem; background: #fbfcfe; }
@@ -425,6 +432,14 @@
       <div class="card">
         <div class="card-title">Generate Activation Link</div>
 
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Customer <span style="font-weight:400;color:var(--muted)">— pick an existing customer to avoid duplicates, or add a new one</span></label>
+          <input id="gen-cust-search" placeholder="Search existing customers by name, email, WeChat or ID…" oninput="Dashboard.filterCustomers()" autocomplete="off"/>
+          <select id="gen-customer" onchange="Dashboard.onCustomerPick()" style="margin-top:.4rem">
+            <option value="">➕ New customer</option>
+          </select>
+        </div>
+
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
             <label>Customer Name</label>
@@ -440,13 +455,24 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Email <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="email" id="gen-email" placeholder="customer@email.com"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="text" id="gen-wechat" placeholder="WeChat ID"/>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
             <label>Package</label>
             <select id="pkg" onchange="Dashboard.onPackageChange()">
               <option value="">— Select Package —</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
-            <label>Price (USD) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
+            <label>Price (<span class="price-cur-code">USD</span>) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
             <div class="price-input-wrap">
               <span class="price-currency-icon">$</span>
               <input type="number" id="gen-price" min="0.01" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--success)"/>
@@ -456,17 +482,27 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Payment Method</label>
+            <select id="gen-method">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
             <label>Pre-Activation Instructions</label>
             <select id="gen-instr-set">
               <option value="">— Default —</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
             <label>Post-Activation Instructions</label>
             <select id="gen-post-instr-set">
               <option value="">— Same as Pre —</option>
             </select>
           </div>
+          <div class="form-group" style="margin-bottom:0"></div>
         </div>
 
         <!-- Reseller (optional) -->
@@ -784,6 +820,23 @@
       </div>
 
       <div class="setting-block">
+        <div class="setting-block-title">Backup &amp; Restore</div>
+        <div class="setting-block-sub">Download a full backup of all your data (links, customers, products, settings, payments) as a single file, or restore from one. Restoring overwrites current data.</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="Settings.downloadBackup()">⬇ Download backup</button>
+          <input type="file" id="restore-file" accept="application/json,.json" style="display:none" onchange="Settings.restoreBackup(this)"/>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('restore-file').click()">⬆ Restore from file</button>
+          <span id="restore-status" style="font-size:.72rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Payment Methods</div>
+        <div class="setting-block-sub">One per line. These appear in the "Payment Method" dropdown when you create a link and when you edit a customer.</div>
+        <textarea id="payment-methods" rows="7" placeholder="Cash&#10;Bank Transfer&#10;Alipay&#10;WeChat Pay&#10;PayPal" style="font-family:'JetBrains Mono',monospace;font-size:.8rem"></textarea>
+      </div>
+
+      <div class="setting-block">
         <div class="setting-block-title">Activation Page Slideshow &amp; WhatsApp</div>
         <div class="setting-block-sub">These slides appear beside the customer's activation page. Clicking any slide opens your WhatsApp. Use them to promote current subscriptions and offers.</div>
 
@@ -899,6 +952,13 @@
       <button class="btn btn-outline" onclick="Modals.closeSession()">Close</button>
       <button class="btn btn-primary" onclick="Modals.copySession()">Copy Data</button>
     </div>
+  </div>
+</div>
+
+<!-- Customer Profile -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:680px">
+    <div id="profile-body"></div>
   </div>
 </div>
 
