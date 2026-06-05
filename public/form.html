@@ -92,6 +92,16 @@
     @media (prefers-reduced-motion: reduce){
       .promo-stage,.promo-stage::before,.promo-stage::after,.promo-slide,.promo-slide.on,.promo-slide.on .promo-title,.promo-slide.on .promo-text,.promo-slide.on .promo-badge,.promo-slide.on .promo-tag,.promo-slide.on::after,.wrap,.promo-slide.on .promo-img{ animation:none !important; transition:opacity .4s ease !important; filter:none !important; transform:none !important; }
     }
+    /* ── Admin-configurable animation level ────────────────────────────────── */
+    body.anim-off *{ animation:none !important; transition:none !important; }
+    body.anim-subtle .promo-stage,
+    body.anim-subtle .promo-stage::before,
+    body.anim-subtle .promo-stage::after,
+    body.anim-subtle .promo-slide.on .promo-img,
+    body.anim-subtle .promo-slide.on::after,
+    body.anim-subtle .promo-cta{ animation:none !important; }
+    body.anim-subtle .promo-slide{ transform:none !important; filter:none !important; transition:opacity .6s ease !important; }
+    body.anim-subtle .promo-stage{ box-shadow:0 14px 40px rgba(15,23,42,.16) !important; }
     /* ── Activation confirmation overlay ───────────────────────────────────── */
     .ac-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1.2rem;animation:acFade .2s ease}
     .ac-box{background:var(--white);border-radius:18px;max-width:420px;width:100%;padding:1.8rem 1.6rem 1.5rem;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:acPop .26s cubic-bezier(.34,1.56,.64,1)}
@@ -667,6 +677,26 @@
       startAuto();
     };
 
+    const _mix = (hex, target, amt) => {
+      let h = (hex || '#2563eb').replace('#', '');
+      if (h.length === 3) h = h.split('').map(c => c + c).join('');
+      const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+      const m = c => Math.round(c + (target - c) * amt);
+      return `rgb(${m(r)},${m(g)},${m(b)})`;
+    };
+    const applyTheme = (th) => {
+      if (!th) return;
+      const root = document.documentElement.style;
+      const accent = th.accent || '#2563eb';
+      root.setProperty('--blue', accent);
+      root.setProperty('--blue-dark', _mix(accent, 0, 0.18));
+      root.setProperty('--blue-light', _mix(accent, 255, 0.90));
+      root.setProperty('--blue-mid', _mix(accent, 255, 0.75));
+      if (th.bg) root.setProperty('--bg', th.bg);
+      document.body.classList.remove('anim-off', 'anim-subtle', 'anim-full');
+      document.body.classList.add('anim-' + (th.anim || 'full'));
+    };
+
     fetch('/api/portal-config')
       .then(r => r.json())
       .then(cfg => {
@@ -675,6 +705,7 @@
         // Adjustable panel size (desktop)
         const widths = { narrow: '40vw', half: '50vw', wide: '60vw' };
         document.documentElement.style.setProperty('--promo-w', widths[cfg.panelSize] || '50vw');
+        applyTheme(cfg.theme);
         if (cfg.layout === 'grid') renderGrid(); else render();
       })
       .catch(() => {});

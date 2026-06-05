@@ -847,6 +847,35 @@
       </div>
 
       <div class="setting-block">
+        <div class="setting-block-title">Activation Page Theme &amp; Animation</div>
+        <div class="setting-block-sub">Controls the colours and motion of the customer activation page — the form, the verification-status steps, badges and buttons.</div>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Accent Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-accent" value="#2563eb" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-accent-hex').value=this.value"/>
+              <input type="text" id="portal-accent-hex" placeholder="#2563eb" style="flex:1" oninput="document.getElementById('portal-accent').value=this.value"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Background Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-bg" value="#f0f4ff" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-bg-hex').value=this.value"/>
+              <input type="text" id="portal-bg-hex" placeholder="#f0f4ff" style="flex:1" oninput="document.getElementById('portal-bg').value=this.value"/>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Animation Level</label>
+          <select id="portal-anim">
+            <option value="full">Full — all motion (cross-zoom, aurora, glow, entrances)</option>
+            <option value="subtle">Subtle — gentle fades only</option>
+            <option value="off">Off — no animation</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-block">
         <div class="setting-block-title">Payment Methods</div>
         <div class="setting-block-sub">One per line. These appear in the "Payment Method" dropdown when you create a link and when you edit a customer.</div>
         <textarea id="payment-methods" rows="7" placeholder="Cash&#10;Bank Transfer&#10;Alipay&#10;WeChat Pay&#10;PayPal" style="font-family:'JetBrains Mono',monospace;font-size:.8rem"></textarea>
