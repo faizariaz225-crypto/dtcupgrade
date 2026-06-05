@@ -80,6 +80,8 @@
     .action-btn.edit:hover { background: #dbeafe; }
     .action-btn.delete { background: #ffffff; border-color: var(--error-border); color: var(--error); margin-top: .4rem; }
     .action-btn.delete:hover { background: var(--error-bg); }
+    .action-btn.refund { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn); margin-top: .4rem; }
+    .action-btn.refund:hover { filter: brightness(.97); }
 
     /* ── Customers ─────────────────────────────────────────────────────────── */
     .cust-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.3rem 1.5rem; margin-bottom: .9rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -119,6 +121,20 @@
     .ptag { background: #fff; border: 1.5px solid var(--border); color: var(--muted); border-radius: 16px; padding: .3rem .8rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: 'Inter',sans-serif; transition: all .15s; }
     .ptag:hover { border-color: var(--blue-mid); }
     .ptag.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .cust-subs { margin: .3rem 0 .9rem; }
+    .cust-subs-hdr { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .4rem; }
+    .sub-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
+    .sub-item.refunded { opacity: .8; }
+    .sub-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .8rem; cursor: pointer; background: #fbfcfe; transition: background .15s; }
+    .sub-head:hover { background: #f1f5ff; }
+    .sub-head-main { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+    .sub-prod { font-weight: 700; font-size: .82rem; color: var(--text); }
+    .sub-pkg { font-size: .74rem; color: var(--muted); }
+    .sub-head-meta { display: flex; align-items: center; gap: .8rem; font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .sub-caret { color: var(--blue); font-weight: 700; }
+    .sub-body { display: none; padding: .8rem; border-top: 1px solid var(--border); }
+    .sub-body.open { display: block; }
+    .sub-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
 
     /* ── Activation Portal slide editor ────────────────────────────────────── */
     .slide-edit-row { border: 1.5px solid var(--border); border-radius: 10px; padding: .8rem .9rem; margin-bottom: .7rem; background: #fbfcfe; }
@@ -844,6 +860,24 @@
           <label>WhatsApp Link or Number</label>
           <input id="portal-whatsapp" placeholder="e.g. https://wa.me/8619738122807  or  +86 19738122807"/>
           <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">A full https://wa.me/… link is used as-is. A plain number is converted to a wa.me link automatically.</div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:1rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Panel Size (desktop)</label>
+            <select id="portal-panel-size">
+              <option value="narrow">Narrow (40%)</option>
+              <option value="half">Half (50%)</option>
+              <option value="wide">Wide (60%)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Layout</label>
+            <select id="portal-layout">
+              <option value="single">Single animated slide</option>
+              <option value="grid">Grid — show multiple at once</option>
+            </select>
+          </div>
         </div>
 
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
