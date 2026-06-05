@@ -670,7 +670,7 @@ app.get('/api/portal-config', (req, res) => {
   let s = {};
   try { s = loadSettings(); } catch (e) { s = {}; }
   const slides = Array.isArray(s.portalSlides) ? s.portalSlides : [];
-  res.json({ whatsapp: s.whatsapp || '', slides, layout: s.portalLayout || 'single', panelSize: s.portalPanelSize || 'half' });
+  res.json({ whatsapp: s.whatsapp || '', slides, layout: s.portalLayout || 'single', panelSize: s.portalPanelSize || 'half', theme: { accent: s.portalAccent || '#2563eb', bg: s.portalBg || '#f0f4ff', anim: s.portalAnim || 'full' }, intro: { enabled: !!s.portalIntroPopup, title: s.portalIntroTitle || '', text: s.portalIntroText || '', wechatQR: s.portalWechatQR || '', whatsappQR: s.portalWhatsappQR || '', whatsapp: s.whatsapp || '' } });
 });
 
 // ── Poll status ────────────────────────────────────────────────────────────────
