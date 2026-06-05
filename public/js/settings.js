@@ -41,6 +41,11 @@ const Settings = (() => {
     const pb = document.getElementById('portal-bg');         const pbh = document.getElementById('portal-bg-hex');
     if (pb) { pb.value = d.portalBg || '#f0f4ff'; if (pbh) pbh.value = d.portalBg || '#f0f4ff'; }
     const pan = document.getElementById('portal-anim');      if (pan) pan.value = d.portalAnim || 'full';
+    const io = document.getElementById('portal-intro-on');   if (io) io.checked = !!d.portalIntroPopup;
+    const it = document.getElementById('portal-intro-title'); if (it) it.value = d.portalIntroTitle || '';
+    const ix = document.getElementById('portal-intro-text');  if (ix) ix.value = d.portalIntroText || '';
+    _setQR('wechat',   d.portalWechatQR   || '');
+    _setQR('whatsapp', d.portalWhatsappQR || '');
     _renderSlides(Array.isArray(d.portalSlides) ? d.portalSlides : []);
   };
 
@@ -189,6 +194,11 @@ const Settings = (() => {
       portalAccent:               document.getElementById('portal-accent')?.value || '#2563eb',
       portalBg:                   document.getElementById('portal-bg')?.value || '#f0f4ff',
       portalAnim:                 document.getElementById('portal-anim')?.value || 'full',
+      portalIntroPopup:           !!document.getElementById('portal-intro-on')?.checked,
+      portalIntroTitle:           document.getElementById('portal-intro-title')?.value.trim() || '',
+      portalIntroText:            document.getElementById('portal-intro-text')?.value.trim() || '',
+      portalWechatQR:             document.getElementById('portal-wechat-qr')?.value || '',
+      portalWhatsappQR:           document.getElementById('portal-whatsapp-qr')?.value || '',
       paymentMethods:             (document.getElementById('payment-methods')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
     };
     const d = await api('/admin/settings', { adminKey: Store.adminKey, settings });
@@ -236,5 +246,30 @@ const Settings = (() => {
     reader.readAsText(file);
   };
 
-  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, downloadBackup, restoreBackup, CURRENCIES };
+  const _setQR = (which, url) => {
+    const hid = document.getElementById('portal-' + which + '-qr');
+    const th  = document.getElementById('qr-' + which + '-thumb');
+    if (hid) hid.value = url || '';
+    if (th)  { th.src = url || ''; th.style.display = url ? '' : 'none'; }
+  };
+  const clearQR = (which) => { _setQR(which, ''); const s = document.getElementById('qr-' + which + '-status'); if (s) s.textContent = 'Removed (save to apply).'; };
+  const uploadQR = async (input, which) => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const status = document.getElementById('qr-' + which + '-status');
+    if (!/^image\//.test(file.type)) { status.textContent = 'Not an image.'; return; }
+    if (file.size > 5 * 1024 * 1024) { status.textContent = 'Too large (max 5 MB).'; return; }
+    status.textContent = 'Uploading…';
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const r = await fetch('/admin/upload-image?adminKey=' + encodeURIComponent(Store.adminKey), { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d && d.url) { _setQR(which, d.url); status.textContent = '✓ Uploaded (save to apply).'; }
+      else status.textContent = '✕ ' + ((d && d.error) || 'Upload failed.');
+    } catch (e) { status.textContent = '✕ Upload failed.'; }
+    input.value = '';
+  };
+
+  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, downloadBackup, restoreBackup, uploadQR, clearQR, CURRENCIES };
 })();
