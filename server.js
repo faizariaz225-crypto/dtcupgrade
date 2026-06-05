@@ -590,7 +590,7 @@ app.get('/api/validate-token', (req, res) => {
 
   const { pre, post } = getInstrSets(t);
   const portalName = t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '';
-  res.json({ valid: true, submitted: false, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
+  res.json({ valid: true, submitted: false, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, lockEmail: !!t.email, lockWechat: !!t.wechat, credentialsMode: t.credentialsMode || false, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
 });
 
 // ── Submit ─────────────────────────────────────────────────────────────────────
@@ -628,8 +628,8 @@ app.post('/api/submit', (req, res) => {
     }
   }
 
-  if (!wechat || !wechat.trim())                  errors.wechat = 'WeChat ID is required.';
-  if (!email  || !EMAIL_REGEX.test(email.trim()))  errors.email  = 'Please enter a valid email address.';
+  if (!t.wechat && (!wechat || !wechat.trim()))           errors.wechat = 'WeChat ID is required.';
+  if (!t.email  && (!email  || !EMAIL_REGEX.test((email||'').trim())))  errors.email  = 'Please enter a valid email address.';
   if (Object.keys(errors).length) return res.status(400).json({ success: false, errors });
 
   const timestamp = new Date().toISOString();
@@ -637,19 +637,22 @@ app.post('/api/submit', (req, res) => {
   if (t.credentialsMode) { lines.push('── Credentials provided by DTC ────────────────────────'); }
   else if (t.product === 'chatgpt') { lines.push('── Session Data ───────────────────────────────────────', sessionData.trim()); }
   else { lines.push(`Org ID       : ${orgId ? orgId.trim() : '—'}`); }
-  lines.push(`WeChat       : ${wechat.trim()}`, `Email        : ${email.trim()}`, '══════════════════════════════════════════════════════', '');
+  const _wechat = t.wechat || (wechat || '').trim();
+  const _email  = t.email  || (email  || '').trim();
+  lines.push(`WeChat       : ${_wechat || '—'}`, `Email        : ${_email || '—'}`, '══════════════════════════════════════════════════════', '');
   fs.appendFileSync(SESSIONS_FILE, lines.join('\n'));
 
   tokens[token].used = true; tokens[token].submittedAt = timestamp;
-  tokens[token].wechat = wechat.trim(); tokens[token].email = email.trim();
+  tokens[token].wechat = _wechat;
+  tokens[token].email  = _email;
   // Backfill the customer registry record with contact details (helps future dedup + history)
   if (tokens[token].customerId) {
     try {
       const customers = loadCustomers();
       const cust = customers.find(c => c.id === tokens[token].customerId);
       if (cust) {
-        if (!cust.email)  cust.email  = email.trim();
-        if (!cust.wechat) cust.wechat = wechat.trim();
+        if (!cust.email)  cust.email  = tokens[token].email;
+        if (!cust.wechat) cust.wechat = tokens[token].wechat;
         saveCustomers(customers);
       }
     } catch (e) {}
@@ -667,7 +670,7 @@ app.get('/api/portal-config', (req, res) => {
   let s = {};
   try { s = loadSettings(); } catch (e) { s = {}; }
   const slides = Array.isArray(s.portalSlides) ? s.portalSlides : [];
-  res.json({ whatsapp: s.whatsapp || '', slides });
+  res.json({ whatsapp: s.whatsapp || '', slides, layout: s.portalLayout || 'single', panelSize: s.portalPanelSize || 'half' });
 });
 
 // ── Poll status ────────────────────────────────────────────────────────────────
