@@ -36,6 +36,11 @@ const Settings = (() => {
     if (pm) pm.value = (Array.isArray(d.paymentMethods) ? d.paymentMethods : []).join('\n');
     const ps = document.getElementById('portal-panel-size'); if (ps) ps.value = d.portalPanelSize || 'half';
     const pl = document.getElementById('portal-layout');     if (pl) pl.value = d.portalLayout || 'single';
+    const pa = document.getElementById('portal-accent');     const pah = document.getElementById('portal-accent-hex');
+    if (pa) { pa.value = d.portalAccent || '#2563eb'; if (pah) pah.value = d.portalAccent || '#2563eb'; }
+    const pb = document.getElementById('portal-bg');         const pbh = document.getElementById('portal-bg-hex');
+    if (pb) { pb.value = d.portalBg || '#f0f4ff'; if (pbh) pbh.value = d.portalBg || '#f0f4ff'; }
+    const pan = document.getElementById('portal-anim');      if (pan) pan.value = d.portalAnim || 'full';
     _renderSlides(Array.isArray(d.portalSlides) ? d.portalSlides : []);
   };
 
@@ -181,6 +186,9 @@ const Settings = (() => {
       portalSlides:               _collectSlides(),
       portalPanelSize:            document.getElementById('portal-panel-size')?.value || 'half',
       portalLayout:               document.getElementById('portal-layout')?.value || 'single',
+      portalAccent:               document.getElementById('portal-accent')?.value || '#2563eb',
+      portalBg:                   document.getElementById('portal-bg')?.value || '#f0f4ff',
+      portalAnim:                 document.getElementById('portal-anim')?.value || 'full',
       paymentMethods:             (document.getElementById('payment-methods')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
     };
     const d = await api('/admin/settings', { adminKey: Store.adminKey, settings });
