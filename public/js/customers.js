@@ -125,7 +125,6 @@ const Customers = (() => {
       <div class="cust-grid">
         <div><div class="cf-lbl">Email</div><div class="cf-val">${esc(t.email || '—')}</div></div>
         <div><div class="cf-lbl">WeChat</div><div class="cf-val">${esc(t.wechat || '—')}</div></div>
-        ${dataRow}
         <div>
           <div class="cf-lbl">Activated On</div>
           <div class="cf-val">${t.approvedAt ? new Date(t.approvedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
@@ -154,34 +153,74 @@ const Customers = (() => {
         </div>
       </div>
 
-      <button class="cust-more-btn" id="cmb-${token}" onclick="Customers.toggleMore('${token}')">▸ See more</button>
-      ${_moreSection(token, t)}
-
-      ${history.length > 1 ? `
-      <div class="cust-history">
-        <div class="cust-history-hdr">Subscription history (${history.length})</div>
-        ${history.map(([, h]) => {
-          const st = h.refunded ? 'Refunded' : h.deactivated ? 'Deactivated' : (daysUntil(h.subscriptionExpiresAt || '9999') < 0 ? 'Expired' : 'Active');
-          const stColor = st === 'Active' ? 'var(--success)' : (st === 'Refunded' || st === 'Deactivated') ? 'var(--muted)' : 'var(--error)';
-          const amt = h.amountReceived != null ? sym + Number(h.amountReceived).toFixed(2) : (h.price != null ? sym + Number(h.price).toFixed(2) : '—');
-          return `<div class="cust-history-row">
-            <span>${h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
-            <span>${esc(h.packageType || '—')}</span>
-            <span style="color:${stColor};font-weight:600">${st}</span>
-            <span style="text-align:right">${amt}${h.paymentMethod ? ' · ' + esc(h.paymentMethod) : ''}</span>
-          </div>`;
-        }).join('')}
-      </div>` : ''}
+      <div class="cust-subs">
+        <div class="cust-subs-hdr">All Subscriptions (${history.length}) — expand any for full details &amp; actions</div>
+        ${history.map(([tk, h]) => _subItem(tk, h, sym)).join('')}
+      </div>
 
       <div class="email-actions">
         <button class="btn btn-primary btn-sm" onclick="Customers.openProfile('${token}')">👤 Profile</button>
         <button class="btn btn-ghost-blue btn-sm" onclick="Customers.renew('${token}')">↻ Renew</button>
-        <button class="btn btn-outline btn-sm" onclick="Modals.openEdit('${token}')">✏ Edit Package</button>
         <button class="btn btn-outline btn-sm" onclick="Customers.downloadStatement('${token}')">🧾 Statement</button>
-        ${t.refunded ? '' : `<button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn)" onclick="Customers.refund('${token}')">↩ Refund</button>`}
         <button class="btn btn-delete btn-sm" onclick="Customers.deleteCustomer('${token}')">Delete Customer</button>
       </div>
     </div>`;
+  };
+
+  // ── One expandable row per subscription (details + per-package Edit/Refund) ───
+  const _subItem = (tk, h, sym) => {
+    const hd = daysUntil(h.subscriptionExpiresAt || '9999');
+    const st = h.refunded ? { l: 'Refunded', c: 'var(--muted)' }
+      : h.deactivated ? { l: 'Deactivated', c: 'var(--muted)' }
+      : (hd < 0 ? { l: 'Expired', c: 'var(--error)' } : { l: 'Active', c: 'var(--success)' });
+    const amt = h.amountReceived != null ? sym + Number(h.amountReceived).toFixed(2) : (h.price != null ? sym + Number(h.price).toFixed(2) : '—');
+    const created = h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const prod = h.product === 'chatgpt' ? 'ChatGPT Plus' : (h.productName || 'Claude Pro');
+    const linkUrl = `${window.location.origin}/submit?token=${tk}`;
+
+    const dataDetail = h.product === 'chatgpt'
+      ? `<div style="grid-column:1/-1"><div class="cf-lbl">Session Data</div><div style="display:flex;gap:.4rem">
+           <button class="icopy btn-sm" style="color:var(--gpt)" onclick="event.stopPropagation();Modals.viewSession('${tk}')">View JSON</button>
+           <button class="icopy btn-sm" onclick="event.stopPropagation();copyText(${JSON.stringify(h.sessionData || '')}, this)">Copy</button></div></div>`
+      : `<div style="grid-column:1/-1"><div class="cf-lbl">Organization ID</div><div class="orgid-wrap"><span class="orgid-txt">${esc(h.orgId || '—')}</span>${h.orgId ? `<button class="icopy" onclick="event.stopPropagation();copyText('${esc(h.orgId)}', this)">Copy</button>` : ''}</div></div>`;
+
+    const log = (h.accessLog || []).slice(-8).reverse().map(e =>
+      `<div class="cmore-log-row"><span>${fmtFull(new Date(e.at))}</span><span>${esc(e.ip)}</span><span title="${esc(e.userAgent)}">${esc(parseUA(e.userAgent))}</span></div>`).join('');
+
+    return `<div class="sub-item${h.refunded ? ' refunded' : ''}">
+      <div class="sub-head" onclick="Customers.toggleSub('${tk}')">
+        <div class="sub-head-main"><span class="sub-prod">${esc(prod)}</span><span class="sub-pkg">${esc(h.packageType || '—')}</span></div>
+        <div class="sub-head-meta">
+          <span style="color:${st.c};font-weight:700">${st.l}</span>
+          <span>${created}</span>
+          <span style="color:var(--success)${h.refunded ? ';text-decoration:line-through' : ''}">${amt}</span>
+          <span class="sub-caret" id="sicaret-${tk}">▸</span>
+        </div>
+      </div>
+      <div class="sub-body" id="sibody-${tk}">
+        <div class="cmore-grid">
+          ${dataDetail}
+          <div><div class="cf-lbl">Payment</div><div class="cf-val">${amt}${h.paymentMethod ? ' · ' + esc(h.paymentMethod) : ''}</div></div>
+          <div><div class="cf-lbl">Expires</div><div class="cf-val">${h.subscriptionExpiresAt ? new Date(h.subscriptionExpiresAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div></div>
+          <div><div class="cf-lbl">Subscription Key</div><div class="cf-val">${esc(h.subscriptionKey || '—')}</div></div>
+          <div style="grid-column:1/-1"><div class="cf-lbl">Activation Link</div><div class="orgid-wrap"><a href="${linkUrl}" target="_blank" class="orgid-txt" style="color:var(--blue);text-decoration:none">${esc(linkUrl)}</a><button class="icopy" onclick="event.stopPropagation();copyText('${linkUrl}', this)">Copy</button></div></div>
+        </div>
+        ${h.refunded ? `<div style="font-size:.72rem;color:var(--error);font-weight:600;margin:.2rem 0 .5rem">↩ Refunded ${h.refundAmount != null ? sym + Number(h.refundAmount).toFixed(2) : ''}${h.refundedAt ? ' on ' + new Date(h.refundedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}${h.refundNote ? ' · ' + esc(h.refundNote) : ''}</div>` : ''}
+        ${log ? `<div class="cmore-log"><div class="cmore-log-hdr"><span>Opened At</span><span>IP</span><span>Device</span></div>${log}</div>` : ''}
+        <div class="sub-actions">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();Modals.openEdit('${tk}')">✏ Edit this package</button>
+          ${h.refunded ? '' : `<button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn)" onclick="event.stopPropagation();Customers.refund('${tk}')">↩ Refund this package</button>`}
+        </div>
+      </div>
+    </div>`;
+  };
+
+  const toggleSub = (tk) => {
+    const body = document.getElementById('sibody-' + tk);
+    const car  = document.getElementById('sicaret-' + tk);
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (car) car.textContent = open ? '▾' : '▸';
   };
 
   // ── Expandable "See more" section ───────────────────────────────────────────
@@ -401,5 +440,5 @@ const Customers = (() => {
     else alert('Please allow pop-ups to download the statement.');
   };
 
-  return { render, setFilter, sendReminder, toggleMore, deleteCustomer, refund, openProfile, closeProfile, saveProfile, renew, downloadStatement };
+  return { render, setFilter, sendReminder, toggleMore, toggleSub, deleteCustomer, refund, openProfile, closeProfile, saveProfile, renew, downloadStatement };
 })();

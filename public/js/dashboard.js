@@ -63,9 +63,11 @@ const Dashboard = (() => {
 
   // ── Action cell ────────────────────────────────────────────────────────────
   const _actionCell = (t, token, status) => {
-    const del = `<button class="action-btn delete" onclick="Dashboard.deleteLink('${token}')">Delete</button>`;
-    if (t.deactivated) return `<div><span class="badge b-deact">⊘ Deactivated</span><div style="font-size:.62rem;color:#6b7280;font-family:'JetBrains Mono',monospace;margin-top:.2rem">⊘ ${t.deactivatedAt ? fmtFull(new Date(t.deactivatedAt)) : '—'}</div><button class="action-btn react" style="margin-top:.4rem" onclick="Dashboard.reactivate('${token}')">↑ Reactivate</button>${del}</div>`;
-    if (t.approved)    return `<div><span class="badge b-act">✓ Activated</span><div style="font-size:.62rem;color:var(--success);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✓ ${fmtFull(new Date(t.approvedAt))}</div><button class="action-btn edit" style="margin-top:.4rem" onclick="Modals.openEdit('${token}')">✏ Edit</button><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
+    const del  = `<button class="action-btn delete" onclick="Dashboard.deleteLink('${token}')">Delete</button>`;
+    const edit = `<button class="action-btn edit" onclick="Modals.openEdit('${token}')">✏ Edit</button>`;
+    if (t.refunded)    return `<div><span class="badge b-exp">↩ Refunded</span><div style="font-size:.62rem;color:var(--error);font-family:'JetBrains Mono',monospace;margin-top:.2rem">↩ ${t.refundAmount != null ? (_sym() + Number(t.refundAmount).toFixed(2)) : ''}${t.refundedAt ? ' · ' + fmtFull(new Date(t.refundedAt)) : ''}</div>${edit}${del}</div>`;
+    if (t.deactivated) return `<div><span class="badge b-deact">⊘ Deactivated</span><div style="font-size:.62rem;color:#6b7280;font-family:'JetBrains Mono',monospace;margin-top:.2rem">⊘ ${t.deactivatedAt ? fmtFull(new Date(t.deactivatedAt)) : '—'}</div><button class="action-btn react" style="margin-top:.4rem" onclick="Dashboard.reactivate('${token}')">↑ Reactivate</button>${edit}${del}</div>`;
+    if (t.approved)    return `<div><span class="badge b-act">✓ Activated</span><div style="font-size:.62rem;color:var(--success);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✓ ${fmtFull(new Date(t.approvedAt))}</div>${edit}<button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button><button class="action-btn refund" onclick="Dashboard.refund('${token}')">↩ Refund</button>${del}</div>`;
     if (t.declined)    return `<div><span class="badge b-dec">✕ Declined</span><div style="font-size:.62rem;color:var(--error);font-family:'JetBrains Mono',monospace;margin-top:.2rem">✕ ${fmtFull(new Date(t.declinedAt))}</div><button class="action-btn deact" style="margin-top:.4rem" onclick="Dashboard.deactivate('${token}')">⊘ Deactivate</button>${del}</div>`;
     if (status === 'submitted') {
       const stage = t.stage || 'submitted';
@@ -368,6 +370,15 @@ const Dashboard = (() => {
     if (d && d.success) reload(); else alert('Failed.');
   };
 
+  const refund = async (token) => {
+    const t = Store.tokens[token] || {};
+    const amt = (t.amountReceived != null ? t.amountReceived : t.price);
+    if (!confirm(`Mark ${t.customerName || 'this link'} as refunded${amt != null ? ' (' + amt + ')' : ''}? This removes the amount from revenue and deactivates the subscription.`)) return;
+    const refundNote = prompt('Optional refund note / reason:', '') || '';
+    const d = await api('/admin/refund', { adminKey: Store.adminKey, token, refundNote });
+    if (d && d.success) reload(); else alert('Refund failed.');
+  };
+
   const setStage = async (token, stage) => {
     const d = await api('/admin/set-stage', { adminKey: Store.adminKey, token, stage });
     if (d && d.success) reload(); else alert('Failed to update stage.');
@@ -544,5 +555,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, refund, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate };
 })();

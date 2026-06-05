@@ -34,6 +34,8 @@ const Settings = (() => {
     if (wa) wa.value = d.whatsapp || '';
     const pm = document.getElementById('payment-methods');
     if (pm) pm.value = (Array.isArray(d.paymentMethods) ? d.paymentMethods : []).join('\n');
+    const ps = document.getElementById('portal-panel-size'); if (ps) ps.value = d.portalPanelSize || 'half';
+    const pl = document.getElementById('portal-layout');     if (pl) pl.value = d.portalLayout || 'single';
     _renderSlides(Array.isArray(d.portalSlides) ? d.portalSlides : []);
   };
 
@@ -177,6 +179,8 @@ const Settings = (() => {
       activationEmailTemplateId:  tmplId,
       whatsapp:                   document.getElementById('portal-whatsapp')?.value.trim() || '',
       portalSlides:               _collectSlides(),
+      portalPanelSize:            document.getElementById('portal-panel-size')?.value || 'half',
+      portalLayout:               document.getElementById('portal-layout')?.value || 'single',
       paymentMethods:             (document.getElementById('payment-methods')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
     };
     const d = await api('/admin/settings', { adminKey: Store.adminKey, settings });
