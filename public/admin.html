@@ -876,6 +876,43 @@
       </div>
 
       <div class="setting-block">
+        <div class="setting-block-title">Pre-Activation Contact Popup</div>
+        <div class="setting-block-sub">Show a popup with your WeChat &amp; WhatsApp QR codes before the customer sees the activation form. Upload your own QR images.</div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:.7rem">
+          <input type="checkbox" id="portal-intro-on" style="width:auto"/> Show contact popup before activation
+        </label>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0"><label>Popup Title</label><input id="portal-intro-title" placeholder="Contact us before activating"/></div>
+          <div class="form-group" style="margin-bottom:0"><label>Popup Message</label><input id="portal-intro-text" placeholder="Scan to reach us on WeChat or WhatsApp first."/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-wechat-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-wechat-qr"/>
+              <input type="file" accept="image/*" id="qr-wechat-file" style="display:none" onchange="Settings.uploadQR(this,'wechat')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-wechat-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('wechat')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-wechat-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WhatsApp QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-whatsapp-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-whatsapp-qr"/>
+              <input type="file" accept="image/*" id="qr-whatsapp-file" style="display:none" onchange="Settings.uploadQR(this,'whatsapp')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-whatsapp-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('whatsapp')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-whatsapp-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Tip: if you leave WhatsApp QR empty but set a WhatsApp number above, one will be generated automatically.</div>
+      </div>
+
+      <div class="setting-block">
         <div class="setting-block-title">Payment Methods</div>
         <div class="setting-block-sub">One per line. These appear in the "Payment Method" dropdown when you create a link and when you edit a customer.</div>
         <textarea id="payment-methods" rows="7" placeholder="Cash&#10;Bank Transfer&#10;Alipay&#10;WeChat Pay&#10;PayPal" style="font-family:'JetBrains Mono',monospace;font-size:.8rem"></textarea>

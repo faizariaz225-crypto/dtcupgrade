@@ -102,6 +102,36 @@
     body.anim-subtle .promo-cta{ animation:none !important; }
     body.anim-subtle .promo-slide{ transform:none !important; filter:none !important; transition:opacity .6s ease !important; }
     body.anim-subtle .promo-stage{ box-shadow:0 14px 40px rgba(15,23,42,.16) !important; }
+    /* ── Pre-activation contact popup ──────────────────────────────────────── */
+    .intro-overlay{position:fixed;inset:0;z-index:300;background:rgba(15,23,42,.62);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;padding:1.2rem}
+    .intro-overlay.open{display:flex;animation:acFade .25s ease}
+    .intro-box{background:var(--white);border-radius:22px;max-width:460px;width:100%;padding:1.9rem 1.6rem;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.35);animation:introPop .42s cubic-bezier(.34,1.56,.64,1)}
+    .intro-title{font-size:1.3rem;font-weight:800;color:var(--text);margin-bottom:.4rem}
+    .intro-text{font-size:.9rem;color:var(--muted);line-height:1.55;margin-bottom:1.3rem}
+    .intro-qrs{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.4rem}
+    .intro-qr{flex:1;min-width:140px;max-width:185px;background:#f8faff;border:1px solid var(--border);border-radius:14px;padding:.9rem;animation:introQr .55s ease both}
+    .intro-qr:nth-child(2){animation-delay:.1s}
+    .intro-qr img,.intro-qr svg{width:100%;height:auto;border-radius:8px;display:block}
+    .intro-qr-label{font-size:.82rem;font-weight:700;margin-top:.6rem;display:flex;align-items:center;justify-content:center;gap:.35rem}
+    .intro-qr.wechat .intro-qr-label{color:#09b83e}
+    .intro-qr.whatsapp .intro-qr-label{color:#1faf54}
+    .intro-btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:12px;padding:.92rem;font-family:inherit;font-size:.95rem;font-weight:700;cursor:pointer;transition:transform .15s,filter .15s}
+    .intro-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+    .intro-btn:active{transform:scale(.98)}
+    @keyframes introPop{from{opacity:0;transform:translateY(22px) scale(.94)}to{opacity:1;transform:none}}
+    @keyframes introQr{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+    /* ── Verification stepper motion ───────────────────────────────────────── */
+    .tl-dot.spin{animation:dotPulse 1.6s ease-in-out infinite}
+    @keyframes dotPulse{0%{box-shadow:0 0 0 0 var(--blue-mid)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+    .tl-dot.done{animation:dotPop .45s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes dotPop{0%{transform:scale(.4)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+    /* ── Activated success reveal ──────────────────────────────────────────── */
+    #screen-activated.active .check-ring{animation:checkBounce .6s cubic-bezier(.34,1.56,.64,1) both}
+    #screen-activated.active .check-ring circle{stroke-dasharray:220;stroke-dashoffset:220;animation:ringDraw .7s ease .05s forwards}
+    #screen-activated.active .check-ring polyline{stroke-dasharray:60;stroke-dashoffset:60;animation:checkDraw .45s .55s ease forwards}
+    @keyframes ringDraw{to{stroke-dashoffset:0}}
+    @keyframes checkDraw{to{stroke-dashoffset:0}}
+    @keyframes checkBounce{0%{transform:scale(.7);opacity:.4}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
     /* ── Activation confirmation overlay ───────────────────────────────────── */
     .ac-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1.2rem;animation:acFade .2s ease}
     .ac-box{background:var(--white);border-radius:18px;max-width:420px;width:100%;padding:1.8rem 1.6rem 1.5rem;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:acPop .26s cubic-bezier(.34,1.56,.64,1)}
@@ -201,7 +231,9 @@
     .btn-submit.loading .btn-text{display:none}
     .btn-submit.loading .spinner{display:block}
 
-    .screen{display:none}.screen.active{display:block}
+    .screen{display:none}
+    .screen.active{display:block;animation:screenIn .5s cubic-bezier(.2,.7,.2,1) both}
+    @keyframes screenIn{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}
     #screen-loading{text-align:center;padding:2.5rem 0}
     #screen-invalid,#screen-declined,#screen-processing,#screen-activated{text-align:center}
     .mini-loader{width:32px;height:32px;border:2.5px solid var(--blue-mid);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:2rem auto 1rem}
@@ -607,6 +639,17 @@
   </div>
 </aside>
 
+<!-- Pre-activation contact popup (WeChat / WhatsApp QR) -->
+<div id="intro-popup" class="intro-overlay">
+  <div class="intro-box">
+    <div class="intro-title" id="intro-title">Contact us before activating</div>
+    <p class="intro-text" id="intro-text">Scan to reach us on WeChat or WhatsApp first.</p>
+    <div class="intro-qrs" id="intro-qrs"></div>
+    <button class="intro-btn" id="intro-continue">Continue to activation →</button>
+  </div>
+</div>
+
+<script src="/js/qrcode.min.js"></script>
 <script>
   /* ── Promotional slideshow (animated full-bleed) ───────────────────────── */
   (function () {
@@ -884,9 +927,36 @@
         if (state.lockWechat) { const el = document.getElementById('fg-wechat'); if (el) el.style.display = 'none'; }
         if (state.lockEmail)  { const el = document.getElementById('fg-email');  if (el) el.style.display = 'none'; }
         show('screen-form');
+        maybeShowIntro();
       }
     } catch { showInvalid('Unable to verify your link. Please try again or contact support.'); }
   });
+
+  // ── Pre-activation contact popup (WeChat / WhatsApp QR) ───────────────────
+  let _introDone = false;
+  const maybeShowIntro = () => {
+    if (_introDone) return;
+    fetch('/api/portal-config').then(r => r.json()).then(cfg => {
+      const intro = (cfg && cfg.intro) || {};
+      if (!intro.enabled) return;
+      const cards = [];
+      if (intro.wechatQR) cards.push(`<div class="intro-qr wechat"><img src="${intro.wechatQR}" alt="WeChat QR"/><div class="intro-qr-label">💬 WeChat</div></div>`);
+      let waInner = '';
+      if (intro.whatsappQR) waInner = `<img src="${intro.whatsappQR}" alt="WhatsApp QR"/>`;
+      else if (intro.whatsapp && window.qrcode) {
+        try { const link = 'https://wa.me/' + String(intro.whatsapp).replace(/[^0-9]/g, ''); const q = qrcode(0, 'M'); q.addData(link); q.make(); waInner = q.createSvgTag(4); } catch (e) {}
+      }
+      if (waInner) cards.push(`<div class="intro-qr whatsapp">${waInner}<div class="intro-qr-label">📱 WhatsApp</div></div>`);
+      if (!cards.length) return;
+      if (intro.title) document.getElementById('intro-title').textContent = intro.title;
+      if (intro.text)  document.getElementById('intro-text').textContent  = intro.text;
+      document.getElementById('intro-qrs').innerHTML = cards.join('');
+      document.getElementById('intro-popup').classList.add('open');
+      _introDone = true;
+    }).catch(() => {});
+  };
+  const introBtn = document.getElementById('intro-continue');
+  if (introBtn) introBtn.addEventListener('click', () => document.getElementById('intro-popup').classList.remove('open'));
 
   const showInvalid = (msg) => { document.getElementById('invalid-msg').textContent = msg; show('screen-invalid'); };
   const showDeclined = (reason) => {
