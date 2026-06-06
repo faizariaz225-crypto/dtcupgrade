@@ -11,6 +11,89 @@ const Notifications = (() => {
     document.getElementById('notif-message').value   = d.message || '';
     document.getElementById('notif-type').value      = d.type    || 'info';
     _updatePreview();
+    renderAlerts();
+  };
+
+  // ── Per-product server-load alerts (warning + timer) ───────────────────────
+  let _alerts = [];           // [{id,name,active,notice,timer}]
+  let _tick = null;
+  const _fmtDur = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  };
+  const renderAlerts = async () => {
+    const wrap = document.getElementById('proc-alert-list');
+    if (!wrap) return;
+    let d;
+    try { d = await (await fetch(`/admin/processing-alerts?adminKey=${encodeURIComponent(Store.adminKey)}`)).json(); }
+    catch (e) { wrap.innerHTML = '<div class="empty">Could not load products.</div>'; return; }
+    _alerts = (d.products || []).map(p => ({ ...p, _anchor: Date.now() }));
+    if (!_alerts.length) { wrap.innerHTML = '<div class="empty">No products yet. Add a product first.</div>'; return; }
+
+    wrap.innerHTML = _alerts.map(p => {
+      const n = p.notice || {}; const t = p.timer || {};
+      const on = !!n.enabled;
+      return `
+      <div class="card" style="border:1.5px solid ${on || t.show ? '#fde68a' : 'var(--border)'};background:${on || t.show ? '#fffdf5' : 'var(--white)'};margin-bottom:.9rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem">
+          <div style="font-weight:700">${esc(p.name)} ${p.active ? '' : '<span style="font-size:.66rem;color:var(--muted)">(inactive)</span>'}</div>
+          <label class="toggle" style="margin-bottom:0">
+            <input type="checkbox" id="al-on-${p.id}" ${on ? 'checked' : ''} onchange="Notifications.saveNotice('${p.id}')"/>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+            <span style="font-size:.74rem;font-weight:600;margin-left:.4rem">Show heavy-load warning</span>
+          </label>
+        </div>
+        <div class="form-row" style="margin-bottom:.5rem">
+          <div class="form-group" style="margin-bottom:0"><label>Warning Title</label><input id="al-title-${p.id}" value="${esc(n.title || '')}" placeholder="Server Under Heavy Load"/></div>
+          <div class="form-group" style="margin-bottom:0"><label>Expected Completion</label><input id="al-eta-${p.id}" value="${esc(n.eta || '')}" placeholder="Within the next 2-4 hours"/></div>
+        </div>
+        <div class="form-group" style="margin-bottom:.5rem"><label>Message</label><textarea id="al-msg-${p.id}" rows="2" placeholder="Your order is taking longer than usual due to high server load. You can safely close this page — we'll email you once activated.">${esc(n.message || '')}</textarea></div>
+        <button class="btn btn-outline btn-sm" onclick="Notifications.saveNotice('${p.id}')">Save warning text</button>
+        <div style="border-top:1px solid var(--border);margin:.8rem 0 .6rem"></div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+          <span style="font-size:.74rem;font-weight:700;margin-right:.2rem">⏱ Timer</span>
+          <span id="al-tval-${p.id}" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1rem;min-width:80px">${_fmtDur(t.elapsedMs || 0)}</span>
+          <span id="al-tstate-${p.id}" style="font-size:.7rem;color:var(--muted);margin-right:.3rem">${!t.show ? '(hidden)' : t.running ? '● running · visible' : '⏸ paused · visible'}</span>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.timer('${p.id}','show')">👁 Show</button>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.timer('${p.id}','hide')">🚫 Hide</button>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.timer('${p.id}','play')">▶ Play</button>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.timer('${p.id}','pause')">⏸ Pause</button>
+          <button class="btn btn-outline btn-sm" onclick="Notifications.timer('${p.id}','reset')">⟲ Reset</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    if (_tick) clearInterval(_tick);
+    _tick = setInterval(_tickTimers, 1000);
+  };
+  const _tickTimers = () => {
+    _alerts.forEach(p => {
+      const el = document.getElementById('al-tval-' + p.id);
+      if (!el || !p.timer) return;
+      const shown = p.timer.running ? p.timer.elapsedMs + (Date.now() - p._anchor) : p.timer.elapsedMs;
+      el.textContent = _fmtDur(shown);
+    });
+  };
+  const saveNotice = async (id) => {
+    const d = await api('/admin/product/notice', {
+      adminKey: Store.adminKey, productId: id,
+      enabled: document.getElementById('al-on-' + id)?.checked,
+      title:   document.getElementById('al-title-' + id)?.value || '',
+      message: document.getElementById('al-msg-' + id)?.value || '',
+      eta:     document.getElementById('al-eta-' + id)?.value || '',
+    });
+    if (d && d.success) { const p = _alerts.find(x => x.id === id); if (p) p.notice = d.processingNotice; }
+  };
+  const timer = async (id, action) => {
+    const d = await api('/admin/product/timer', { adminKey: Store.adminKey, productId: id, action });
+    if (d && d.success) {
+      const p = _alerts.find(x => x.id === id);
+      if (p) { p.timer = d.timer; p._anchor = Date.now(); }
+      const st = document.getElementById('al-tstate-' + id);
+      if (st) st.textContent = !d.timer.show ? '(hidden)' : d.timer.running ? '● running · visible' : '⏸ paused · visible';
+      _tickTimers();
+    }
   };
 
   const save = async () => {
@@ -61,5 +144,5 @@ const Notifications = (() => {
     if (typ) typ.addEventListener('change', _updatePreview);
   };
 
-  return { load, save, init };
+  return { load, save, init, renderAlerts, saveNotice, timer };
 })();
