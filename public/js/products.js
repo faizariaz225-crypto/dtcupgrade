@@ -62,6 +62,12 @@ const Products = (() => {
     document.getElementById('prod-name').value         = p ? p.name : '';
     document.getElementById('prod-desc').value         = p ? (p.description || '') : '';
     document.getElementById('prod-portal-name').value  = p ? (p.portalName || '') : '';
+    const pn = (p && p.processingNotice) || {};
+    document.getElementById('prod-notice-on').checked    = !!pn.enabled;
+    document.getElementById('prod-notice-title').value   = pn.title || '';
+    document.getElementById('prod-notice-msg').value     = pn.message || '';
+    document.getElementById('prod-notice-eta').value     = pn.eta || '';
+    _initTimerUi(p ? p.processingTimer : null, !!p);
     document.getElementById('prod-type').value         = p ? (p.type || 'session') : 'session';
     document.getElementById('prod-color').value        = p ? (p.color || '#2563eb') : '#2563eb';
     document.getElementById('prod-active').checked     = p ? (p.active !== false) : true;
@@ -74,7 +80,50 @@ const Products = (() => {
     document.getElementById('prod-modal').classList.add('open');
   };
 
-  const closeModal = () => document.getElementById('prod-modal').classList.remove('open');
+  const closeModal = () => { _stopTimerTick(); document.getElementById('prod-modal').classList.remove('open'); };
+
+  // ── Processing-timer controls (live) ─────────────────────────────────────────
+  let _tState = { show: false, running: false, elapsedMs: 0, anchor: 0 };
+  let _tInt = null;
+  const _fmtDur = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  const _renderTimer = () => {
+    const disp = document.getElementById('prod-timer-display');
+    const st   = document.getElementById('prod-timer-state');
+    if (!disp) return;
+    const shown = _tState.running ? _tState.elapsedMs + (Date.now() - _tState.anchor) : _tState.elapsedMs;
+    disp.textContent = _fmtDur(shown);
+    if (st) st.textContent = !_tState.show ? '(hidden from customers)' : _tState.running ? '● running · visible' : '⏸ paused · visible';
+  };
+  const _stopTimerTick = () => { if (_tInt) { clearInterval(_tInt); _tInt = null; } };
+  const _startTimerTick = () => { _stopTimerTick(); _tInt = setInterval(_renderTimer, 1000); };
+  const _initTimerUi = (tm, saved) => {
+    const base = (tm && tm.baseMs) || 0;
+    const running = !!(tm && tm.running);
+    const elapsed = base + (running && tm.lastStartedAt ? (Date.now() - new Date(tm.lastStartedAt).getTime()) : 0);
+    _tState = { show: !!(tm && tm.show), running, elapsedMs: elapsed, anchor: Date.now() };
+    const hint = document.getElementById('prod-timer-hint');
+    if (hint) hint.textContent = saved ? '' : 'Save the product first, then reopen it to control the timer.';
+    _renderTimer();
+    _startTimerTick();
+  };
+  const timer = async (action) => {
+    const id = document.getElementById('prod-id').value.trim();
+    const hint = document.getElementById('prod-timer-hint');
+    if (!id || !(Store.products || []).some(p => p.id === id)) {
+      if (hint) hint.textContent = 'Save the product first, then reopen it to control the timer.';
+      return;
+    }
+    const d = await api('/admin/product/timer', { adminKey: Store.adminKey, productId: id, action });
+    if (d && d.success) {
+      _tState = { show: d.timer.show, running: d.timer.running, elapsedMs: d.timer.elapsedMs, anchor: Date.now() };
+      if (hint) hint.textContent = '';
+      _renderTimer();
+    } else if (hint) hint.textContent = (d && d.error) || 'Failed.';
+  };
 
   const _renderPkgRows = (packages) => {
     const wrap = document.getElementById('pkg-rows');
@@ -133,6 +182,12 @@ const Products = (() => {
       id, name,
       description:     document.getElementById('prod-desc').value.trim(),
       portalName:      document.getElementById('prod-portal-name').value.trim(),
+      processingNotice: {
+        enabled: document.getElementById('prod-notice-on').checked,
+        title:   document.getElementById('prod-notice-title').value.trim(),
+        message: document.getElementById('prod-notice-msg').value.trim(),
+        eta:     document.getElementById('prod-notice-eta').value.trim(),
+      },
       type:            document.getElementById('prod-type').value,
       color:           document.getElementById('prod-color').value,
       active:          document.getElementById('prod-active').checked,
@@ -161,7 +216,7 @@ const Products = (() => {
     else alert('Failed to delete.');
   };
 
-  return { loadData, getAll, render, openModal, closeModal, addPkgRow, removePkgRow, save, remove, _toggleCredsMode };
+  return { loadData, getAll, render, openModal, closeModal, addPkgRow, removePkgRow, save, remove, _toggleCredsMode, timer };
 })();
 
 // ── Push updated credentials to all active tokens ────────────────────────────

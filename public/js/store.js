@@ -16,6 +16,7 @@ const Store = (() => {
   let _tokens        = {};
   let _emailLog      = [];
   let _customers     = [];
+  let _resellers     = [];
   let _instructions  = { sets: {} };
   let _dashFilter    = 'all';
   let _custFilter    = 'all';
@@ -66,13 +67,16 @@ const Store = (() => {
     // ── Customers (registry) ─────────────────────────────────────────────────
     get customers()    { return _customers; },
     setCustomers(c)    { _customers = c || []; },
+    get resellers()    { return _resellers; },
+    setResellers(r)    { _resellers = r || []; },
 
     // ── Bulk load after login ─────────────────────────────────────────────────
-    load({ tokens, emailLog, revenue, customers, settings }) {
+    load({ tokens, emailLog, revenue, customers, resellers, settings }) {
       this.setTokens(tokens);
       this.setEmailLog(emailLog);
       if (revenue) this.setRevenue(revenue);
       if (customers) this.setCustomers(customers);
+      if (resellers) this.setResellers(resellers);
       // Merge currency + payment methods so every page reflects the configured currency
       if (settings) _settings = { ..._settings, ...settings };
     },

@@ -326,8 +326,19 @@ const Dashboard = (() => {
     const price         = document.getElementById('gen-price').value;
     const instr         = document.getElementById('gen-instr-set').value;
     const postInstr     = document.getElementById('gen-post-instr-set').value;
-    const resellerId    = document.getElementById('gen-reseller-id')?.value.trim() || null;
-    const resellerName  = document.getElementById('gen-reseller-name')?.value.trim() || null;
+    const resellerSel   = document.getElementById('gen-reseller')?.value || '';
+    let resellerId = null, newReseller = null;
+    if (resellerSel === '__new__') {
+      const rn = document.getElementById('gen-reseller-name')?.value.trim();
+      if (rn) newReseller = {
+        name: rn,
+        contact: document.getElementById('gen-reseller-contact')?.value.trim() || '',
+        commissionType: document.getElementById('gen-reseller-ctype')?.value || 'percent',
+        commissionValue: parseFloat(document.getElementById('gen-reseller-cvalue')?.value) || 0,
+      };
+    } else if (resellerSel) {
+      resellerId = resellerSel;
+    }
     const customerId    = document.getElementById('gen-customer')?.value || undefined;
     const email         = document.getElementById('gen-email')?.value.trim() || '';
     const wechat        = document.getElementById('gen-wechat')?.value.trim() || '';
@@ -340,7 +351,7 @@ const Dashboard = (() => {
     if (!packageLabel) { errEl.textContent = 'Please select a package.'; errEl.classList.add('show'); return; }
     if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than 0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
 
-    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined, resellerId, resellerName, customerId, email, wechat, paymentMethod });
+    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined, resellerId, newReseller, customerId, email, wechat, paymentMethod });
     if (!d || d.error) { errEl.textContent = (d && d.error) || 'Failed to generate link.'; errEl.classList.add('show'); return; }
     document.getElementById('gen-link').textContent = d.link;
     const sym = _sym();
@@ -434,7 +445,38 @@ const Dashboard = (() => {
     // Customer picker + payment methods + currency
     refreshCustomerPicker();
     refreshPaymentMethods();
+    refreshResellerPicker();
     _applyCurrencyUi();
+  };
+
+  // ── Reseller picker (existing dropdown or new) ───────────────────────────────
+  const refreshResellerPicker = () => {
+    const sel = document.getElementById('gen-reseller');
+    if (!sel) return;
+    const cur = sel.value;
+    const list = (Store.resellers || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    const opts = list.map(r => {
+      const c = r.commissionType === 'flat' ? `${_sym()}${r.commissionValue}/sale` : `${r.commissionValue}%`;
+      return `<option value="${r.id}">${esc(r.name)} · ${c}</option>`;
+    }).join('');
+    sel.innerHTML = '<option value="">— Direct (no reseller) —</option>' + opts + '<option value="__new__">➕ New reseller…</option>';
+    if ([...sel.options].some(o => o.value === cur)) sel.value = cur;
+    onResellerPick();
+  };
+  const onResellerPick = () => {
+    const sel = document.getElementById('gen-reseller');
+    const newBox = document.getElementById('gen-reseller-new');
+    const info = document.getElementById('gen-reseller-info');
+    if (!sel) return;
+    const isNew = sel.value === '__new__';
+    if (newBox) newBox.style.display = isNew ? '' : 'none';
+    if (info) {
+      const r = (Store.resellers || []).find(x => x.id === sel.value);
+      if (r) {
+        const c = r.commissionType === 'flat' ? `${_sym()}${r.commissionValue} per sale` : `${r.commissionValue}% of each sale`;
+        info.style.display = ''; info.textContent = `Commission: ${c}${r.contact ? ' · ' + r.contact : ''}`;
+      } else { info.style.display = 'none'; }
+    }
   };
 
   const _sym = () => (Store.settings || {}).currencySymbol || '$';
@@ -555,5 +597,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, refund, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, refund, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate, onResellerPick };
 })();

@@ -81,25 +81,52 @@ const BulkEmail = (() => {
     _updatePreview();
   };
 
+  // ── Parse custom / external recipients (one per line) ──────────────────────
+  const _parseCustom = () => {
+    const raw = document.getElementById('bulk-custom-emails')?.value || '';
+    const out = [];
+    const seen = new Set();
+    raw.split('\n').forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      let name = '', email = '';
+      const m = line.match(/^(.*?)<([^>]+)>$/);          // Name <email>
+      if (m) { name = m[1].trim(); email = m[2].trim(); }
+      else if (line.includes(',')) {                      // email, Name
+        const parts = line.split(',');
+        email = parts[0].trim(); name = parts.slice(1).join(',').trim();
+      } else { email = line; }
+      email = email.toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(email)) return;
+      seen.add(email);
+      out.push({ email, name });
+    });
+    return out;
+  };
+
   // ── Live recipient count ───────────────────────────────────────────────────
   const _renderRecipientCount = () => {
     const filter  = document.getElementById('recipient-filter')?.value || 'all-with-email';
     const tokens  = Store.tokens || {};
-    let count     = 0;
+    const customs = _parseCustom();
+    const customEmails = new Set(customs.map(c => c.email));
+    let count     = customs.length;
     const now     = new Date();
-    for (const t of Object.values(tokens)) {
-      if (!t.email) continue;
-      if (filter === 'all-with-email')                                    { count++; continue; }
-      if (filter === 'activated'   && t.approved)                         { count++; continue; }
-      if (filter === 'expiring'    && t.approved && t.subscriptionExpiresAt) {
-        const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
-        if (d >= 0 && d <= 30)                                            { count++; continue; }
+    if (filter !== 'custom-only') {
+      for (const t of Object.values(tokens)) {
+        if (!t.email || customEmails.has(String(t.email).toLowerCase())) continue;
+        if (filter === 'all-with-email')                                    { count++; continue; }
+        if (filter === 'activated'   && t.approved)                         { count++; continue; }
+        if (filter === 'expiring'    && t.approved && t.subscriptionExpiresAt) {
+          const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
+          if (d >= 0 && d <= 30)                                            { count++; continue; }
+        }
+        if (filter === 'expired' && t.approved && t.subscriptionExpiresAt) {
+          const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
+          if (d < 0)                                                        { count++; continue; }
+        }
+        if (filter === 'submitted' && t.used && !t.approved)                { count++; continue; }
       }
-      if (filter === 'expired' && t.approved && t.subscriptionExpiresAt) {
-        const d = Math.ceil((new Date(t.subscriptionExpiresAt) - now)/(1000*60*60*24));
-        if (d < 0)                                                        { count++; continue; }
-      }
-      if (filter === 'submitted' && t.used && !t.approved)                { count++; continue; }
     }
     const el = document.getElementById('recipient-count');
     if (el) el.textContent = count + ' recipient' + (count !== 1 ? 's' : '');
@@ -255,6 +282,7 @@ const BulkEmail = (() => {
       customSubject: subject,
       customBody:    body,
       recipientFilter: filter,
+      customEmails: _parseCustom(),
     });
 
     _isSending = false;

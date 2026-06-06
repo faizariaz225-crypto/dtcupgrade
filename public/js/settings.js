@@ -26,6 +26,8 @@ const Settings = (() => {
     _renderActivationTemplateDropdown(d.activationEmailTemplateId);
     _updateCurrencyPreview(d);
     _renderPortal(d);
+    _wirePreview();
+    updatePreview();
   };
 
   // ── Activation portal: WhatsApp + slides ───────────────────────────────────
@@ -251,6 +253,7 @@ const Settings = (() => {
     const th  = document.getElementById('qr-' + which + '-thumb');
     if (hid) hid.value = url || '';
     if (th)  { th.src = url || ''; th.style.display = url ? '' : 'none'; }
+    try { updatePreview(); } catch (e) {}
   };
   const clearQR = (which) => { _setQR(which, ''); const s = document.getElementById('qr-' + which + '-status'); if (s) s.textContent = 'Removed (save to apply).'; };
   const uploadQR = async (input, which) => {
@@ -271,5 +274,67 @@ const Settings = (() => {
     input.value = '';
   };
 
-  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, downloadBackup, restoreBackup, uploadQR, clearQR, CURRENCIES };
+  const _pvMix = (hex, target, amt) => {
+    let h = (hex || '#2563eb').replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    const m = c => Math.round(c + (target - c) * amt); return `rgb(${m(r)},${m(g)},${m(b)})`;
+  };
+  const _pvEsc = s => (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let _pvView = 'form';
+  const previewView = (v) => { _pvView = v; document.querySelectorAll('.pv-tab').forEach(b => b.classList.toggle('on', b.dataset.view === v)); updatePreview(); };
+
+  const updatePreview = () => {
+    const screen = document.getElementById('pv-screen'); const phone = document.getElementById('pv-phone');
+    if (!screen || !phone) return;
+    const val = id => (document.getElementById(id) || {}).value || '';
+    const accent = val('portal-accent') || '#2563eb';
+    const bg = val('portal-bg') || '#f0f4ff';
+    const anim = val('portal-anim') || 'full';
+    phone.style.setProperty('--pv-accent', accent);
+    phone.style.setProperty('--pv-accent-d', _pvMix(accent, 0, 0.20));
+    phone.style.setProperty('--pv-accent-l', _pvMix(accent, 255, 0.78));
+    phone.style.background = bg;
+    phone.className = 'pv-phone pv-anim-' + anim;
+    const brand = `<div class="pv-brand"><span class="pv-brand-ic">◆</span> Activation Portal</div>`;
+    let html = '';
+    if (_pvView === 'form') {
+      html = `${brand}<div class="pv-card"><div class="pv-h">Activate your subscription</div><div class="pv-sub">Enter your details to continue.</div>
+        <div class="pv-flabel">Organization ID</div><div class="pv-input"></div>
+        <button class="pv-btn">Activate →</button></div>`;
+    } else if (_pvView === 'status') {
+      html = `${brand}<div class="pv-card"><div class="pv-h">Verifying your account</div><div class="pv-sub">We're confirming your details.</div>
+        <div class="pv-steps">
+          <div class="pv-step done"><span class="pv-dot">✓</span> Details Submitted</div>
+          <div class="pv-step spin"><span class="pv-dot">◎</span> Verification</div>
+          <div class="pv-step"><span class="pv-dot">○</span> Verification Approved</div>
+          <div class="pv-step"><span class="pv-dot">○</span> Processing</div>
+        </div></div>`;
+    } else if (_pvView === 'activated') {
+      html = `${brand}<div class="pv-card" style="text-align:center"><div class="pv-ring">✓</div><div class="pv-h">Package Activated!</div><div class="pv-sub">Your package is live and ready.</div><button class="pv-btn">View details</button></div>`;
+    } else {
+      const wq = val('portal-wechat-qr'), waq = val('portal-whatsapp-qr');
+      const title = val('portal-intro-title') || 'Contact us before activating';
+      const text = val('portal-intro-text') || 'Scan to reach us on WeChat or WhatsApp first.';
+      const cards = [];
+      if (wq)  cards.push(`<div class="pv-qr"><img src="${_pvEsc(wq)}"/><div class="pv-qr-l" style="color:#09b83e">WeChat</div></div>`);
+      if (waq) cards.push(`<div class="pv-qr"><img src="${_pvEsc(waq)}"/><div class="pv-qr-l" style="color:#1faf54">WhatsApp</div></div>`);
+      if (!cards.length) cards.push(`<div class="pv-qr pv-qr-empty">Upload WeChat / WhatsApp QR images above to preview them here.</div>`);
+      html = `${brand}<div class="pv-card"><div class="pv-h" style="font-size:.9rem;color:#94a3b8">Activation form (behind popup)</div></div>
+        <div class="pv-popup"><div class="pv-pop-box"><div class="pv-pop-title">${_pvEsc(title)}</div><div class="pv-pop-text">${_pvEsc(text)}</div><div class="pv-qrs">${cards.join('')}</div><button class="pv-btn">Continue to activation →</button></div></div>`;
+    }
+    screen.innerHTML = html;
+  };
+
+  let _pvWired = false;
+  const _wirePreview = () => {
+    if (_pvWired) return; _pvWired = true;
+    ['portal-accent', 'portal-accent-hex', 'portal-bg', 'portal-bg-hex', 'portal-intro-title', 'portal-intro-text'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.addEventListener('input', updatePreview);
+    });
+    ['portal-anim', 'portal-intro-on'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.addEventListener('change', updatePreview);
+    });
+  };
+
+  return { load, save, refreshTemplateDropdown, addSlide, removeSlide, uploadSlideImage, syncThumb, downloadBackup, restoreBackup, uploadQR, clearQR, previewView, updatePreview, CURRENCIES };
 })();
