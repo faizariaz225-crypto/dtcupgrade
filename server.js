@@ -502,10 +502,9 @@ app.post('/admin/products/save', (req, res) => {
   if (!product || !product.id || !product.name) return res.status(400).json({ error: 'Invalid product.' });
   const data = loadProducts();
   const idx = data.products.findIndex(p => p.id === product.id);
-  // Preserve the live processing-timer state (managed via /admin/product/timer, not the editor form)
-  if (idx >= 0 && data.products[idx].processingTimer && product.processingTimer === undefined) {
-    product.processingTimer = data.products[idx].processingTimer;
-  }
+  // Preserve live processing alert state (managed from the Notifications page, not the product editor)
+  if (idx >= 0 && product.processingTimer === undefined && data.products[idx].processingTimer) product.processingTimer = data.products[idx].processingTimer;
+  if (idx >= 0 && product.processingNotice === undefined && data.products[idx].processingNotice) product.processingNotice = data.products[idx].processingNotice;
   if (idx >= 0) data.products[idx] = product; else data.products.push(product);
   saveProducts(data);
   res.json({ success: true });
@@ -767,6 +766,29 @@ app.post('/admin/product/timer', (req, res) => {
   p.processingTimer = tm;
   saveProducts(data);
   res.json({ success: true, timer: { show: !!tm.show, running: !!tm.running, elapsedMs: timerElapsed(tm) } });
+});
+
+// ── Admin: set a product's processing warning (from the Notifications page) ──────
+app.post('/admin/product/notice', (req, res) => {
+  const { adminKey, productId, enabled, title, message, eta } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const data = loadProducts();
+  const p = data.products.find(x => x.id === productId);
+  if (!p) return res.status(404).json({ error: 'Product not found.' });
+  p.processingNotice = { enabled: !!enabled, title: (title || '').trim(), message: (message || '').trim(), eta: (eta || '').trim() };
+  saveProducts(data);
+  res.json({ success: true, processingNotice: p.processingNotice });
+});
+
+// ── Admin: products + their live processing-alert state (for the Notifications page) ──
+app.get('/admin/processing-alerts', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const list = loadProducts().products.map(p => ({
+    id: p.id, name: p.name, active: p.active !== false,
+    notice: p.processingNotice || { enabled: false, title: '', message: '', eta: '' },
+    timer: { show: !!(p.processingTimer && p.processingTimer.show), running: !!(p.processingTimer && p.processingTimer.running), elapsedMs: timerElapsed(p.processingTimer) },
+  }));
+  res.json({ products: list });
 });
 
 app.get('/api/status', (req, res) => {
