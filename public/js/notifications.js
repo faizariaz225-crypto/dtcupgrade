@@ -15,7 +15,7 @@ const Notifications = (() => {
   };
 
   // ── Per-product server-load alerts (warning + timer) ───────────────────────
-  let _alerts = [];           // [{id,name,active,notice,timer}]
+  let _alerts = [];           // [{id,name,active,notice,timer,_anchor}]
   let _tick = null;
   const _fmtDur = (ms) => {
     const s = Math.max(0, Math.floor(ms / 1000));
@@ -29,15 +29,16 @@ const Notifications = (() => {
     try { d = await (await fetch(`/admin/processing-alerts?adminKey=${encodeURIComponent(Store.adminKey)}`)).json(); }
     catch (e) { wrap.innerHTML = '<div class="empty">Could not load products.</div>'; return; }
     _alerts = (d.products || []).map(p => ({ ...p, _anchor: Date.now() }));
-    if (!_alerts.length) { wrap.innerHTML = '<div class="empty">No products yet. Add a product first.</div>'; return; }
+    if (!_alerts.length) { wrap.innerHTML = '<div class="empty">No products yet. Add a product on the Products page first.</div>'; return; }
 
     wrap.innerHTML = _alerts.map(p => {
       const n = p.notice || {}; const t = p.timer || {};
       const on = !!n.enabled;
+      const live = on || t.show;
       return `
-      <div class="card" style="border:1.5px solid ${on || t.show ? '#fde68a' : 'var(--border)'};background:${on || t.show ? '#fffdf5' : 'var(--white)'};margin-bottom:.9rem">
+      <div class="card" style="border:1.5px solid ${live ? '#fde68a' : 'var(--border)'};background:${live ? '#fffdf5' : 'var(--white)'};margin-bottom:.9rem">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem">
-          <div style="font-weight:700">${esc(p.name)} ${p.active ? '' : '<span style="font-size:.66rem;color:var(--muted)">(inactive)</span>'}</div>
+          <div style="font-weight:700">${esc(p.name)} ${p.active ? '' : '<span style="font-size:.66rem;color:var(--muted)">(inactive)</span>'} ${live ? '<span style="font-size:.62rem;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:.08rem .4rem;color:#b45309;font-weight:700;margin-left:.3rem">● LIVE</span>' : ''}</div>
           <label class="toggle" style="margin-bottom:0">
             <input type="checkbox" id="al-on-${p.id}" ${on ? 'checked' : ''} onchange="Notifications.saveNotice('${p.id}')"/>
             <div class="toggle-track"><div class="toggle-thumb"></div></div>
@@ -48,8 +49,9 @@ const Notifications = (() => {
           <div class="form-group" style="margin-bottom:0"><label>Warning Title</label><input id="al-title-${p.id}" value="${esc(n.title || '')}" placeholder="Server Under Heavy Load"/></div>
           <div class="form-group" style="margin-bottom:0"><label>Expected Completion</label><input id="al-eta-${p.id}" value="${esc(n.eta || '')}" placeholder="Within the next 2-4 hours"/></div>
         </div>
-        <div class="form-group" style="margin-bottom:.5rem"><label>Message</label><textarea id="al-msg-${p.id}" rows="2" placeholder="Your order is taking longer than usual due to high server load. You can safely close this page — we'll email you once activated.">${esc(n.message || '')}</textarea></div>
+        <div class="form-group" style="margin-bottom:.5rem"><label>Message</label><textarea id="al-msg-${p.id}" rows="2" placeholder="Your order is taking longer than usual due to high demand. You can safely close this page — we'll notify you once activated.">${esc(n.message || '')}</textarea></div>
         <button class="btn btn-outline btn-sm" onclick="Notifications.saveNotice('${p.id}')">Save warning text</button>
+        <div style="font-size:.66rem;color:var(--muted);margin-top:.35rem">Leave title/message blank to use the default heavy-load text.</div>
         <div style="border-top:1px solid var(--border);margin:.8rem 0 .6rem"></div>
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
           <span style="font-size:.74rem;font-weight:700;margin-right:.2rem">⏱ Timer</span>
@@ -83,7 +85,7 @@ const Notifications = (() => {
       message: document.getElementById('al-msg-' + id)?.value || '',
       eta:     document.getElementById('al-eta-' + id)?.value || '',
     });
-    if (d && d.success) { const p = _alerts.find(x => x.id === id); if (p) p.notice = d.processingNotice; }
+    if (d && d.success) { const p = _alerts.find(x => x.id === id); if (p) p.notice = d.processingNotice; renderAlerts(); }
   };
   const timer = async (id, action) => {
     const d = await api('/admin/product/timer', { adminKey: Store.adminKey, productId: id, action });
@@ -93,6 +95,7 @@ const Notifications = (() => {
       const st = document.getElementById('al-tstate-' + id);
       if (st) st.textContent = !d.timer.show ? '(hidden)' : d.timer.running ? '● running · visible' : '⏸ paused · visible';
       _tickTimers();
+      renderAlerts();
     }
   };
 
