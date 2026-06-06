@@ -121,6 +121,44 @@
     .ptag { background: #fff; border: 1.5px solid var(--border); color: var(--muted); border-radius: 16px; padding: .3rem .8rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: 'Inter',sans-serif; transition: all .15s; }
     .ptag:hover { border-color: var(--blue-mid); }
     .ptag.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    /* ── Live activation preview ─────────────────────────────────────────────── */
+    .pv-tabs { display:flex; gap:.4rem; margin-bottom:.8rem; flex-wrap:wrap; }
+    .pv-tab { background:#fff; border:1.5px solid var(--border); color:var(--muted); border-radius:8px; padding:.35rem .8rem; font-size:.74rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
+    .pv-tab.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .pv-phone { --pv-accent:#2563eb; --pv-accent-d:#1e40af; --pv-accent-l:#dbeafe; width:300px; max-width:100%; height:560px; margin:0 auto; border-radius:30px; border:9px solid #0f172a; box-shadow:0 18px 50px rgba(0,0,0,.25); overflow:hidden; position:relative; }
+    .pv-screen { position:absolute; inset:0; overflow:auto; padding:22px 18px; }
+    .pv-brand { display:flex; align-items:center; gap:.45rem; font-weight:800; font-size:.92rem; color:var(--pv-accent-d); margin-bottom:1.1rem; }
+    .pv-brand-ic { width:26px;height:26px;border-radius:7px;background:var(--pv-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem; }
+    .pv-card { background:#fff; border-radius:16px; padding:18px 16px; box-shadow:0 8px 30px rgba(15,23,42,.10); }
+    .pv-h { font-size:1.1rem; font-weight:800; color:#0f172a; }
+    .pv-sub { font-size:.76rem; color:#64748b; margin:.25rem 0 1rem; }
+    .pv-flabel { font-size:.7rem; font-weight:700; color:#475569; margin-bottom:.3rem; }
+    .pv-input { height:38px; border:1.5px solid #e2e8f0; border-radius:9px; margin-bottom:1rem; background:#f8fafc; }
+    .pv-btn { width:100%; background:var(--pv-accent); color:#fff; border:none; border-radius:11px; padding:.8rem; font-weight:700; font-size:.9rem; cursor:default; }
+    .pv-steps { display:flex; flex-direction:column; gap:.85rem; margin-top:.6rem; }
+    .pv-step { display:flex; align-items:center; gap:.6rem; font-size:.82rem; color:#94a3b8; }
+    .pv-step.done, .pv-step.spin { color:#0f172a; font-weight:600; }
+    .pv-dot { width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;border:2px solid #e2e8f0; flex-shrink:0; }
+    .pv-step.done .pv-dot { background:var(--pv-accent); border-color:var(--pv-accent); color:#fff; }
+    .pv-step.spin .pv-dot { border-color:var(--pv-accent); color:var(--pv-accent); }
+    .pv-ring { width:70px;height:70px;border-radius:50%;border:3px solid #16a34a;display:flex;align-items:center;justify-content:center;color:#16a34a;font-size:1.8rem;margin:1rem auto; }
+    .pv-popup { position:absolute; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:14px; }
+    .pv-pop-box { background:#fff; border-radius:16px; padding:16px 14px; text-align:center; width:100%; }
+    .pv-pop-title { font-weight:800; font-size:.95rem; color:#0f172a; }
+    .pv-pop-text { font-size:.72rem; color:#64748b; margin:.3rem 0 .8rem; }
+    .pv-qrs { display:flex; gap:.6rem; justify-content:center; margin-bottom:.8rem; }
+    .pv-qr { flex:1; background:#f8faff; border:1px solid #e2e8f0; border-radius:10px; padding:.5rem; }
+    .pv-qr img { width:100%; border-radius:6px; display:block; }
+    .pv-qr-l { font-size:.7rem; font-weight:700; margin-top:.35rem; }
+    .pv-qr-empty { font-size:.7rem; color:#94a3b8; padding:1.4rem .4rem; }
+    .pv-anim-full .pv-step.spin .pv-dot { animation:pvPulse 1.6s ease-in-out infinite; }
+    .pv-anim-full .pv-ring { animation:pvBounce .6s cubic-bezier(.34,1.56,.64,1); }
+    .pv-anim-full .pv-card, .pv-anim-full .pv-pop-box { animation:pvIn .5s cubic-bezier(.2,.7,.2,1) both; }
+    .pv-anim-subtle .pv-card, .pv-anim-subtle .pv-pop-box { animation:pvFade .5s ease both; }
+    @keyframes pvPulse { 0%{box-shadow:0 0 0 0 var(--pv-accent-l)} 70%{box-shadow:0 0 0 8px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+    @keyframes pvBounce { 0%{transform:scale(.7);opacity:.4} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+    @keyframes pvIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @keyframes pvFade { from{opacity:0} to{opacity:1} }
     .cust-subs { margin: .3rem 0 .9rem; }
     .cust-subs-hdr { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .4rem; }
     .sub-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
@@ -523,18 +561,41 @@
 
         <!-- Reseller (optional) -->
         <div style="margin-top:.5rem">
-          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem">
-            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller tracking (optional)</summary>
-            <div class="form-row" style="margin-top:.7rem;margin-bottom:0">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller ID</label>
-                <input id="gen-reseller-id" placeholder="e.g. reseller-ahmed"/>
+          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem" id="gen-reseller-details">
+            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller / referral (optional)</summary>
+            <div class="form-group" style="margin-top:.7rem;margin-bottom:.6rem">
+              <label>Referred by reseller?</label>
+              <select id="gen-reseller" onchange="Dashboard.onResellerPick()">
+                <option value="">— Direct (no reseller) —</option>
+                <option value="__new__">➕ New reseller…</option>
+              </select>
+            </div>
+            <div id="gen-reseller-new" style="display:none">
+              <div class="form-row" style="margin-bottom:.6rem">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Reseller Name</label>
+                  <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Contact (optional)</label>
+                  <input id="gen-reseller-contact" placeholder="WeChat / phone / email"/>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller Name</label>
-                <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Type</label>
+                  <select id="gen-reseller-ctype">
+                    <option value="percent">Percentage of sale (%)</option>
+                    <option value="flat">Flat amount per sale</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Value</label>
+                  <input type="number" id="gen-reseller-cvalue" min="0" step="0.01" placeholder="e.g. 20"/>
+                </div>
               </div>
             </div>
+            <div id="gen-reseller-info" style="display:none;font-size:.72rem;color:var(--muted);margin-top:.3rem"></div>
           </details>
         </div>
 
@@ -632,9 +693,10 @@
         <div class="ph-title">Resellers</div>
         <div class="ph-sub">Track sales made through resellers separately from direct sales.</div>
       </div>
-      <div class="stats" style="grid-template-columns:repeat(2,1fr);max-width:420px;margin-bottom:1.4rem">
-        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Revenue</div></div>
-        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Revenue</div></div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr);max-width:620px;margin-bottom:1.4rem">
+        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Sales</div></div>
+        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Sales</div></div>
+        <div class="stat"><div class="stat-val" style="color:#7c3aed" id="reseller-commission">$0</div><div class="stat-lbl">Reseller Commission (profit owed)</div></div>
       </div>
       <div id="reseller-breakdown"><div class="empty">Loading…</div></div>
     </div><!-- /page-resellers -->
@@ -732,8 +794,16 @@
               <option value="expiring">Expiring within 30 days</option>
               <option value="expired">Expired subscriptions</option>
               <option value="submitted">Submitted, awaiting approval</option>
+              <option value="custom-only">Custom recipients only (below)</option>
             </select>
             <span class="recipient-count-badge" id="recipient-count">0 recipients</span>
+          </div>
+
+          <!-- Custom / external recipients -->
+          <div class="form-group" style="margin-bottom:.8rem">
+            <label>Add custom recipients <span style="font-weight:400;color:var(--muted)">— people not in your customer list</span></label>
+            <textarea id="bulk-custom-emails" rows="3" placeholder="One per line, e.g.&#10;jane@example.com&#10;Ahmed Khan &lt;ahmed@example.com&gt;" style="font-family:'JetBrains Mono',monospace;font-size:.8rem" oninput="BulkEmail._renderRecipientCount()"></textarea>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">Added on top of the filter above (or choose “Custom recipients only”). Use <code>Name &lt;email&gt;</code> to personalise <code>{{name}}</code>; duplicates of existing customers are skipped.</div>
           </div>
 
           <!-- Template type indicator -->
@@ -873,6 +943,18 @@
             <option value="off">Off — no animation</option>
           </select>
         </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Live Preview</div>
+        <div class="setting-block-sub">Updates instantly as you change the colours, animation, slides and popup above — no need to save or open the link.</div>
+        <div class="pv-tabs">
+          <button type="button" class="pv-tab on" data-view="form" onclick="Settings.previewView('form')">Form</button>
+          <button type="button" class="pv-tab" data-view="status" onclick="Settings.previewView('status')">Status</button>
+          <button type="button" class="pv-tab" data-view="activated" onclick="Settings.previewView('activated')">Activated</button>
+          <button type="button" class="pv-tab" data-view="popup" onclick="Settings.previewView('popup')">Popup</button>
+        </div>
+        <div class="pv-phone" id="pv-phone"><div class="pv-screen" id="pv-screen"></div></div>
       </div>
 
       <div class="setting-block">
@@ -1209,6 +1291,29 @@
       <label>Activation Page Name <span style="font-weight:400;color:var(--muted)">(Portal title shown to the customer)</span></label>
       <input id="prod-portal-name" placeholder="e.g. Premium AI Activation — leave blank to use the default"/>
       <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Appears as the heading on this product's activation page instead of the fixed "Claude" / "ChatGPT" label. Leave blank to keep the default.</div>
+    </div>
+
+    <div class="form-group" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.8rem .9rem">
+      <label class="toggle" style="margin-bottom:.5rem"><input type="checkbox" id="prod-notice-on"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.82rem;font-weight:700;margin-left:.5rem">⚠ Processing notice for this product</span></label>
+      <div style="font-size:.72rem;color:var(--muted);margin:0 0 .6rem">Shown on the activation status page for <strong>this product only</strong> — e.g. during heavy load or delays. Turn on to alert customers; turn off when back to normal. Updates live for customers waiting.</div>
+      <div class="form-group" style="margin-bottom:.5rem"><label>Notice Title</label><input id="prod-notice-title" placeholder="Server Under Heavy Load"/></div>
+      <div class="form-group" style="margin-bottom:.5rem"><label>Message</label><textarea id="prod-notice-msg" rows="3" placeholder="Your order is taking longer than usual due to high server load. You can safely close this page — we'll email you once your package is activated."></textarea></div>
+      <div class="form-group" style="margin-bottom:0"><label>Expected Completion <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input id="prod-notice-eta" placeholder="Within the next 2-4 hours"/></div>
+    </div>
+
+    <div class="form-group" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:.8rem .9rem">
+      <div style="font-size:.82rem;font-weight:700;margin-bottom:.3rem">⏱ Processing timer (customer-facing)</div>
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem">Show a live "processing time" counter to waiting customers of this product. Control it live — changes reach their page within seconds.</div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <span id="prod-timer-display" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.05rem;min-width:84px">00:00:00</span>
+        <span id="prod-timer-state" style="font-size:.72rem;color:var(--muted);margin-right:.3rem"></span>
+        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('show')">👁 Show</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('hide')">🚫 Hide</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('play')">▶ Play</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('pause')">⏸ Pause</button>
+        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('reset')">⟲ Reset</button>
+      </div>
+      <div id="prod-timer-hint" style="font-size:.68rem;color:var(--muted);margin-top:.4rem"></div>
     </div>
 
     <div style="margin-bottom:.8rem">

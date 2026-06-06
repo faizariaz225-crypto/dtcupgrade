@@ -132,6 +132,15 @@
     @keyframes ringDraw{to{stroke-dashoffset:0}}
     @keyframes checkDraw{to{stroke-dashoffset:0}}
     @keyframes checkBounce{0%{transform:scale(.7);opacity:.4}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+    /* ── Per-product processing notice (heavy load / issues) ───────────────── */
+    .proc-notice{margin-top:1.4rem;background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:1.3rem 1.5rem;text-align:center;animation:noticeIn .5s cubic-bezier(.2,.7,.2,1) both}
+    .proc-notice-ic{font-size:1.8rem;margin-bottom:.5rem}
+    .proc-notice-title{font-size:1.05rem;font-weight:800;color:#b45309;margin-bottom:.5rem}
+    .proc-notice-msg{font-size:.9rem;color:#92633a;line-height:1.6}
+    .proc-notice-eta{font-size:.86rem;font-weight:700;color:#b45309;margin-top:.7rem}
+    @keyframes noticeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+    .proc-timer{margin-top:1.1rem;font-size:.9rem;color:var(--muted);text-align:center}
+    .proc-timer span{font-family:'JetBrains Mono','SF Mono',monospace;font-weight:700;color:var(--text);font-size:1.05rem}
     /* ── Activation confirmation overlay ───────────────────────────────────── */
     .ac-overlay{position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:1.2rem;animation:acFade .2s ease}
     .ac-box{background:var(--white);border-radius:18px;max-width:420px;width:100%;padding:1.8rem 1.6rem 1.5rem;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.3);animation:acPop .26s cubic-bezier(.34,1.56,.64,1)}
@@ -535,6 +544,13 @@
         <div class="tl-item"><div class="tl-dot wait" id="tl3-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl3-title">Verification Approved</div><div class="tl-sub" id="tl3-sub">Your details have been confirmed.</div></div></div>
         <div class="tl-item"><div class="tl-dot wait" id="tl4-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl4-title">Processing</div><div class="tl-sub" id="tl4-sub">Activating your subscription.</div></div></div>
       </div>
+      <div id="proc-notice" class="proc-notice" style="display:none">
+        <div class="proc-notice-ic">⚠</div>
+        <div class="proc-notice-title" id="proc-notice-title"></div>
+        <div class="proc-notice-msg" id="proc-notice-msg"></div>
+        <div class="proc-notice-eta" id="proc-notice-eta" style="display:none"></div>
+      </div>
+      <div id="proc-timer" class="proc-timer" style="display:none">Processing time: <span id="proc-timer-val">00:00:00</span></div>
     </div>
 
     <!-- Activated -->
@@ -642,8 +658,8 @@
 <!-- Pre-activation contact popup (WeChat / WhatsApp QR) -->
 <div id="intro-popup" class="intro-overlay">
   <div class="intro-box">
-    <div class="intro-title" id="intro-title">Contact us before activating</div>
-    <p class="intro-text" id="intro-text">Scan to reach us on WeChat or WhatsApp first.</p>
+    <div class="intro-title" id="intro-title">Join our Wechat and Whatsapp Groups</div>
+    <p class="intro-text" id="intro-text">Scan to reach us on WeChat or WhatsApp</p>
     <div class="intro-qrs" id="intro-qrs"></div>
     <button class="intro-btn" id="intro-continue">Continue to activation →</button>
   </div>
@@ -1076,6 +1092,51 @@
     }
   };
 
+  // ── Per-product processing notice (admin-managed) ─────────────────────────
+  // ── Per-product processing timer (admin-controlled) ──────────────────────
+  let _timer = { show: false, running: false, elapsedMs: 0, anchor: 0 };
+  let _timerInt = null;
+  const _fmtDur = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
+  const _renderTimer = () => {
+    const el = document.getElementById('proc-timer-val');
+    if (!el) return;
+    const shown = _timer.running ? _timer.elapsedMs + (Date.now() - _timer.anchor) : _timer.elapsedMs;
+    el.textContent = _fmtDur(shown);
+  };
+  const applyTimer = (tm) => {
+    const box = document.getElementById('proc-timer');
+    if (!box) return;
+    if (tm && tm.show) {
+      _timer = { show: true, running: !!tm.running, elapsedMs: tm.elapsedMs || 0, anchor: Date.now() };
+      box.style.display = '';
+      _renderTimer();
+      if (_timerInt) clearInterval(_timerInt);
+      if (_timer.running) _timerInt = setInterval(_renderTimer, 1000);
+    } else {
+      box.style.display = 'none';
+      if (_timerInt) { clearInterval(_timerInt); _timerInt = null; }
+    }
+  };
+
+  const applyNotice = (n) => {
+    const box = document.getElementById('proc-notice');
+    if (!box) return;
+    if (n && (n.title || n.message)) {
+      document.getElementById('proc-notice-title').textContent = n.title || '';
+      document.getElementById('proc-notice-msg').textContent   = n.message || '';
+      const eta = document.getElementById('proc-notice-eta');
+      if (n.eta) { eta.style.display = ''; eta.textContent = 'Expected completion: ' + n.eta; }
+      else eta.style.display = 'none';
+      box.style.display = '';
+    } else {
+      box.style.display = 'none';
+    }
+  };
+
   const showProcessing = () => {
     const isGpt = currentProduct === 'chatgpt';
     document.getElementById('proc-pkg').textContent  = state.packageType;
@@ -1159,6 +1220,8 @@
         const d = await r.json();
         if (d.notification) showNotification(d.notification);
         if (d.processingText) document.querySelector('#screen-processing .state-sub').textContent = d.processingText;
+        applyNotice(d.processingNotice);
+        applyTimer(d.processingTimer);
         if (d.status === 'activated') {
           clearInterval(pollTimer);
           Object.assign(state, {
