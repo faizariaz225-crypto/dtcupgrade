@@ -762,6 +762,12 @@
         <div class="msg ok" id="notif-ok"></div>
         <div class="msg err" id="notif-err"></div>
       </div>
+
+      <div class="card" style="margin-top:1.2rem">
+        <div class="card-title"><span>⚠ Server Load Alerts — per product</span></div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">Turn a heavy-load <strong>warning</strong> and a live <strong>processing timer</strong> on for <strong>only the products that are slow right now</strong>. Customers of every other product see nothing. Changes reach waiting customers within seconds.</div>
+        <div id="proc-alert-list"><div class="empty">Loading…</div></div>
+      </div>
     </div><!-- /page-notifications -->
 
     <!-- ── PAGE: Email Campaigns ── -->
@@ -1293,28 +1299,7 @@
       <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Appears as the heading on this product's activation page instead of the fixed "Claude" / "ChatGPT" label. Leave blank to keep the default.</div>
     </div>
 
-    <div class="form-group" style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:.8rem .9rem">
-      <label class="toggle" style="margin-bottom:.5rem"><input type="checkbox" id="prod-notice-on"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.82rem;font-weight:700;margin-left:.5rem">⚠ Processing notice for this product</span></label>
-      <div style="font-size:.72rem;color:var(--muted);margin:0 0 .6rem">Shown on the activation status page for <strong>this product only</strong> — e.g. during heavy load or delays. Turn on to alert customers; turn off when back to normal. Updates live for customers waiting.</div>
-      <div class="form-group" style="margin-bottom:.5rem"><label>Notice Title</label><input id="prod-notice-title" placeholder="Server Under Heavy Load"/></div>
-      <div class="form-group" style="margin-bottom:.5rem"><label>Message</label><textarea id="prod-notice-msg" rows="3" placeholder="Your order is taking longer than usual due to high server load. You can safely close this page — we'll email you once your package is activated."></textarea></div>
-      <div class="form-group" style="margin-bottom:0"><label>Expected Completion <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input id="prod-notice-eta" placeholder="Within the next 2-4 hours"/></div>
-    </div>
-
-    <div class="form-group" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:.8rem .9rem">
-      <div style="font-size:.82rem;font-weight:700;margin-bottom:.3rem">⏱ Processing timer (customer-facing)</div>
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.6rem">Show a live "processing time" counter to waiting customers of this product. Control it live — changes reach their page within seconds.</div>
-      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-        <span id="prod-timer-display" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.05rem;min-width:84px">00:00:00</span>
-        <span id="prod-timer-state" style="font-size:.72rem;color:var(--muted);margin-right:.3rem"></span>
-        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('show')">👁 Show</button>
-        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('hide')">🚫 Hide</button>
-        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('play')">▶ Play</button>
-        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('pause')">⏸ Pause</button>
-        <button class="btn btn-outline btn-sm" type="button" onclick="Products.timer('reset')">⟲ Reset</button>
-      </div>
-      <div id="prod-timer-hint" style="font-size:.68rem;color:var(--muted);margin-top:.4rem"></div>
-    </div>
+    <div style="font-size:.72rem;color:var(--muted);background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;margin-bottom:.2rem">💡 Heavy-load <strong>warning</strong> &amp; <strong>processing timer</strong> for this product are now managed on the <strong>🔔 Notifications</strong> page, so you can turn them on only for the products having issues.</div>
 
     <div style="margin-bottom:.8rem">
       <label class="toggle"><input type="checkbox" id="prod-creds-mode" onchange="Products._toggleCredsMode()"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.82rem;font-weight:600;margin-left:.5rem">Credentials Mode</span></label>
