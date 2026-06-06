@@ -26,6 +26,7 @@ const Shell = (() => {
     if (pageId === 'products')     Products.render();
     if (pageId === 'campaigns')    { BulkEmail.render(); BulkEmail.init(); }
     if (pageId === 'resellers')    Resellers.render();
+    if (pageId === 'reports')      Reports.render();
     if (pageId === 'settings')     Settings.load();
     if (pageId === 'revenue')      Revenue.render();
     if (pageId === 'notifications')  { Notifications.init(); Notifications.load(); }
