@@ -446,6 +446,9 @@
       <div class="nav-item" onclick="Shell.navigate('resellers', this)">
         <span class="icon">🤝</span>Resellers
       </div>
+      <div class="nav-item" onclick="Shell.navigate('reports', this)">
+        <span class="icon">📊</span>Reports
+      </div>
       <div class="nav-sec" style="margin-top:.5rem">Catalogue</div>
       <div class="nav-item" onclick="Shell.navigate('products', this)">
         <span class="icon">📦</span>Products
@@ -700,6 +703,15 @@
       </div>
       <div id="reseller-breakdown"><div class="empty">Loading…</div></div>
     </div><!-- /page-resellers -->
+
+    <!-- ── PAGE: Reports ── -->
+    <div class="page" id="page-reports">
+      <div class="ph">
+        <div class="ph-title">Reports</div>
+        <div class="ph-sub">Download Excel or PDF reports. Choose a time grouping where relevant.</div>
+      </div>
+      <div id="reports-cards"></div>
+    </div><!-- /page-reports -->
 
     <!-- ── PAGE: Revenue ── -->
     <div class="page" id="page-revenue">
@@ -1349,6 +1361,7 @@
 <script src="js/products.js"></script>
 <script src="js/revenue.js"></script>
 <script src="js/notifications.js"></script>
+<script src="js/reports.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
