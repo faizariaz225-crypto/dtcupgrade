@@ -5,6 +5,8 @@ const path       = require('path');
 const nodemailer = require('nodemailer');
 const crypto     = require('crypto');
 const multer     = require('multer');
+const XLSX        = require('xlsx');
+const PDFDocument = require('pdfkit');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -791,6 +793,205 @@ app.get('/admin/processing-alerts', (req, res) => {
     timer: { show: !!(p.processingTimer && p.processingTimer.show), running: !!(p.processingTimer && p.processingTimer.running), elapsedMs: timerElapsed(p.processingTimer) },
   }));
   res.json({ products: list });
+});
+
+// ── Reports (Excel + PDF; daily / weekly / monthly) ──────────────────────────────
+function _periodKey(dateStr, period) {
+  if (!dateStr) return '—';
+  const dt = new Date(dateStr);
+  if (isNaN(dt)) return '—';
+  if (period === 'daily')   return dt.toISOString().slice(0, 10);
+  if (period === 'monthly') return dt.toISOString().slice(0, 7);
+  // weekly → ISO week (YYYY-Www)
+  const t = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()));
+  const dayNum = (t.getUTCDay() + 6) % 7;
+  t.setUTCDate(t.getUTCDate() - dayNum + 3);
+  const firstThu = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round(((t - firstThu) / 86400000 - 3 + ((firstThu.getUTCDay() + 6) % 7)) / 7);
+  return t.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
+}
+const _amt   = t => (t.amountReceived != null && t.amountReceived !== '') ? Number(t.amountReceived) : (Number(t.price) || 0);
+const _date  = t => t.approvedAt || t.submittedAt || t.createdAt || '';
+const _fmtDate = d => d ? new Date(d).toISOString().slice(0, 10) : '';
+
+function buildReport(type, period) {
+  const tokens    = Object.values(loadTokens());
+  const activated = tokens.filter(t => t.approved && !t.refunded);
+  const sym = (loadSettings().currencySymbol) || '$';
+  const MONEY = ['Revenue', 'Total Spent', 'Amount', 'Sales', 'Commission', 'Commission Earned'];
+  const pLabel = period === 'daily' ? 'Day' : period === 'weekly' ? 'Week' : 'Month';
+
+  if (type === 'activations') {
+    const byPeriod = {}, byProduct = {};
+    let totalRev = 0;
+    activated.forEach(t => {
+      const k = _periodKey(_date(t), period);
+      byPeriod[k] = byPeriod[k] || { count: 0, rev: 0 };
+      byPeriod[k].count++; byPeriod[k].rev += _amt(t);
+      const pn = t.productName || t.portalName || t.productId || 'Unknown';
+      byProduct[pn] = byProduct[pn] || { count: 0, rev: 0 };
+      byProduct[pn].count++; byProduct[pn].rev += _amt(t);
+      totalRev += _amt(t);
+    });
+    return {
+      title: 'Total Activations Report',
+      filenameBase: `activations_${period}`,
+      sheets: [
+        { name: 'Summary', columns: [{ header: 'Metric', key: 'm' }, { header: 'Value', key: 'v' }], rows: [
+          { m: 'Total activations', v: activated.length },
+          { m: 'Total revenue', v: totalRev, money: true },
+          { m: 'Total links created', v: tokens.length },
+          { m: 'Awaiting approval', v: tokens.filter(t => t.used && !t.approved && !t.declined).length },
+          { m: 'Report generated', v: new Date().toISOString().slice(0, 16).replace('T', ' ') },
+        ] },
+        { name: `By ${pLabel}`, columns: [{ header: pLabel, key: 'p' }, { header: 'Activations', key: 'count' }, { header: 'Revenue', key: 'Revenue' }],
+          rows: Object.keys(byPeriod).sort().map(k => ({ p: k, count: byPeriod[k].count, Revenue: byPeriod[k].rev })) },
+        { name: 'By Product', columns: [{ header: 'Product', key: 'p' }, { header: 'Activations', key: 'count' }, { header: 'Revenue', key: 'Revenue' }],
+          rows: Object.keys(byProduct).sort().map(k => ({ p: k, count: byProduct[k].count, Revenue: byProduct[k].rev })) },
+      ], sym, MONEY,
+    };
+  }
+
+  if (type === 'customers') {
+    const custMap = {};
+    activated.forEach(t => {
+      const key = t.customerId || t.email || t.wechat || t.customerName || 'Unknown';
+      custMap[key] = custMap[key] || { name: t.customerName || '', email: t.email || '', wechat: t.wechat || '', count: 0, spent: 0, first: null, last: null };
+      const c = custMap[key];
+      c.count++; c.spent += _amt(t);
+      const d = _date(t);
+      if (d) { if (!c.first || d < c.first) c.first = d; if (!c.last || d > c.last) c.last = d; }
+    });
+    const list = activated.slice().sort((a, b) => (_date(b) || '').localeCompare(_date(a) || ''));
+    return {
+      title: 'Customer-wise Activations Report',
+      filenameBase: `customer_activations_${period}`,
+      sheets: [
+        { name: 'Customers', columns: [
+            { header: 'Customer', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'WeChat', key: 'wechat' },
+            { header: 'Activations', key: 'count' }, { header: 'Total Spent', key: 'Total Spent' },
+            { header: 'First Activation', key: 'first' }, { header: 'Last Activation', key: 'last' }],
+          rows: Object.values(custMap).sort((a, b) => b.spent - a.spent).map(c => ({
+            name: c.name, email: c.email, wechat: c.wechat, count: c.count, 'Total Spent': c.spent,
+            first: _fmtDate(c.first), last: _fmtDate(c.last) })) },
+        { name: 'All Activations', columns: [
+            { header: pLabel, key: 'p' }, { header: 'Date', key: 'date' }, { header: 'Customer', key: 'cust' },
+            { header: 'Product', key: 'prod' }, { header: 'Package', key: 'pkg' }, { header: 'Amount', key: 'Amount' },
+            { header: 'Payment', key: 'pay' }, { header: 'Reseller', key: 'res' }],
+          rows: list.map(t => ({
+            p: _periodKey(_date(t), period), date: _fmtDate(_date(t)), cust: t.customerName || '',
+            prod: t.productName || t.portalName || t.productId || '', pkg: t.packageType || '',
+            Amount: _amt(t), pay: t.paymentMethod || '', res: t.resellerName || 'Direct' })) },
+      ], sym, MONEY,
+    };
+  }
+
+  // type === 'resellers'
+  const resellers = loadResellers();
+  const regMap = {};
+  resellers.forEach(r => { regMap[r.id] = { name: r.name, contact: r.contact || '', commission: r.commissionType === 'flat' ? `${sym}${r.commissionValue}/sale` : `${r.commissionValue}%`, clients: new Set(), count: 0, sales: 0, comm: 0 }; });
+  const rows = [];
+  activated.filter(t => t.resellerId).forEach(t => {
+    const rid = t.resellerId;
+    if (!regMap[rid]) regMap[rid] = { name: t.resellerName || rid, contact: '', commission: '', clients: new Set(), count: 0, sales: 0, comm: 0 };
+    const m = regMap[rid];
+    const amt = _amt(t), comm = resellerCommission(t, amt);
+    m.clients.add(t.customerId || t.email || t.customerName); m.count++; m.sales += amt; m.comm += comm;
+    rows.push({ p: _periodKey(_date(t), period), date: _fmtDate(_date(t)), res: t.resellerName || rid,
+      client: t.customerName || '', email: t.email || t.wechat || '', prod: t.productName || t.portalName || t.productId || '',
+      pkg: t.packageType || '', Amount: amt, Commission: comm });
+  });
+  rows.sort((a, b) => (a.res || '').localeCompare(b.res || '') || (b.date || '').localeCompare(a.date || ''));
+  return {
+    title: 'Reseller Clients & Reports',
+    filenameBase: `reseller_report_${period}`,
+    sheets: [
+      { name: 'Resellers', columns: [
+          { header: 'Reseller', key: 'name' }, { header: 'Contact', key: 'contact' }, { header: 'Commission Rate', key: 'commission' },
+          { header: 'Clients', key: 'clients' }, { header: 'Activations', key: 'count' },
+          { header: 'Sales', key: 'Sales' }, { header: 'Commission Earned', key: 'Commission Earned' }],
+        rows: Object.values(regMap).sort((a, b) => b.sales - a.sales).map(m => ({
+          name: m.name, contact: m.contact, commission: m.commission, clients: m.clients.size, count: m.count,
+          Sales: m.sales, 'Commission Earned': m.comm })) },
+      { name: 'Reseller Activations', columns: [
+          { header: pLabel, key: 'p' }, { header: 'Date', key: 'date' }, { header: 'Reseller', key: 'res' },
+          { header: 'Client', key: 'client' }, { header: 'Contact', key: 'email' }, { header: 'Product', key: 'prod' },
+          { header: 'Package', key: 'pkg' }, { header: 'Amount', key: 'Amount' }, { header: 'Commission', key: 'Commission' }],
+        rows },
+    ], sym, MONEY,
+  };
+}
+
+function reportToXlsx(report) {
+  const wb = XLSX.utils.book_new();
+  report.sheets.forEach(sheet => {
+    const aoa = [sheet.columns.map(c => c.header)];
+    sheet.rows.forEach(r => aoa.push(sheet.columns.map(c => {
+      let v = r[c.key];
+      if (v === undefined || v === null) v = '';
+      return v;
+    })));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = sheet.columns.map(c => ({ wch: Math.max(c.header.length + 2, 14) }));
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
+  });
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+function reportToPdf(report, res) {
+  const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 36 });
+  doc.pipe(res);
+  doc.fontSize(20).fillColor('#1e293b').text(report.title, { align: 'left' });
+  doc.fontSize(9).fillColor('#64748b').text('Generated ' + new Date().toLocaleString() + '   ·   DTC — Digital Tools Corner');
+  doc.moveDown(0.8);
+
+  report.sheets.forEach((sheet, si) => {
+    if (si > 0) doc.moveDown(1);
+    doc.fontSize(13).fillColor('#2563eb').text(sheet.name);
+    doc.moveDown(0.3);
+    const pageW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    const colW = pageW / sheet.columns.length;
+    const isMoney = h => report.MONEY.includes(h);
+    const drawRow = (vals, opts = {}) => {
+      const y = doc.y;
+      if (doc.y > doc.page.height - 60) { doc.addPage(); }
+      const yy = doc.y;
+      let x = doc.page.margins.left;
+      doc.fontSize(opts.header ? 9 : 8).fillColor(opts.header ? '#ffffff' : '#334155');
+      if (opts.header) doc.rect(x, yy - 2, pageW, 16).fill('#2563eb').fillColor('#ffffff');
+      sheet.columns.forEach((c, i) => {
+        let v = vals[i];
+        if (typeof v === 'number') v = (isMoney(c.header) ? report.sym : '') + v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        doc.fillColor(opts.header ? '#ffffff' : '#334155').text(String(v == null ? '' : v), x + 3, yy, { width: colW - 6, ellipsis: true, lineBreak: false });
+        x += colW;
+      });
+      doc.y = yy + 15;
+    };
+    drawRow(sheet.columns.map(c => c.header), { header: true });
+    if (!sheet.rows.length) { doc.fontSize(8).fillColor('#94a3b8').text('No data.', doc.page.margins.left + 3, doc.y + 2); doc.moveDown(0.5); }
+    sheet.rows.forEach(r => drawRow(sheet.columns.map(c => r[c.key])));
+  });
+  doc.end();
+}
+
+app.get('/admin/report', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const type   = ['activations', 'customers', 'resellers'].includes(req.query.type) ? req.query.type : 'activations';
+  const period = ['daily', 'weekly', 'monthly'].includes(req.query.period) ? req.query.period : 'monthly';
+  const format = req.query.format === 'pdf' ? 'pdf' : 'xlsx';
+  let report;
+  try { report = buildReport(type, period); }
+  catch (e) { return res.status(500).json({ error: 'Failed to build report.' }); }
+  const fname = `${report.filenameBase}_${new Date().toISOString().slice(0, 10)}`;
+  if (format === 'pdf') {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fname}.pdf"`);
+    return reportToPdf(report, res);
+  }
+  const buf = reportToXlsx(report);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${fname}.xlsx"`);
+  res.send(buf);
 });
 
 // ── Poll status ────────────────────────────────────────────────────────────────
