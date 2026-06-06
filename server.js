@@ -502,8 +502,8 @@ app.post('/admin/products/save', (req, res) => {
   if (!product || !product.id || !product.name) return res.status(400).json({ error: 'Invalid product.' });
   const data = loadProducts();
   const idx = data.products.findIndex(p => p.id === product.id);
-  // Preserve live processing alert state (managed from the Notifications page, not the product editor)
-  if (idx >= 0 && product.processingTimer === undefined && data.products[idx].processingTimer) product.processingTimer = data.products[idx].processingTimer;
+  // Preserve live processing-alert state (managed from the Notifications page, not the product editor)
+  if (idx >= 0 && product.processingTimer  === undefined && data.products[idx].processingTimer)  product.processingTimer  = data.products[idx].processingTimer;
   if (idx >= 0 && product.processingNotice === undefined && data.products[idx].processingNotice) product.processingNotice = data.products[idx].processingNotice;
   if (idx >= 0) data.products[idx] = product; else data.products.push(product);
   saveProducts(data);
@@ -722,13 +722,15 @@ app.get('/api/portal-config', (req, res) => {
   res.json({ whatsapp: s.whatsapp || '', slides, layout: s.portalLayout || 'single', panelSize: s.portalPanelSize || 'half', theme: { accent: s.portalAccent || '#2563eb', bg: s.portalBg || '#f0f4ff', anim: s.portalAnim || 'full' }, intro: { enabled: !!s.portalIntroPopup, title: s.portalIntroTitle || '', text: s.portalIntroText || '', wechatQR: s.portalWechatQR || '', whatsappQR: s.portalWhatsappQR || '', whatsapp: s.whatsapp || '' } });
 });
 
-// ── Poll status ────────────────────────────────────────────────────────────────
+// ── Per-product processing alerts (warning + timer) ──────────────────────────────
+const DEFAULT_NOTICE_TITLE = 'Server Under Heavy Load';
+const DEFAULT_NOTICE_MSG   = "Your order is taking longer than usual due to high demand. You can safely close this page — we'll notify you once your package is activated.";
 function noticeForToken(t) {
   if (!t || !t.productId) return null;
   try {
     const p = loadProducts().products.find(x => x.id === t.productId);
     const n = p && p.processingNotice;
-    if (n && n.enabled && (n.title || n.message)) return { title: n.title || '', message: n.message || '', eta: n.eta || '' };
+    if (n && n.enabled) return { title: n.title || DEFAULT_NOTICE_TITLE, message: n.message || DEFAULT_NOTICE_MSG, eta: n.eta || '' };
   } catch (e) {}
   return null;
 }
@@ -768,7 +770,7 @@ app.post('/admin/product/timer', (req, res) => {
   res.json({ success: true, timer: { show: !!tm.show, running: !!tm.running, elapsedMs: timerElapsed(tm) } });
 });
 
-// ── Admin: set a product's processing warning (from the Notifications page) ──────
+// ── Admin: set a product's processing warning ────────────────────────────────────
 app.post('/admin/product/notice', (req, res) => {
   const { adminKey, productId, enabled, title, message, eta } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
@@ -780,7 +782,7 @@ app.post('/admin/product/notice', (req, res) => {
   res.json({ success: true, processingNotice: p.processingNotice });
 });
 
-// ── Admin: products + their live processing-alert state (for the Notifications page) ──
+// ── Admin: all products + their live processing-alert state (Notifications page) ──
 app.get('/admin/processing-alerts', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const list = loadProducts().products.map(p => ({
@@ -791,6 +793,7 @@ app.get('/admin/processing-alerts', (req, res) => {
   res.json({ products: list });
 });
 
+// ── Poll status ────────────────────────────────────────────────────────────────
 app.get('/api/status', (req, res) => {
   const { token } = req.query;
   const tokens = loadTokens();
