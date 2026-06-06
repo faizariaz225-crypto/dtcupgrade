@@ -27,6 +27,7 @@ const KEYS_FILE         = path.join(DATA_DIR, 'keys.json');
 const PAYMENTS_FILE     = path.join(DATA_DIR, 'payments.json');
 const UPLOADS_DIR       = path.join(DATA_DIR, 'uploads');
 const CUSTOMERS_FILE    = path.join(DATA_DIR, 'customers.json');
+const RESELLERS_FILE    = path.join(DATA_DIR, 'resellers.json');
 const ADMINS_FILE       = path.join(DATA_DIR, 'admins.json');
 const USERS_FILE        = path.join(DATA_DIR, 'users.json');
 const SESSIONS_MAP_FILE = path.join(DATA_DIR, 'sessions_map.json');
@@ -41,6 +42,7 @@ if (!fs.existsSync(EMAIL_CONFIG))   fs.writeFileSync(EMAIL_CONFIG,  JSON.stringi
 if (!fs.existsSync(EMAIL_LOG))      fs.writeFileSync(EMAIL_LOG,     JSON.stringify([]));
 if (!fs.existsSync(SETTINGS_FILE))  fs.writeFileSync(SETTINGS_FILE, JSON.stringify({ currency: 'USD', currencySymbol: '$', currencyName: 'US Dollar', activationEmailTemplateId: 'welcome', whatsapp: '', portalSlides: [], paymentMethods: ['Cash','Bank Transfer','Alipay','WeChat Pay','PayPal','Card','Crypto'] }, null, 2));
 if (!fs.existsSync(CUSTOMERS_FILE)) fs.writeFileSync(CUSTOMERS_FILE, JSON.stringify([], null, 2));
+if (!fs.existsSync(RESELLERS_FILE)) fs.writeFileSync(RESELLERS_FILE, JSON.stringify([], null, 2));
 if (!fs.existsSync(KEYS_FILE))      fs.writeFileSync(KEYS_FILE, JSON.stringify({}));
 if (!fs.existsSync(SESSIONS_MAP_FILE)) fs.writeFileSync(SESSIONS_MAP_FILE, JSON.stringify({}));
 if (!fs.existsSync(USERS_FILE)) {
@@ -224,6 +226,39 @@ function findOrCreateCustomer({ customerId, name, email, wechat }) {
   saveCustomers(customers);
   return cust;
 }
+
+// ── Reseller registry (tracked separately, with commission) ──────────────────────
+const loadResellers = () => { try { return JSON.parse(fs.readFileSync(RESELLERS_FILE,'utf8')); } catch { return []; } };
+const saveResellers = r  => fs.writeFileSync(RESELLERS_FILE, JSON.stringify(r, null, 2));
+function findOrCreateReseller({ resellerId, name, contact, commissionType, commissionValue }) {
+  const list = loadResellers();
+  let r = null;
+  if (resellerId)             r = list.find(x => x.id === resellerId);
+  if (!r && _norm(name))      r = list.find(x => _norm(x.name) === _norm(name));
+  if (r) {
+    if (commissionType)                                 r.commissionType  = commissionType;
+    if (commissionValue !== undefined && commissionValue !== '' && commissionValue !== null) r.commissionValue = Number(commissionValue);
+    if (contact)                                        r.contact = contact;
+    saveResellers(list);
+    return r;
+  }
+  if (!_norm(name)) return null;
+  r = {
+    id: 'R' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 900 + 100),
+    name, contact: contact || '',
+    commissionType: commissionType || 'percent',
+    commissionValue: Number(commissionValue) || 0,
+    note: '', createdAt: new Date().toISOString(),
+  };
+  list.push(r);
+  saveResellers(list);
+  return r;
+}
+function resellerCommission(t, amt) {
+  const ct = t.resellerCommissionType || 'percent';
+  const cv = Number(t.resellerCommissionValue) || 0;
+  return ct === 'flat' ? cv : (amt * cv / 100);
+}
 const loadAdmins      = () => { try { return JSON.parse(fs.readFileSync(ADMINS_FILE,'utf8')); } catch { return []; } };
 const saveAdmins      = a  => fs.writeFileSync(ADMINS_FILE, JSON.stringify(a, null, 2));
 
@@ -359,7 +394,7 @@ function calcRevenue(tokens) {
   const byProduct  = {};
   const byReseller = {};
   const byMethod   = {};
-  let total = 0, resellerTotal = 0, directTotal = 0, refundedTotal = 0, refundedCount = 0;
+  let total = 0, resellerTotal = 0, directTotal = 0, refundedTotal = 0, refundedCount = 0, resellerCommissionTotal = 0;
   for (const t of Object.values(tokens)) {
     if (!t.approved) continue;
     // "Amount received" is the source of truth; fall back to list price if not recorded
@@ -373,15 +408,18 @@ function calcRevenue(tokens) {
     total += amt;
     if (t.resellerId) {
       const rid = t.resellerId;
-      if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0 };
+      if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0, commission: 0 };
+      const comm = resellerCommission(t, amt);
       byReseller[rid].total += amt;
       byReseller[rid].count++;
+      byReseller[rid].commission += comm;
       resellerTotal += amt;
+      resellerCommissionTotal += comm;
     } else {
       directTotal += amt;
     }
   }
-  return { total, byProduct, byReseller, byMethod, resellerTotal, directTotal, refundedTotal, refundedCount };
+  return { total, byProduct, byReseller, byMethod, resellerTotal, directTotal, refundedTotal, refundedCount, resellerCommissionTotal };
 }
 
 // ── Email ──────────────────────────────────────────────────────────────────────
@@ -464,6 +502,10 @@ app.post('/admin/products/save', (req, res) => {
   if (!product || !product.id || !product.name) return res.status(400).json({ error: 'Invalid product.' });
   const data = loadProducts();
   const idx = data.products.findIndex(p => p.id === product.id);
+  // Preserve the live processing-timer state (managed via /admin/product/timer, not the editor form)
+  if (idx >= 0 && data.products[idx].processingTimer && product.processingTimer === undefined) {
+    product.processingTimer = data.products[idx].processingTimer;
+  }
   if (idx >= 0) data.products[idx] = product; else data.products.push(product);
   saveProducts(data);
   res.json({ success: true });
@@ -486,7 +528,7 @@ app.get('/admin/revenue', (req, res) => {
 
 // ── Generate link ──────────────────────────────────────────────────────────────
 app.post('/admin/generate', (req, res) => {
-  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey, customerId, email, wechat, paymentMethod } = req.body;
+  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey, customerId, email, wechat, paymentMethod, newReseller } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   if (!customerName)  return res.status(400).json({ error: 'Customer name is required.' });
   if (!productId)     return res.status(400).json({ error: 'Product is required.' });
@@ -501,6 +543,12 @@ app.post('/admin/generate', (req, res) => {
 
   // Resolve (or create) the customer so subscriptions group under one record
   const customer = findOrCreateCustomer({ customerId, name: customerName, email, wechat });
+
+  // Resolve (or create) the reseller, if this sale was referred
+  let reseller = null;
+  if (resellerId) reseller = findOrCreateReseller({ resellerId });
+  else if (newReseller && newReseller.name) reseller = findOrCreateReseller(newReseller);
+  else if (resellerName) reseller = findOrCreateReseller({ name: resellerName });
 
   const token     = uuidv4();
   const tokens    = loadTokens();
@@ -522,8 +570,10 @@ app.post('/admin/generate', (req, res) => {
     price:            parseFloat(price),
     currency:         loadSettings().currency || 'USD',
     currencySymbol:   loadSettings().currencySymbol || '$',
-    resellerId:       resellerId   || null,
-    resellerName:     resellerName || null,
+    resellerId:       reseller ? reseller.id   : (resellerId   || null),
+    resellerName:     reseller ? reseller.name : (resellerName || null),
+    resellerCommissionType:  reseller ? reseller.commissionType  : null,
+    resellerCommissionValue: reseller ? reseller.commissionValue : null,
     product:          product.type,
     credentialsMode:  product.credentialsMode || false,
     loginDetails:     product.loginDetails    || '',
@@ -584,7 +634,7 @@ app.get('/api/validate-token', (req, res) => {
   if (t.used) {
     const { pre, post } = getInstrSets(t);
     const portalName = t.portalName || (loadProducts().products.find(p => p.id === t.productId)?.portalName) || '';
-    return res.json({ valid: true, submitted: true, approved: t.approved || false, stage: t.approved ? 'approved' : (t.declined ? 'declined' : (t.stage || 'submitted')), approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload });
+    return res.json({ valid: true, submitted: true, approved: t.approved || false, stage: t.approved ? 'approved' : (t.declined ? 'declined' : (t.stage || 'submitted')), approvedAt: t.approvedAt || null, customerName: t.customerName, packageType: t.packageType, product: t.product || 'claude', portalName, credentialsMode: t.credentialsMode || false, loginDetails: t.approved ? (t.loginDetails || '') : '', accessLink: t.approved ? (t.accessLink || '') : '', orgId: t.orgId || '', sessionData: t.sessionData || '', wechat: t.wechat || '', email: t.email || '', subscriptionExpiresAt: t.subscriptionExpiresAt || null, durationDays: t.durationDays || 30, processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps, postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps, notification: notifPayload, processingNotice: noticeForToken(t) });
   }
   if (t.expiresAt && new Date() > new Date(t.expiresAt)) return res.status(410).json({ valid: false, error: 'This activation link has expired. Please contact support for a new link.' });
 
@@ -674,6 +724,51 @@ app.get('/api/portal-config', (req, res) => {
 });
 
 // ── Poll status ────────────────────────────────────────────────────────────────
+function noticeForToken(t) {
+  if (!t || !t.productId) return null;
+  try {
+    const p = loadProducts().products.find(x => x.id === t.productId);
+    const n = p && p.processingNotice;
+    if (n && n.enabled && (n.title || n.message)) return { title: n.title || '', message: n.message || '', eta: n.eta || '' };
+  } catch (e) {}
+  return null;
+}
+function timerElapsed(tm) {
+  if (!tm) return 0;
+  return (tm.baseMs || 0) + (tm.running && tm.lastStartedAt ? (Date.now() - new Date(tm.lastStartedAt).getTime()) : 0);
+}
+function timerForToken(t) {
+  if (!t || !t.productId) return null;
+  try {
+    const p = loadProducts().products.find(x => x.id === t.productId);
+    const tm = p && p.processingTimer;
+    if (tm && tm.show) return { show: true, running: !!tm.running, elapsedMs: timerElapsed(tm) };
+  } catch (e) {}
+  return null;
+}
+
+// ── Admin: control a product's processing timer (show/play/pause/reset) ──────────
+app.post('/admin/product/timer', (req, res) => {
+  const { adminKey, productId, action } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const data = loadProducts();
+  const p = data.products.find(x => x.id === productId);
+  if (!p) return res.status(404).json({ error: 'Product not found.' });
+  const tm = p.processingTimer || { show: false, running: false, baseMs: 0, lastStartedAt: null };
+  const now = Date.now();
+  switch (action) {
+    case 'show': tm.show = true; break;
+    case 'hide': tm.show = false; break;
+    case 'play': if (!tm.running) { tm.running = true; tm.lastStartedAt = new Date().toISOString(); } break;
+    case 'pause': if (tm.running) { tm.baseMs = (tm.baseMs || 0) + (now - new Date(tm.lastStartedAt).getTime()); tm.running = false; tm.lastStartedAt = null; } break;
+    case 'reset': tm.baseMs = 0; tm.lastStartedAt = tm.running ? new Date().toISOString() : null; break;
+    default: return res.status(400).json({ error: 'Invalid action.' });
+  }
+  p.processingTimer = tm;
+  saveProducts(data);
+  res.json({ success: true, timer: { show: !!tm.show, running: !!tm.running, elapsedMs: timerElapsed(tm) } });
+});
+
 app.get('/api/status', (req, res) => {
   const { token } = req.query;
   const tokens = loadTokens();
@@ -693,6 +788,8 @@ app.get('/api/status', (req, res) => {
     processingText: pre.processingText, approvedText: pre.approvedText, approvedSteps: pre.approvedSteps,
     postApprovedText: post.postApprovedText, postApprovedSteps: post.postApprovedSteps,
     notification: notify.enabled ? { message: notify.message, type: notify.type } : null,
+    processingNotice: noticeForToken(t),
+    processingTimer: timerForToken(t),
   });
 });
 
@@ -1170,6 +1267,7 @@ app.post('/admin/sessions-data', (req, res) => {
   res.json({
     tokens, emailLog: loadEmailLog(), revenue: calcRevenue(allTokens),
     customers: loadCustomers(),
+    resellers: loadResellers(),
     settings: { currency: s.currency || 'USD', currencySymbol: s.currencySymbol || '$', currencyName: s.currencyName || '', paymentMethods: Array.isArray(s.paymentMethods) ? s.paymentMethods : [] },
     currentUser: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms },
   });
@@ -1288,7 +1386,7 @@ app.post('/admin/email-templates/delete', (req, res) => {
 
 // ── Bulk email send ────────────────────────────────────────────────────────────
 app.post('/admin/bulk-email', async (req, res) => {
-  const { adminKey, templateId, customSubject, customBody, recipientFilter, tokenList } = req.body;
+  const { adminKey, templateId, customSubject, customBody, recipientFilter, tokenList, customEmails } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
 
   const cfg = loadEmailCfg();
@@ -1312,7 +1410,7 @@ app.post('/admin/bulk-email', async (req, res) => {
   if (tokenList && tokenList.length) {
     // Specific tokens selected by admin
     recipients = tokenList.map(tok => tokens[tok]).filter(t => t && t.email);
-  } else {
+  } else if (recipientFilter !== 'custom-only') {
     // Filter-based
     const filter = recipientFilter || 'all-with-email';
     for (const t of Object.values(tokens)) {
@@ -1328,6 +1426,17 @@ app.post('/admin/bulk-email', async (req, res) => {
         if (d < 0) { recipients.push(t); continue; }
       }
       if (filter === 'submitted' && t.used && !t.approved) { recipients.push(t); continue; }
+    }
+  }
+
+  // Append custom / external recipients (people not in the customer list), de-duplicated by email
+  const seen = new Set(recipients.map(t => String(t.email).toLowerCase()));
+  if (Array.isArray(customEmails)) {
+    for (const c of customEmails) {
+      const email = (c && c.email ? String(c.email) : '').trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || seen.has(email)) continue;
+      seen.add(email);
+      recipients.push({ email, customerName: (c.name || '').trim(), _custom: true });
     }
   }
 
@@ -1421,18 +1530,45 @@ app.post('/admin/settings', (req, res) => {
   res.json({ success: true });
 });
 
-// ── Resellers list ─────────────────────────────────────────────────────────────
+// ── Resellers list (registry + sales + commission/profit) ───────────────────────
 app.get('/admin/resellers', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const registry = loadResellers();
   const tokens = loadTokens();
   const map = {};
+  registry.forEach(r => { map[r.id] = { ...r, total: 0, count: 0, activated: 0, commission: 0, refunded: 0 }; });
   for (const t of Object.values(tokens)) {
     if (!t.resellerId) continue;
-    if (!map[t.resellerId]) map[t.resellerId] = { id: t.resellerId, name: t.resellerName || t.resellerId, total: 0, count: 0, activated: 0 };
-    map[t.resellerId].count++;
-    if (t.approved && t.price) { map[t.resellerId].total += t.price; map[t.resellerId].activated++; }
+    if (!map[t.resellerId]) map[t.resellerId] = { id: t.resellerId, name: t.resellerName || t.resellerId, contact: '', commissionType: t.resellerCommissionType || 'percent', commissionValue: Number(t.resellerCommissionValue) || 0, note: '', total: 0, count: 0, activated: 0, commission: 0, refunded: 0 };
+    const m = map[t.resellerId];
+    m.count++;
+    if (t.approved) {
+      m.activated++;
+      if (t.refunded) { m.refunded++; }
+      else {
+        const amt = (t.amountReceived != null && t.amountReceived !== '') ? Number(t.amountReceived) : (Number(t.price) || 0);
+        m.total += amt;
+        m.commission += resellerCommission(t, amt);
+      }
+    }
   }
   res.json({ resellers: Object.values(map) });
+});
+
+// ── Update a reseller (commission / contact / note) ─────────────────────────────
+app.post('/admin/reseller/update', (req, res) => {
+  const { adminKey, id, name, contact, commissionType, commissionValue, note } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const list = loadResellers();
+  const r = list.find(x => x.id === id);
+  if (!r) return res.status(404).json({ error: 'Reseller not found.' });
+  if (name           !== undefined) r.name            = name;
+  if (contact        !== undefined) r.contact         = contact;
+  if (commissionType !== undefined) r.commissionType  = commissionType;
+  if (commissionValue!== undefined) r.commissionValue = Number(commissionValue) || 0;
+  if (note           !== undefined) r.note            = note;
+  saveResellers(list);
+  res.json({ success: true, reseller: r });
 });
 
 // ── Notifications ──────────────────────────────────────────────────────────────
