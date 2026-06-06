@@ -1092,8 +1092,7 @@
     }
   };
 
-  // ── Per-product processing notice (admin-managed) ─────────────────────────
-  // ── Per-product processing timer (admin-controlled) ──────────────────────
+  // ── Per-product processing notice + timer (admin-managed) ─────────────────
   let _timer = { show: false, running: false, elapsedMs: 0, anchor: 0 };
   let _timerInt = null;
   const _fmtDur = (ms) => {
@@ -1121,7 +1120,6 @@
       if (_timerInt) { clearInterval(_timerInt); _timerInt = null; }
     }
   };
-
   const applyNotice = (n) => {
     const box = document.getElementById('proc-notice');
     if (!box) return;
