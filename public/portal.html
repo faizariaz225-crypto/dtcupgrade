@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Subscriptions — DTC</title>
+<style>
+  :root{--bg:#eef2ff;--white:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--blue:#2563eb;--blue-d:#1e40af;--success:#16a34a;--warn:#d97706;--error:#dc2626}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(160deg,#eef2ff,#f8fafc);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
+  .box{background:var(--white);border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 60px rgba(15,23,42,.12);width:100%;max-width:560px;padding:2rem 1.8rem;animation:in .4s ease}
+  @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .brand{display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem}
+  .logo{width:36px;height:36px;border-radius:10px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  h1{font-size:1.3rem;margin:0;font-weight:800}
+  .sub{color:var(--muted);font-size:.9rem;margin:.15rem 0 1.4rem}
+  label{display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.35rem}
+  input{width:100%;padding:.8rem .9rem;border:1.5px solid var(--border);border-radius:10px;font-size:1rem;font-family:inherit}
+  input:focus{outline:none;border-color:var(--blue)}
+  .otp-input{letter-spacing:.5rem;text-align:center;font-weight:800;font-size:1.3rem}
+  .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:.85rem;font-family:inherit;font-size:.98rem;font-weight:700;cursor:pointer;margin-top:.4rem;transition:filter .15s,transform .12s}
+  .btn:hover{filter:brightness(1.07)}.btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .link{background:none;border:none;color:var(--blue);font-weight:600;font-size:.84rem;cursor:pointer;margin-top:.9rem;padding:0;font-family:inherit}
+  .msg{font-size:.84rem;border-radius:9px;padding:.7rem .85rem;margin-top:.9rem;display:none}
+  .msg.show{display:block}
+  .msg.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
+  .msg.ok{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+  .hidden{display:none}
+  .sub-card{border:1px solid var(--border);border-radius:13px;padding:1rem 1.1rem;margin-bottom:.8rem}
+  .sub-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.55rem}
+  .sub-name{font-weight:700;font-size:1rem}
+  .sub-pkg{font-size:.78rem;color:var(--muted)}
+  .status{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:6px;padding:.18rem .5rem;white-space:nowrap}
+  .st-Active{background:#dcfce7;color:#166534}.st-Expired{background:#fee2e2;color:#991b1b}
+  .st-Processing{background:#fef9c3;color:#854d0e}.st-Pending{background:#e0e7ff;color:#3730a3}
+  .st-Refunded,.st-Inactive,.st-Declined{background:#f1f5f9;color:#475569}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .9rem;font-size:.82rem}
+  .meta .k{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
+  .meta .v{font-weight:600}
+  .total{text-align:right;font-size:.84rem;color:var(--muted);margin-top:.4rem}
+  .foot{font-size:.72rem;color:#94a3b8;text-align:center;margin-top:1.3rem;line-height:1.6}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:.4rem}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="brand"><div class="logo">◆</div><div><h1>My Subscriptions</h1></div></div>
+
+  <!-- Step 1: email -->
+  <div id="step-email">
+    <div class="sub">Enter your email and we'll send you a one-time code (and a magic link) to view your subscriptions.</div>
+    <label for="email">Email address</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email"/>
+    <button class="btn" id="send-btn" onclick="requestOtp()">Send my code</button>
+    <div class="msg" id="email-msg"></div>
+  </div>
+
+  <!-- Step 2: otp -->
+  <div id="step-otp" class="hidden">
+    <div class="sub">We've emailed a 6-digit code and a magic link to <b id="email-echo"></b>. Enter the code below, or just click the link in the email.</div>
+    <label for="otp">6-digit code</label>
+    <input id="otp" class="otp-input" inputmode="numeric" maxlength="6" placeholder="••••••"/>
+    <button class="btn" id="verify-btn" onclick="verifyOtp()">View my subscriptions</button>
+    <button class="link" onclick="backToEmail()">← Use a different email</button>
+    <div class="msg" id="otp-msg"></div>
+  </div>
+
+  <!-- Step 3: results -->
+  <div id="step-result" class="hidden">
+    <div class="sub">Showing subscriptions for <b id="result-email"></b>.</div>
+    <div id="subs"></div>
+    <button class="link" onclick="backToEmail()">← Check another email</button>
+  </div>
+
+  <div class="foot">For your privacy, we never show payment methods, login/session details or organization IDs here. Need help? Contact support.</div>
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let currentEmail = '';
+
+  const show = step => { ['email','otp','result'].forEach(s=>$('step-'+s).classList.toggle('hidden', s!==step)); };
+  const setMsg = (id,text,kind) => { const m=$(id); m.textContent=text; m.className='msg show '+(kind||'err'); };
+  const clrMsg = id => { $(id).className='msg'; };
+
+  async function requestOtp(){
+    const email = $('email').value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setMsg('email-msg','Please enter a valid email address.'); return; }
+    clrMsg('email-msg');
+    const btn=$('send-btn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>Sending…';
+    try{
+      await fetch('/api/portal/request-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+      currentEmail=email; $('email-echo').textContent=email;
+      show('otp'); $('otp').focus();
+    }catch(e){ setMsg('email-msg','Something went wrong. Please try again.'); }
+    btn.disabled=false; btn.textContent='Send my code';
+  }
+
+  async function verifyOtp(){
+    const otp=$('otp').value.trim();
+    if(otp.length<4){ setMsg('otp-msg','Enter the code from your email.'); return; }
+    await doVerify({email:currentEmail, otp});
+  }
+
+  async function doVerify(payload){
+    clrMsg('otp-msg');
+    const btn=$('verify-btn'); if(btn){btn.disabled=true; btn.innerHTML='<span class="spin"></span>Checking…';}
+    try{
+      const r=await fetch('/api/portal/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const d=await r.json();
+      if(d.ok){ renderSubs(d.email, d.subscriptions); show('result'); }
+      else setMsg('otp-msg', d.error||'Verification failed.');
+    }catch(e){ setMsg('otp-msg','Something went wrong. Please try again.'); }
+    if(btn){btn.disabled=false; btn.textContent='View my subscriptions';}
+  }
+
+  function renderSubs(email, subs){
+    $('result-email').textContent=email;
+    const wrap=$('subs');
+    if(!subs || !subs.length){ wrap.innerHTML='<div class="sub-card">No subscriptions found for this email.</div>'; return; }
+    wrap.innerHTML = subs.map(s=>{
+      const sym=esc(s.currencySymbol||'$');
+      return `<div class="sub-card">
+        <div class="sub-top">
+          <div><div class="sub-name">${esc(s.product)}</div><div class="sub-pkg">${esc(s.package)}</div></div>
+          <span class="status st-${esc(s.status)}">${esc(s.status)}</span>
+        </div>
+        <div class="meta">
+          <div><div class="k">Amount</div><div class="v">${sym}${(Number(s.amount)||0).toFixed(2)}</div></div>
+          <div><div class="k">Order date</div><div class="v">${esc(s.orderDate||'—')}</div></div>
+          <div><div class="k">Activated</div><div class="v">${esc(s.activatedDate||'—')}</div></div>
+          <div><div class="k">Expires</div><div class="v">${esc(s.expiryDate||'—')}</div></div>
+        </div>
+      </div>`;
+    }).join('');
+    const total = subs.reduce((a,s)=>a+(Number(s.amount)||0),0);
+    wrap.innerHTML += `<div class="total">${subs.length} subscription${subs.length!==1?'s':''} · total paid ${esc(subs[0].currencySymbol||'$')}${total.toFixed(2)}</div>`;
+  }
+
+  function backToEmail(){ $('otp').value=''; clrMsg('otp-msg'); clrMsg('email-msg'); show('email'); }
+
+  // Magic-link auto-verify
+  (function(){
+    const p=new URLSearchParams(location.search);
+    const magic=p.get('magic'), email=p.get('email');
+    if(magic){ show('otp'); currentEmail=email||''; $('email-echo').textContent=email||'your account'; doVerify({email:email||'', magic}); }
+  })();
+
+  $('email').addEventListener('keydown',e=>{ if(e.key==='Enter') requestOtp(); });
+  $('otp').addEventListener('keydown',e=>{ if(e.key==='Enter') verifyOtp(); });
+</script>
+</body>
+</html>
