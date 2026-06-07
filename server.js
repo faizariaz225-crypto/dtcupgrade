@@ -827,7 +827,7 @@ const _amt   = t => (t.amountReceived != null && t.amountReceived !== '') ? Numb
 const _date  = t => t.approvedAt || t.submittedAt || t.createdAt || '';
 const _fmtDate = d => d ? new Date(d).toISOString().slice(0, 10) : '';
 
-function buildReport(type, period) {
+function buildReport(type, period, opts = {}) {
   const tokens    = Object.values(loadTokens());
   const activated = tokens.filter(t => t.approved && !t.refunded);
   const sym = (loadSettings().currencySymbol) || '$';
@@ -942,10 +942,11 @@ function buildReport(type, period) {
 
   // type === 'resellers'
   const resellers = loadResellers();
+  const onlyId = opts.resellerId || '';
   const regMap = {};
-  resellers.forEach(r => { regMap[r.id] = { name: r.name, contact: r.contact || '', commission: r.commissionType === 'flat' ? `${sym}${r.commissionValue}/sale` : `${r.commissionValue}%`, clients: new Set(), count: 0, sales: 0, comm: 0 }; });
+  resellers.filter(r => !onlyId || r.id === onlyId).forEach(r => { regMap[r.id] = { name: r.name, contact: r.contact || '', commission: r.commissionType === 'flat' ? `${sym}${r.commissionValue}/sale` : `${r.commissionValue}%`, clients: new Set(), count: 0, sales: 0, comm: 0 }; });
   const rows = [];
-  activated.filter(t => t.resellerId).forEach(t => {
+  activated.filter(t => t.resellerId && (!onlyId || t.resellerId === onlyId)).forEach(t => {
     const rid = t.resellerId;
     if (!regMap[rid]) regMap[rid] = { name: t.resellerName || rid, contact: '', commission: '', clients: new Set(), count: 0, sales: 0, comm: 0 };
     const m = regMap[rid];
@@ -956,9 +957,10 @@ function buildReport(type, period) {
       pkg: t.packageType || '', Amount: amt, Commission: comm });
   });
   rows.sort((a, b) => (a.res || '').localeCompare(b.res || '') || (b.date || '').localeCompare(a.date || ''));
+  const onlyName = onlyId ? ((resellers.find(r => r.id === onlyId) || {}).name || rows[0]?.res || onlyId) : '';
   return {
-    title: 'Reseller Clients & Reports',
-    filenameBase: `reseller_report_${period}`,
+    title: onlyId ? `Reseller Report — ${onlyName}` : 'Reseller Clients & Reports',
+    filenameBase: onlyId ? `reseller_${onlyName.replace(/[^a-z0-9]+/gi, '_')}_${period}` : `reseller_report_${period}`,
     sheets: [
       { name: 'Resellers', columns: [
           { header: 'Reseller', key: 'name' }, { header: 'Contact', key: 'contact' }, { header: 'Commission Rate', key: 'commission' },
@@ -1033,9 +1035,12 @@ app.get('/admin/report', (req, res) => {
   const type   = ['activations', 'customers', 'resellers', 'profit'].includes(req.query.type) ? req.query.type : 'activations';
   const period = ['daily', 'weekly', 'monthly'].includes(req.query.period) ? req.query.period : 'monthly';
   const format = req.query.format === 'pdf' ? 'pdf' : 'xlsx';
+  const hide = (req.query.hide || '').split(',').map(s => s.trim()).filter(Boolean);
   let report;
-  try { report = buildReport(type, period); }
+  try { report = buildReport(type, period, { resellerId: req.query.resellerId || '' }); }
   catch (e) { return res.status(500).json({ error: 'Failed to build report.' }); }
+  // Apply admin column filters (hide selected columns from every sheet)
+  if (hide.length) report.sheets = report.sheets.map(s => ({ ...s, columns: s.columns.filter(c => !hide.includes(c.header)) }));
   const fname = `${report.filenameBase}_${new Date().toISOString().slice(0, 10)}`;
   if (format === 'pdf') {
     res.setHeader('Content-Type', 'application/pdf');
@@ -1895,7 +1900,78 @@ app.post('/admin/landing-content', (req, res) => {
 });
 
 // ── Pages ──────────────────────────────────────────────────────────────────────
-app.get('/submit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'form.html')));
+// ── Customer self-service portal (email + OTP / magic link) ──────────────────────
+const portalCodes = new Map(); // email -> { otp, magic, expires }
+function portalSubStatus(t) {
+  if (t.refunded)            return 'Refunded';
+  if (t.deactivated)         return 'Inactive';
+  if (t.declined)            return 'Declined';
+  if (t.approved) {
+    if (t.subscriptionExpiresAt && new Date(t.subscriptionExpiresAt) < new Date()) return 'Expired';
+    return 'Active';
+  }
+  if (t.used) return 'Processing';
+  return 'Pending';
+}
+function portalSubs(email) {
+  const tokens = loadTokens();
+  return Object.values(tokens)
+    .filter(t => t.email && String(t.email).toLowerCase() === email.toLowerCase())
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map(t => ({
+      // NOTE: deliberately NO payment method, NO times (date only), NO orgId, NO session data
+      product:       t.productName || t.portalName || t.product || 'Subscription',
+      package:       t.packageType || '',
+      status:        portalSubStatus(t),
+      amount:        (t.amountReceived != null && t.amountReceived !== '') ? Number(t.amountReceived) : (Number(t.price) || 0),
+      currencySymbol: t.currencySymbol || '$',
+      orderDate:     t.createdAt ? new Date(t.createdAt).toISOString().slice(0, 10) : '',
+      activatedDate: t.approvedAt ? new Date(t.approvedAt).toISOString().slice(0, 10) : '',
+      expiryDate:    t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt).toISOString().slice(0, 10) : '',
+    }));
+}
+const portalOtpEmail = (otp, link) => `
+  <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px">
+    <h2 style="color:#1e293b;margin:0 0 8px">Your access code</h2>
+    <p style="color:#475569;font-size:14px">Use this code to view your subscriptions. It expires in 15 minutes.</p>
+    <div style="font-size:30px;font-weight:800;letter-spacing:6px;color:#2563eb;background:#eff6ff;border-radius:10px;padding:16px;text-align:center;margin:14px 0">${otp}</div>
+    <p style="color:#475569;font-size:14px">Or just click this link to open your portal directly:</p>
+    <p><a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:700">View my subscriptions →</a></p>
+    <p style="color:#94a3b8;font-size:12px;margin-top:18px">If you didn't request this, you can ignore this email.</p>
+  </div>`;
+
+app.post('/api/portal/request-otp', async (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
+  const subs = portalSubs(email);
+  if (subs.length) {
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const magic = uuidv4();
+    portalCodes.set(email, { otp, magic, expires: Date.now() + 15 * 60 * 1000 });
+    const proto = req.headers['x-forwarded-proto'] || req.protocol;
+    const base = process.env.BASE_URL || (proto + '://' + req.get('host'));
+    const link = `${base}/portal?magic=${magic}&email=${encodeURIComponent(email)}`;
+    try { await sendEmail({ to: email, subject: 'Your access code — DTC', html: portalOtpEmail(otp, link), type: 'portal_otp' }); } catch (e) {}
+  }
+  // Generic response so we don't reveal whether an email exists
+  res.json({ ok: true });
+});
+
+app.post('/api/portal/verify', (req, res) => {
+  let email = (req.body.email || '').trim().toLowerCase();
+  const { otp, magic } = req.body;
+  let rec = email ? portalCodes.get(email) : null;
+  if (!rec && magic) { for (const [e, r] of portalCodes) { if (r.magic === magic) { rec = r; email = e; break; } } }
+  if (!rec || rec.expires < Date.now()) return res.status(401).json({ error: 'Your code or link has expired. Please request a new one.' });
+  const ok = (magic && magic === rec.magic) || (otp && String(otp).trim() === rec.otp);
+  if (!ok) return res.status(401).json({ error: 'Incorrect code. Please check and try again.' });
+  portalCodes.delete(email); // one-time use
+  res.json({ ok: true, email, subscriptions: portalSubs(email) });
+});
+
+app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
+
+
 app.get('/admin',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 app.listen(PORT, () => { console.log(`\n✅  DTC — Digital Tools Corner\n🌐  http://localhost:${PORT}\n`); });
