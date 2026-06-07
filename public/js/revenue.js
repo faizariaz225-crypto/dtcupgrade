@@ -11,6 +11,11 @@ const Revenue = (() => {
 
     // Stats
     document.getElementById('rev-total').textContent   = sym + rev.total.toFixed(2);
+    const _set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = sym + (Number(v) || 0).toFixed(2); };
+    _set('rev-cost', rev.costTotal);
+    _set('rev-commission', rev.resellerCommissionTotal);
+    _set('rev-profit', rev.profitTotal);
+    const pp = rev.productProfit || {};
 
     // Per-product breakdown
     const wrap = document.getElementById('rev-breakdown');
@@ -56,6 +61,7 @@ const Revenue = (() => {
           </div>
           <span class="rev-product-total" style="color:${color}">${sym}${g.total.toFixed(2)}</span>
         </div>
+        ${pp[pid] ? `<div style="font-size:.72rem;color:var(--muted);margin:-.2rem 0 .4rem">Cost ${sym}${pp[pid].cost.toFixed(2)} · Commission ${sym}${pp[pid].commission.toFixed(2)} · <strong style="color:var(--success)">Profit ${sym}${pp[pid].profit.toFixed(2)}</strong></div>` : ''}
         <div class="rev-bar-wrap">
           <div class="rev-bar"><div class="rev-bar-fill" style="width:${pct.toFixed(1)}%;background:${color}"></div></div>
           <span class="rev-bar-pct">${pct.toFixed(0)}%</span>

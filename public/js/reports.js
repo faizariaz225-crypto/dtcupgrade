@@ -10,6 +10,8 @@ const Reports = (() => {
       desc: 'Every customer with their number of activations and total spend, plus a full activation list.' },
     { type: 'resellers', icon: '🤝', title: 'Reseller Clients & Reports',
       desc: 'Each reseller with their clients, activations, sales and commission earned, plus a detailed list.' },
+    { type: 'profit', icon: '💵', title: 'Profit & Margin',
+      desc: 'Revenue minus cost (purchase price) and reseller commission → profit and margin, broken down by product, customer, reseller and total.' },
   ];
 
   const render = () => {

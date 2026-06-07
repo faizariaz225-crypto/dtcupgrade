@@ -343,6 +343,8 @@ const Dashboard = (() => {
     const email         = document.getElementById('gen-email')?.value.trim() || '';
     const wechat        = document.getElementById('gen-wechat')?.value.trim() || '';
     const paymentMethod = document.getElementById('gen-method')?.value || '';
+    const purchasePrice = document.getElementById('gen-cost')?.value || '';
+    const subscriptionKey = document.getElementById('gen-key')?.value || '';
     const errEl         = document.getElementById('gen-err');
     errEl.classList.remove('show');
 
@@ -351,7 +353,7 @@ const Dashboard = (() => {
     if (!packageLabel) { errEl.textContent = 'Please select a package.'; errEl.classList.add('show'); return; }
     if (!price || parseFloat(price) <= 0) { errEl.textContent = 'Price must be greater than 0. Generating free links is not allowed.'; errEl.classList.add('show'); return; }
 
-    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined, resellerId, newReseller, customerId, email, wechat, paymentMethod });
+    const d = await api('/admin/generate', { adminKey: Store.adminKey, customerName, productId, packageLabel, price: parseFloat(price), purchasePrice: purchasePrice === '' ? undefined : parseFloat(purchasePrice), subscriptionKey: subscriptionKey || undefined, instructionSetId: instr || undefined, postInstructionSetId: postInstr || undefined, resellerId, newReseller, customerId, email, wechat, paymentMethod });
     if (!d || d.error) { errEl.textContent = (d && d.error) || 'Failed to generate link.'; errEl.classList.add('show'); return; }
     document.getElementById('gen-link').textContent = d.link;
     const sym = _sym();
@@ -446,6 +448,7 @@ const Dashboard = (() => {
     refreshCustomerPicker();
     refreshPaymentMethods();
     refreshResellerPicker();
+    refreshKeyPicker();
     _applyCurrencyUi();
   };
 
@@ -565,6 +568,27 @@ const Dashboard = (() => {
   const onProductChange = () => {
     refreshDropdowns(document.getElementById('gen-product').value);
     document.getElementById('gen-price').value = '';
+    refreshKeyPicker();
+    // default cost from product
+    const prod = (Store.products || []).find(p => p.id === document.getElementById('gen-product').value);
+    const costEl = document.getElementById('gen-cost');
+    if (costEl) costEl.value = (prod && prod.cost != null && prod.cost !== '') ? prod.cost : '';
+  };
+
+  // ── Product key picker (unused keys for the selected product) ────────────────
+  const refreshKeyPicker = () => {
+    const sel = document.getElementById('gen-key');
+    const note = document.getElementById('gen-key-stock');
+    if (!sel) return;
+    const pid = document.getElementById('gen-product')?.value || '';
+    const keys = (Store.keys || []).filter(k => k.productId === pid && !k.used);
+    sel.innerHTML = '<option value="">— No key —</option>' + keys.map(k => `<option value="${esc(k.key)}">${esc(k.key)}</option>`).join('');
+    if (note) {
+      if (!pid) { note.textContent = ''; note.style.color = 'var(--muted)'; }
+      else if (keys.length === 0) { note.innerHTML = '⚠ No keys in stock for this product — <a href="#" onclick="Shell.navigate(\'keys\');return false" style="color:var(--blue)">add some</a>.'; note.style.color = 'var(--error)'; }
+      else if (keys.length < 2) { note.innerHTML = `⚠ Only ${keys.length} key left — <a href="#" onclick="Shell.navigate('keys');return false" style="color:var(--blue)">add more</a>.`; note.style.color = 'var(--warn)'; }
+      else { note.textContent = `${keys.length} keys available.`; note.style.color = 'var(--muted)'; }
+    }
   };
 
   // Called when package changes — auto-fill price from product definition
@@ -597,5 +621,5 @@ const Dashboard = (() => {
     render();
   };
 
-  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, refund, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate, onResellerPick };
+  return { render, reload, generateLink, copyGenLink, approve, deactivate, reactivate, deleteLink, refund, setStage, toggleLog, refreshDropdowns, onProductChange, onPackageChange, setFilter, startAutoRefresh, setAuto, setAlerts, filterCustomers, onCustomerPick, prefillGenerate, onResellerPick, refreshKeyPicker };
 })();

@@ -202,7 +202,8 @@ const Customers = (() => {
           ${dataDetail}
           <div><div class="cf-lbl">Payment</div><div class="cf-val">${amt}${h.paymentMethod ? ' · ' + esc(h.paymentMethod) : ''}</div></div>
           <div><div class="cf-lbl">Expires</div><div class="cf-val">${h.subscriptionExpiresAt ? new Date(h.subscriptionExpiresAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div></div>
-          <div><div class="cf-lbl">Subscription Key</div><div class="cf-val">${esc(h.subscriptionKey || '—')}</div></div>
+          <div><div class="cf-lbl">Cost / Profit</div><div class="cf-val">${sym}${(Number(h.purchasePrice)||0).toFixed(2)} · <span style="color:var(--success)">${sym}${(((h.amountReceived!=null&&h.amountReceived!=='')?Number(h.amountReceived):(Number(h.price)||0)) - (Number(h.purchasePrice)||0)).toFixed(2)}</span></div></div>
+          <div><div class="cf-lbl">Product Key</div><div class="cf-val">${esc(h.subscriptionKey || '—')}</div></div>
           <div style="grid-column:1/-1"><div class="cf-lbl">Activation Link</div><div class="orgid-wrap"><a href="${linkUrl}" target="_blank" class="orgid-txt" style="color:var(--blue);text-decoration:none">${esc(linkUrl)}</a><button class="icopy" onclick="event.stopPropagation();copyText('${linkUrl}', this)">Copy</button></div></div>
         </div>
         ${h.refunded ? `<div style="font-size:.72rem;color:var(--error);font-weight:600;margin:.2rem 0 .5rem">↩ Refunded ${h.refundAmount != null ? sym + Number(h.refundAmount).toFixed(2) : ''}${h.refundedAt ? ' on ' + new Date(h.refundedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}${h.refundNote ? ' · ' + esc(h.refundNote) : ''}</div>` : ''}
@@ -210,6 +211,11 @@ const Customers = (() => {
         <div class="sub-actions">
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();Modals.openEdit('${tk}')">✏ Edit this package</button>
           ${h.refunded ? '' : `<button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn)" onclick="event.stopPropagation();Customers.refund('${tk}')">↩ Refund this package</button>`}
+          ${(h.approved && !h.deactivated && !h.refunded && h.email) ? `
+            <button class="btn btn-ghost-blue btn-sm" onclick="event.stopPropagation();Customers.sendReminder('${tk}','reminder')">📧 Send renewal reminder</button>
+            <button class="btn btn-ghost-blue btn-sm" onclick="event.stopPropagation();Customers.sendReminder('${tk}','expired')">⏱ Send expiry notice</button>` : ''}
+          ${(h.approved && (h.deactivated || h.refunded)) ? `<span style="font-size:.68rem;color:var(--muted);align-self:center">✉ Emails disabled — subscription ${h.refunded ? 'refunded' : 'deactivated'}</span>` : ''}
+          ${(h.approved && !h.deactivated && !h.refunded && !h.email) ? `<span style="font-size:.68rem;color:var(--muted);align-self:center">No email on record — add one to send reminders</span>` : ''}
         </div>
       </div>
     </div>`;

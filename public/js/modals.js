@@ -51,6 +51,7 @@ const Modals = (() => {
     document.getElementById('edit-wechat').value  = t.wechat || '';
     document.getElementById('edit-package').value = t.packageType || '';
     document.getElementById('edit-price').value   = (t.price != null ? t.price : '');
+    document.getElementById('edit-cost').value     = (t.purchasePrice != null ? t.purchasePrice : '');
     document.getElementById('edit-days').value    = t.subscriptionDays || t.durationDays || 30;
     document.getElementById('edit-amount').value   = (t.amountReceived != null ? t.amountReceived : '');
     document.getElementById('edit-method').value   = t.paymentMethod || '';
@@ -68,6 +69,7 @@ const Modals = (() => {
     const wechat       = document.getElementById('edit-wechat').value.trim();
     const packageType  = document.getElementById('edit-package').value.trim();
     const priceVal     = document.getElementById('edit-price').value;
+    const costVal      = document.getElementById('edit-cost').value;
     const daysVal      = document.getElementById('edit-days').value;
     const amountVal    = document.getElementById('edit-amount').value;
     const methodVal    = document.getElementById('edit-method').value;
@@ -77,6 +79,7 @@ const Modals = (() => {
 
     const payload = { adminKey: Store.adminKey, token, customerName, email, wechat, packageType, paymentMethod: methodVal };
     if (priceVal !== '') payload.price = parseFloat(priceVal);
+    if (costVal  !== '') payload.purchasePrice = parseFloat(costVal); else payload.purchasePrice = '';
     if (daysVal  !== '') payload.subscriptionDays = parseInt(daysVal, 10);
     payload.amountReceived = (amountVal === '' ? '' : parseFloat(amountVal));
     if (expiryVal)       payload.subscriptionExpiresAt = new Date(expiryVal + 'T23:59:59').toISOString();

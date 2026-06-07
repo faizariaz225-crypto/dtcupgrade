@@ -62,6 +62,7 @@ const Products = (() => {
     document.getElementById('prod-name').value         = p ? p.name : '';
     document.getElementById('prod-desc').value         = p ? (p.description || '') : '';
     document.getElementById('prod-portal-name').value  = p ? (p.portalName || '') : '';
+    document.getElementById('prod-cost').value          = p && p.cost != null ? p.cost : '';
     document.getElementById('prod-type').value         = p ? (p.type || 'session') : 'session';
     document.getElementById('prod-color').value        = p ? (p.color || '#2563eb') : '#2563eb';
     document.getElementById('prod-active').checked     = p ? (p.active !== false) : true;
@@ -133,6 +134,7 @@ const Products = (() => {
       id, name,
       description:     document.getElementById('prod-desc').value.trim(),
       portalName:      document.getElementById('prod-portal-name').value.trim(),
+      cost:            parseFloat(document.getElementById('prod-cost').value) || 0,
       type:            document.getElementById('prod-type').value,
       color:           document.getElementById('prod-color').value,
       active:          document.getElementById('prod-active').checked,
