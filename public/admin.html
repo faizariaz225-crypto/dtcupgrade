@@ -449,6 +449,9 @@
       <div class="nav-item" onclick="Shell.navigate('reports', this)">
         <span class="icon">📊</span>Reports
       </div>
+      <div class="nav-item" onclick="Shell.navigate('keys', this)">
+        <span class="icon">🔑</span>Keys
+      </div>
       <div class="nav-sec" style="margin-top:.5rem">Catalogue</div>
       <div class="nav-item" onclick="Shell.navigate('products', this)">
         <span class="icon">📦</span>Products
@@ -534,6 +537,21 @@
               <span class="price-currency-icon">$</span>
               <input type="number" id="gen-price" min="0.01" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--success)"/>
             </div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Purchase Price / Cost (<span class="price-cur-code">USD</span>) <span style="font-weight:400;color:var(--muted);font-size:.65rem">— your cost, for profit</span></label>
+            <div class="price-input-wrap">
+              <span class="price-currency-icon">$</span>
+              <input type="number" id="gen-cost" min="0" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--warn)"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product Key <span style="font-weight:400;color:var(--muted);font-size:.65rem">— optional, from this product's stock</span></label>
+            <select id="gen-key"><option value="">— No key —</option></select>
+            <div id="gen-key-stock" style="font-size:.68rem;margin-top:.25rem"></div>
           </div>
         </div>
 
@@ -713,6 +731,32 @@
       <div id="reports-cards"></div>
     </div><!-- /page-reports -->
 
+    <!-- ── PAGE: Keys ── -->
+    <div class="page" id="page-keys">
+      <div class="ph">
+        <div class="ph-title">Product Keys</div>
+        <div class="ph-sub">Stock of activation keys per product. Unused keys appear in the create-link dropdown; used keys show who used them.</div>
+      </div>
+      <div id="keys-lowstock"></div>
+      <div class="card" style="margin-bottom:1.2rem">
+        <div class="card-title"><span>➕ Add Keys</span></div>
+        <div class="form-row" style="margin-bottom:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product</label>
+            <select id="keys-add-product"><option value="">— Select product —</option></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Keys <span style="font-weight:400;color:var(--muted)">— one per line</span></label>
+          <textarea id="keys-add-text" rows="4" placeholder="KEY-ABC-123&#10;KEY-DEF-456" style="font-family:'JetBrains Mono',monospace;font-size:.82rem"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="Keys.add()">Add keys</button>
+        <span id="keys-add-status" style="font-size:.75rem;color:var(--muted);margin-left:.6rem"></span>
+      </div>
+      <div id="keys-list"></div>
+    </div><!-- /page-keys -->
+
     <!-- ── PAGE: Revenue ── -->
     <div class="page" id="page-revenue">
       <div class="ph">
@@ -722,6 +766,9 @@
       <div class="card" style="margin-bottom:1.2rem">
         <div style="display:flex;align-items:flex-end;gap:2rem;flex-wrap:wrap">
           <div><div class="rev-big" id="rev-total">$0.00</div><div class="rev-big-label">Total Revenue (Activated)</div></div>
+          <div><div class="rev-big" id="rev-cost" style="color:var(--warn);font-size:1.5rem">$0.00</div><div class="rev-big-label">Total Cost</div></div>
+          <div><div class="rev-big" id="rev-commission" style="color:#7c3aed;font-size:1.5rem">$0.00</div><div class="rev-big-label">Reseller Commission</div></div>
+          <div><div class="rev-big" id="rev-profit" style="color:var(--success);font-size:1.7rem">$0.00</div><div class="rev-big-label">Net Profit</div></div>
         </div>
       </div>
       <div id="rev-breakdown"><div class="empty">Loading…</div></div>
@@ -1178,10 +1225,13 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Price</label><input type="number" id="edit-price" min="0" step="0.01"/></div>
-      <div class="form-group"><label>Subscription Length (days)</label><input type="number" id="edit-days" min="1" step="1"/></div>
+      <div class="form-group"><label>Purchase Price / Cost</label><input type="number" id="edit-cost" min="0" step="0.01" placeholder="Your cost"/></div>
     </div>
     <div class="form-row">
+      <div class="form-group"><label>Subscription Length (days)</label><input type="number" id="edit-days" min="1" step="1"/></div>
       <div class="form-group"><label>Amount Received</label><input type="number" id="edit-amount" min="0" step="0.01" placeholder="Actual amount paid"/></div>
+    </div>
+    <div class="form-row">
       <div class="form-group"><label>Payment Method</label>
         <select id="edit-method">
           <option value="">— Select —</option>
@@ -1299,6 +1349,7 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Description</label><input id="prod-desc" placeholder="Short description shown in admin"/></div>
+      <div class="form-group"><label>Default Purchase Price / Cost <span style="font-weight:400;color:var(--muted);font-size:.7rem">— your cost per sale (used for profit; pre-fills the create-link form)</span></label><input type="number" id="prod-cost" min="0" step="0.01" placeholder="0.00"/></div>
       <div class="form-group" style="display:flex;align-items:flex-end;gap:1rem;padding-bottom:.1rem">
         <div style="flex:1"><label>Colour</label><input type="color" id="prod-color" value="#2563eb" style="height:2.4rem;padding:.2rem .3rem;cursor:pointer"/></div>
         <label class="toggle" style="margin-bottom:.35rem"><input type="checkbox" id="prod-active" checked/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;font-weight:600;margin-left:.4rem">Active</span></label>
@@ -1362,6 +1413,7 @@
 <script src="js/revenue.js"></script>
 <script src="js/notifications.js"></script>
 <script src="js/reports.js"></script>
+<script src="js/keys.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
