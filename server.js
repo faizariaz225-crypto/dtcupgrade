@@ -394,9 +394,11 @@ function applyTemplateVars(text, token) {
 // ── Revenue helpers ────────────────────────────────────────────────────────────
 function calcRevenue(tokens) {
   const byProduct  = {};
+  const productProfit = {};   // pid -> { revenue, cost, commission, profit }
   const byReseller = {};
   const byMethod   = {};
   let total = 0, resellerTotal = 0, directTotal = 0, refundedTotal = 0, refundedCount = 0, resellerCommissionTotal = 0;
+  let costTotal = 0, profitTotal = 0;
   for (const t of Object.values(tokens)) {
     if (!t.approved) continue;
     // "Amount received" is the source of truth; fall back to list price if not recorded
@@ -408,20 +410,26 @@ function calcRevenue(tokens) {
     const m = t.paymentMethod || 'Unspecified';
     byMethod[m] = (byMethod[m] || 0) + amt;
     total += amt;
+    const cost = Number(t.purchasePrice) || 0;
+    const comm = t.resellerId ? resellerCommission(t, amt) : 0;
+    const profit = amt - cost - comm;
+    costTotal += cost; profitTotal += profit;
+    if (!productProfit[pid]) productProfit[pid] = { revenue: 0, cost: 0, commission: 0, profit: 0, count: 0 };
+    productProfit[pid].revenue += amt; productProfit[pid].cost += cost; productProfit[pid].commission += comm; productProfit[pid].profit += profit; productProfit[pid].count++;
     if (t.resellerId) {
       const rid = t.resellerId;
-      if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0, commission: 0 };
-      const comm = resellerCommission(t, amt);
+      if (!byReseller[rid]) byReseller[rid] = { name: t.resellerName || rid, total: 0, count: 0, commission: 0, profit: 0 };
       byReseller[rid].total += amt;
       byReseller[rid].count++;
       byReseller[rid].commission += comm;
+      byReseller[rid].profit += profit;
       resellerTotal += amt;
       resellerCommissionTotal += comm;
     } else {
       directTotal += amt;
     }
   }
-  return { total, byProduct, byReseller, byMethod, resellerTotal, directTotal, refundedTotal, refundedCount, resellerCommissionTotal };
+  return { total, byProduct, productProfit, byReseller, byMethod, resellerTotal, directTotal, refundedTotal, refundedCount, resellerCommissionTotal, costTotal, profitTotal };
 }
 
 // ── Email ──────────────────────────────────────────────────────────────────────
@@ -469,11 +477,13 @@ async function checkSubscriptionEmails() {
       changed = true;
     }
 
-    if (emailOn && t.email) {
+    if (emailOn && t.email && !t.refunded) {
       const expStr = expiry.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
-      if (daysLeft === 30 && !t.reminder30Sent) { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 30 days — DTC`, html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 30 }), type: 'reminder_30d', token }); if (r.ok) { tokens[token].reminder30Sent = true; changed = true; } }
-      if (daysLeft === 5  && !t.reminder5Sent)  { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 5 days — DTC`,  html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 5  }), type: 'reminder_5d',  token }); if (r.ok) { tokens[token].reminder5Sent  = true; changed = true; } }
-      if (daysLeft <= 0   && !t.expiredEmailSent){ const r = await sendEmail({ to: t.email, subject: `Subscription expired — DTC`, html: expiredTemplate({ customerName: t.customerName, packageType: t.packageType }), type: 'expired', token }); if (r.ok) { tokens[token].expiredEmailSent = true; changed = true; } }
+      const active = !t.deactivated; // never email reminders for a deactivated subscription
+      if (active && daysLeft === 30 && !t.reminder30Sent) { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 30 days — DTC`, html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 30 }), type: 'reminder_30d', token }); if (r.ok) { tokens[token].reminder30Sent = true; changed = true; } }
+      if (active && daysLeft === 5  && !t.reminder5Sent)  { const r = await sendEmail({ to: t.email, subject: `Subscription expires in 5 days — DTC`,  html: reminderTemplate({ customerName: t.customerName, packageType: t.packageType, expiryDate: expStr, daysLeft: 5  }), type: 'reminder_5d',  token }); if (r.ok) { tokens[token].reminder5Sent  = true; changed = true; } }
+      // Expiry notice only for natural expiry (not for a manually deactivated or refunded sub)
+      if (daysLeft <= 0 && tokens[token].deactivationReason === 'expired' && !t.expiredEmailSent) { const r = await sendEmail({ to: t.email, subject: `Subscription expired — DTC`, html: expiredTemplate({ customerName: t.customerName, packageType: t.packageType }), type: 'expired', token }); if (r.ok) { tokens[token].expiredEmailSent = true; changed = true; } }
     }
   }
   if (changed) saveTokens(tokens);
@@ -529,7 +539,7 @@ app.get('/admin/revenue', (req, res) => {
 
 // ── Generate link ──────────────────────────────────────────────────────────────
 app.post('/admin/generate', (req, res) => {
-  const { adminKey, customerName, productId, packageLabel, price, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey, customerId, email, wechat, paymentMethod, newReseller } = req.body;
+  const { adminKey, customerName, productId, packageLabel, price, purchasePrice, instructionSetId, postInstructionSetId, resellerId, resellerName, subscriptionKey, customerId, email, wechat, paymentMethod, newReseller } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   if (!customerName)  return res.status(400).json({ error: 'Customer name is required.' });
   if (!productId)     return res.status(400).json({ error: 'Product is required.' });
@@ -569,6 +579,7 @@ app.post('/admin/generate', (req, res) => {
     portalName:       product.portalName || '',
     packageType:      packageLabel,
     price:            parseFloat(price),
+    purchasePrice:    (purchasePrice !== undefined && purchasePrice !== '' && purchasePrice !== null) ? Number(purchasePrice) : (Number(product.cost) || 0),
     currency:         loadSettings().currency || 'USD',
     currencySymbol:   loadSettings().currencySymbol || '$',
     resellerId:       reseller ? reseller.id   : (resellerId   || null),
@@ -588,12 +599,14 @@ app.post('/admin/generate', (req, res) => {
   };
   saveTokens(tokens);
 
-  // Register key as used if provided
+  // Register key as used if provided (from the product's key pool, or ad-hoc)
   if (subscriptionKey) {
     const keysData = loadKeys();
-    if (!keysData[subscriptionKey]) keysData[subscriptionKey] = { key: subscriptionKey, product: product.type, addedAt: new Date().toISOString() };
+    if (!keysData[subscriptionKey]) keysData[subscriptionKey] = { key: subscriptionKey, productId, product: product.type, addedAt: new Date().toISOString() };
+    keysData[subscriptionKey].productId    = keysData[subscriptionKey].productId || productId;
     keysData[subscriptionKey].usedBy       = token;
     keysData[subscriptionKey].customerName = customerName;
+    keysData[subscriptionKey].customerId   = customer.id;
     keysData[subscriptionKey].packageType  = packageLabel;
     keysData[subscriptionKey].assignedAt   = new Date().toISOString();
     saveKeys(keysData);
@@ -886,6 +899,47 @@ function buildReport(type, period) {
     };
   }
 
+  if (type === 'profit') {
+    const prodMap = {}, custMap = {}, resMap = {};
+    let rev = 0, cost = 0, comm = 0, profit = 0;
+    activated.forEach(t => {
+      const a = _amt(t), c = Number(t.purchasePrice) || 0;
+      const cm = t.resellerId ? resellerCommission(t, a) : 0;
+      const p = a - c - cm;
+      rev += a; cost += c; comm += cm; profit += p;
+      const pn = t.productName || t.portalName || t.productId || 'Unknown';
+      prodMap[pn] = prodMap[pn] || { rev: 0, cost: 0, comm: 0, profit: 0, n: 0 };
+      prodMap[pn].rev += a; prodMap[pn].cost += c; prodMap[pn].comm += cm; prodMap[pn].profit += p; prodMap[pn].n++;
+      const ck = t.customerName || t.email || t.customerId || 'Unknown';
+      custMap[ck] = custMap[ck] || { rev: 0, cost: 0, comm: 0, profit: 0, n: 0 };
+      custMap[ck].rev += a; custMap[ck].cost += c; custMap[ck].comm += cm; custMap[ck].profit += p; custMap[ck].n++;
+      const rk = t.resellerName || (t.resellerId ? t.resellerId : 'Direct (no reseller)');
+      resMap[rk] = resMap[rk] || { rev: 0, cost: 0, comm: 0, profit: 0, n: 0 };
+      resMap[rk].rev += a; resMap[rk].cost += c; resMap[rk].comm += cm; resMap[rk].profit += p; resMap[rk].n++;
+    });
+    const cols = (firstHeader, firstKey) => [
+      { header: firstHeader, key: firstKey }, { header: 'Activations', key: 'n' },
+      { header: 'Revenue', key: 'Revenue' }, { header: 'Cost', key: 'Cost' },
+      { header: 'Commission', key: 'Commission' }, { header: 'Profit', key: 'Profit' }, { header: 'Margin %', key: 'margin' } ];
+    const toRows = (m, nameKey) => Object.keys(m).sort((a, b) => m[b].profit - m[a].profit).map(k => ({
+      [nameKey]: k, n: m[k].n, Revenue: m[k].rev, Cost: m[k].cost, Commission: m[k].comm, Profit: m[k].profit,
+      margin: m[k].rev ? Math.round(m[k].profit / m[k].rev * 100) + '%' : '—' }));
+    return {
+      title: 'Profit & Margin Report',
+      filenameBase: `profit_${period}`,
+      sheets: [
+        { name: 'Summary', columns: [{ header: 'Metric', key: 'm' }, { header: 'Value', key: 'v' }], rows: [
+          { m: 'Total revenue', v: rev, money: true }, { m: 'Total cost (purchase price)', v: cost, money: true },
+          { m: 'Total reseller commission', v: comm, money: true }, { m: 'Total profit', v: profit, money: true },
+          { m: 'Overall margin', v: rev ? Math.round(profit / rev * 100) + '%' : '—' },
+          { m: 'Activations counted', v: activated.length } ] },
+        { name: 'By Product',  columns: cols('Product', 'p'),     rows: toRows(prodMap, 'p') },
+        { name: 'By Customer', columns: cols('Customer', 'c'),    rows: toRows(custMap, 'c') },
+        { name: 'By Reseller', columns: cols('Reseller', 'r'),    rows: toRows(resMap, 'r') },
+      ], sym, MONEY: ['Revenue', 'Cost', 'Commission', 'Profit', 'Value'],
+    };
+  }
+
   // type === 'resellers'
   const resellers = loadResellers();
   const regMap = {};
@@ -976,7 +1030,7 @@ function reportToPdf(report, res) {
 
 app.get('/admin/report', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
-  const type   = ['activations', 'customers', 'resellers'].includes(req.query.type) ? req.query.type : 'activations';
+  const type   = ['activations', 'customers', 'resellers', 'profit'].includes(req.query.type) ? req.query.type : 'activations';
   const period = ['daily', 'weekly', 'monthly'].includes(req.query.period) ? req.query.period : 'monthly';
   const format = req.query.format === 'pdf' ? 'pdf' : 'xlsx';
   let report;
@@ -1119,7 +1173,7 @@ app.post('/admin/refund', (req, res) => {
 
 // ── Edit token fields ──────────────────────────────────────────────────────────
 app.post('/admin/edit-token', (req, res) => {
-  const { adminKey, token, customerName, email, wechat, packageType, subscriptionExpiresAt, approvedAt, price, subscriptionDays, subscriptionKey, amountReceived, paymentMethod } = req.body;
+  const { adminKey, token, customerName, email, wechat, packageType, subscriptionExpiresAt, approvedAt, price, purchasePrice, subscriptionDays, subscriptionKey, amountReceived, paymentMethod } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const tokens = loadTokens();
   if (!tokens[token]) return res.status(404).json({ error: 'Not found.' });
@@ -1131,6 +1185,7 @@ app.post('/admin/edit-token', (req, res) => {
   if (subscriptionExpiresAt !== undefined) t.subscriptionExpiresAt = subscriptionExpiresAt;
   if (approvedAt     !== undefined) t.approvedAt            = approvedAt;
   if (price          !== undefined) t.price                 = parseFloat(price);
+  if (purchasePrice  !== undefined) t.purchasePrice         = (purchasePrice === '' || purchasePrice == null) ? 0 : parseFloat(purchasePrice);
   if (amountReceived !== undefined) t.amountReceived        = (amountReceived === '' || amountReceived == null) ? null : parseFloat(amountReceived);
   if (paymentMethod  !== undefined) t.paymentMethod         = paymentMethod;
   if (subscriptionDays !== undefined) t.subscriptionDays    = parseInt(subscriptionDays);
@@ -1152,24 +1207,33 @@ app.post('/admin/edit-token', (req, res) => {
   res.json({ success: true });
 });
 
-// ── Keys CRUD ──────────────────────────────────────────────────────────────────
+// ── Keys CRUD (per-product inventory) ────────────────────────────────────────────
+const _productName = (pid) => { try { const p = loadProducts().products.find(x => x.id === pid); return p ? p.name : pid; } catch { return pid; } };
+const availableKeys = (pid) => Object.values(loadKeys()).filter(k => !k.usedBy && (k.productId === pid));
+const keyStockMap = () => {
+  const map = {};
+  Object.values(loadKeys()).forEach(k => { if (!k.productId) return; map[k.productId] = map[k.productId] || { available: 0, used: 0 }; if (k.usedBy) map[k.productId].used++; else map[k.productId].available++; });
+  return map;
+};
+
 app.get('/admin/keys', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const keysData = loadKeys();
-  const product  = req.query.product;
-  let keys = Object.values(keysData);
-  if (product) keys = keys.filter(k => k.product === product);
+  const pid = req.query.productId;
+  let keys = Object.values(keysData).map(k => ({ ...k, productName: _productName(k.productId) }));
+  if (pid) keys = keys.filter(k => k.productId === pid);
   keys.sort((a, b) => {
     if (!a.usedBy && b.usedBy) return -1;
     if (a.usedBy && !b.usedBy) return 1;
-    return (a.key||'').localeCompare(b.key||'');
+    return (a.key || '').localeCompare(b.key || '');
   });
-  res.json({ keys });
+  res.json({ keys, stock: keyStockMap() });
 });
 
 app.post('/admin/keys/add', (req, res) => {
-  const { adminKey, product, keys } = req.body;
+  const { adminKey, productId, product, keys } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!productId) return res.status(400).json({ error: 'Select a product first.' });
   if (!Array.isArray(keys) || !keys.length) return res.status(400).json({ error: 'No keys provided.' });
   const keysData = loadKeys();
   let added = 0, skipped = 0;
@@ -1177,11 +1241,11 @@ app.post('/admin/keys/add', (req, res) => {
     const key = String(k).trim();
     if (!key) return;
     if (keysData[key]) { skipped++; return; }
-    keysData[key] = { key, product: product || 'claude', addedAt: new Date().toISOString(), usedBy: null };
+    keysData[key] = { key, productId, product: product || '', addedAt: new Date().toISOString(), usedBy: null };
     added++;
   });
   saveKeys(keysData);
-  res.json({ success: true, added, skipped });
+  res.json({ success: true, added, skipped, stock: keyStockMap() });
 });
 
 app.post('/admin/keys/delete', (req, res) => {
@@ -1189,17 +1253,18 @@ app.post('/admin/keys/delete', (req, res) => {
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const keysData = loadKeys();
   if (!keysData[key]) return res.status(404).json({ error: 'Key not found.' });
+  if (keysData[key].usedBy) return res.status(400).json({ error: 'Key is in use and cannot be deleted.' });
   delete keysData[key];
   saveKeys(keysData);
   res.json({ success: true });
 });
 
 app.post('/admin/keys/delete-unused', (req, res) => {
-  const { adminKey, product } = req.body;
+  const { adminKey, productId } = req.body;
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const keysData = loadKeys();
   Object.keys(keysData).forEach(k => {
-    if (!keysData[k].usedBy && (!product || keysData[k].product === product)) delete keysData[k];
+    if (!keysData[k].usedBy && (!productId || keysData[k].productId === productId)) delete keysData[k];
   });
   saveKeys(keysData);
   res.json({ success: true });
@@ -1494,6 +1559,8 @@ app.post('/admin/sessions-data', (req, res) => {
     tokens, emailLog: loadEmailLog(), revenue: calcRevenue(allTokens),
     customers: loadCustomers(),
     resellers: loadResellers(),
+    keys: Object.values(loadKeys()).map(k => ({ key: k.key, productId: k.productId || null, used: !!k.usedBy, customerName: k.customerName || '', customerId: k.customerId || '', usedBy: k.usedBy || null, assignedAt: k.assignedAt || null, addedAt: k.addedAt || null })),
+    keyStock: keyStockMap(),
     settings: { currency: s.currency || 'USD', currencySymbol: s.currencySymbol || '$', currencyName: s.currencyName || '', paymentMethods: Array.isArray(s.paymentMethods) ? s.paymentMethods : [] },
     currentUser: { id: user.id, username: user.username, name: user.name, role: user.role, permissions: perms },
   });
@@ -1531,6 +1598,7 @@ app.post('/admin/send-reminder', async (req, res) => {
   const { adminKey, token, type } = req.body; if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   const tokens = loadTokens(); const t = tokens[token];
   if (!t || !t.email) return res.status(400).json({ error: 'No email on record.' });
+  if (t.refunded || t.deactivated) return res.status(400).json({ error: 'Subscription is inactive (deactivated or refunded) — reminders are disabled for it.' });
   const expiry = t.subscriptionExpiresAt ? new Date(t.subscriptionExpiresAt) : null;
   const daysLeft = expiry ? Math.ceil((expiry - new Date())/(1000*60*60*24)) : 0;
   const expiryStr = expiry ? expiry.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) : '—';
