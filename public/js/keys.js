@@ -30,6 +30,13 @@ const Keys = (() => {
     const wrap = document.getElementById('keys-list');
     const low  = document.getElementById('keys-lowstock');
     if (!wrap) return;
+    // Bind delegated unassign handler (once per render is fine — we replace innerHTML)
+    wrap.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-unassign-key]');
+      if (!btn) return;
+      const key = decodeURIComponent(btn.dataset.unassignKey);
+      unassign(key);
+    }, { once: true });
     wrap.innerHTML = '<div class="empty">Loading…</div>';
 
     let data;
@@ -131,7 +138,7 @@ const Keys = (() => {
                    <span style="font-size:.74rem">→ ${custLink}</span>
                    <span style="font-size:.7rem;color:var(--muted2)">${_fmtDate(k.assignedAt)}</span>
                    <button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn);font-size:.68rem"
-                     onclick="Keys.unassign(${JSON.stringify(k.key)})"
+                     data-unassign-key="${encodeURIComponent(k.key)}"
                      title="Remove this key from the subscription and return it to Available">↩ Unassign</button>
                  </div>
                </div>`;
@@ -167,7 +174,8 @@ const Keys = (() => {
       if (status) status.textContent = `✓ Added ${d.added}${d.skipped ? `, skipped ${d.skipped} duplicate(s)` : ''}.`;
       document.getElementById('keys-add-text').value = '';
       await render();
-      await _silentStoreRefresh();
+      // Also reload dashboard so the key picker in "Create link" reflects new keys immediately
+      try { await Dashboard.reload(); } catch(e) {}
     } else if (status) status.textContent = '✕ ' + ((d && d.error) || 'Failed.');
   };
 
@@ -200,35 +208,9 @@ const Keys = (() => {
 
   // ── Navigate to customer in Customers tab ──────────────────────────────────
   const goToCustomer = (token) => {
-    // Switch to Customers tab
-    try {
-      const navItem = [...document.querySelectorAll('.nav-item')].find(el => el.textContent.includes('Customers'));
-      if (navItem && window.Shell && Shell.navigate) Shell.navigate('customers', navItem);
-      else { const btn = document.querySelector('[data-section="customers"]'); if (btn) btn.click(); }
-    } catch(e) {}
-    // After tab switch, highlight the matching card
-    setTimeout(() => {
-      // Search by token in the customer list
-      const searchEl = document.getElementById('cust-search');
-      if (searchEl) {
-        const t = (Store.tokens || {})[token] || {};
-        searchEl.value = t.email || t.customerName || '';
-        searchEl.dispatchEvent(new Event('input'));
-      }
-      // Scroll to the card if visible
-      setTimeout(() => {
-        const cards = document.querySelectorAll('.cust-card');
-        cards.forEach(c => {
-          const t = (Store.tokens || {})[token] || {};
-          if (c.textContent.includes(t.customerName || '') || c.textContent.includes(t.email || '')) {
-            c.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            c.style.outline = '2.5px solid var(--blue)';
-            c.style.outlineOffset = '2px';
-            setTimeout(() => { c.style.outline = ''; c.style.outlineOffset = ''; }, 2500);
-          }
-        });
-      }, 300);
-    }, 150);
+    // Open the customer's active subscription page in a new tab
+    const url = window.location.origin + '/submit?token=' + encodeURIComponent(token);
+    window.open(url, '_blank');
   };
 
   return { render, add, del, unassign, assign, goToCustomer };
