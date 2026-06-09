@@ -1926,6 +1926,40 @@ app.post('/admin/reseller/update', (req, res) => {
   res.json({ success: true, reseller: r });
 });
 
+// ── Add a new reseller ─────────────────────────────────────────────────────────
+app.post('/admin/reseller/add', (req, res) => {
+  const { adminKey, name, contact, commissionType, commissionValue, note } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required.' });
+  const list = loadResellers();
+  if (list.find(r => r.name.toLowerCase() === name.trim().toLowerCase()))
+    return res.status(400).json({ error: 'A reseller with that name already exists.' });
+  const r = {
+    id: 'R' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 900 + 100),
+    name: name.trim(),
+    contact: contact || '',
+    commissionType: commissionType || 'percent',
+    commissionValue: Number(commissionValue) || 0,
+    note: note || '',
+    createdAt: new Date().toISOString(),
+  };
+  list.push(r);
+  saveResellers(list);
+  res.json({ success: true, reseller: r });
+});
+
+// ── Delete a reseller ──────────────────────────────────────────────────────────
+app.post('/admin/reseller/delete', (req, res) => {
+  const { adminKey, id } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const list = loadResellers();
+  const idx = list.findIndex(r => r.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Reseller not found.' });
+  list.splice(idx, 1);
+  saveResellers(list);
+  res.json({ success: true });
+});
+
 // ── Notifications ──────────────────────────────────────────────────────────────
 app.get('/admin/notification', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
