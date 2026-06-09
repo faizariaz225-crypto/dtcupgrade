@@ -427,7 +427,7 @@
     <!-- Form -->
     <div id="screen-form" class="screen">
       <div class="service-badge" id="svc-badge"><div class="badge-dot"></div><span id="pkg-label">Pro</span></div>
-      <div class="card-title" id="form-title">Activate Your Package</div>
+      <div class="card-title" id="form-title">Activate Your Plan</div>
       <p class="card-sub">Hello <strong id="cust-name">there</strong>! Please provide your details below.</p>
 
       <!-- Claude instructions -->
@@ -534,13 +534,13 @@
         <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
       </div>
       <div class="order-card">
-        <div class="oc-row"><span class="oc-label">Package</span><span class="oc-value" id="proc-pkg">—</span></div>
+        <div class="oc-row"><span class="oc-label">Plan</span><span class="oc-value" id="proc-pkg">—</span></div>
         <div class="oc-row"><span class="oc-label">Data</span><span class="oc-value" id="proc-data">—</span></div>
         <div class="oc-row"><span class="oc-label">Status</span><span class="pill pill-proc"><span class="pd"></span>Under Review</span></div>
       </div>
       <div class="timeline">
         <div class="tl-item"><div class="tl-dot done" id="tl1-dot">✓</div><div class="tl-body"><div class="tl-title" id="tl1-title">Details Submitted</div><div class="tl-sub" id="tl1-sub">Your information has been received.</div></div></div>
-        <div class="tl-item"><div class="tl-dot wait" id="tl2-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl2-title">Verification</div><div class="tl-sub" id="tl2-sub">Our team is checking your account details.</div></div></div>
+        <div class="tl-item"><div class="tl-dot wait" id="tl2-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl2-title">Verification</div><div class="tl-sub" id="tl2-sub">Your account details are currently being verified by the system.</div></div></div>
         <div class="tl-item"><div class="tl-dot wait" id="tl3-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl3-title">Verification Approved</div><div class="tl-sub" id="tl3-sub">Your details have been confirmed.</div></div></div>
         <div class="tl-item"><div class="tl-dot wait" id="tl4-dot">○</div><div class="tl-body"><div class="tl-title dim" id="tl4-title">Processing</div><div class="tl-sub" id="tl4-sub">Activating your subscription.</div></div></div>
       </div>
@@ -559,8 +559,8 @@
         <circle cx="40" cy="40" r="35" stroke="#16a34a" stroke-width="2"/>
         <polyline points="24,40 34,52 56,28" stroke="#16a34a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div class="state-title" id="act-title">Package Activated!</div>
-      <p class="state-sub" id="act-sub">Your package is live and ready. Welcome aboard!</p>
+      <div class="state-title" id="act-title">Plan Activated!</div>
+      <p class="state-sub" id="act-sub">Your Plan is live and ready. Welcome aboard!</p>
 
       <!-- Activation confirmation -->
       <div class="act-banner">
@@ -572,7 +572,7 @@
 
       <!-- Order summary -->
       <div class="order-card">
-        <div class="oc-row"><span class="oc-label">Package</span><span class="oc-value" id="act-pkg">—</span></div>
+        <div class="oc-row"><span class="oc-label">Plan</span><span class="oc-value" id="act-pkg">—</span></div>
         <div class="oc-row" id="act-data-row"><span class="oc-label">Organization ID</span><span class="oc-value" id="act-data">—</span></div>
         <div class="oc-row"><span class="oc-label">WeChat</span><span class="oc-value" id="act-wechat">—</span></div>
         <div class="oc-row"><span class="oc-label">Email</span><span class="oc-value" id="act-email">—</span></div>
@@ -611,14 +611,14 @@
       <div id="expired-wrap" style="display:none" class="countdown-wrap expired-sub">
         <div class="cd-expired-msg">⏱ Your subscription has expired</div>
         <div class="cd-expired-sub">
-          To renew your package, please contact DTC:<br>
+          To renew your plan, please contact DTC:<br>
           <a href="mailto:dtc@dtc1.shop">dtc@dtc1.shop</a>
         </div>
       </div>
 
       <!-- Pre-activation steps (how to verify) -->
       <div class="check-pro" id="check-pro-steps">
-        <div class="check-pro-title" id="steps-title">🔍 How to Verify Your Package is Active</div>
+        <div class="check-pro-title" id="steps-title">🔍 How to Verify Your Plan is Active</div>
         <div id="steps-content"></div>
       </div>
 
@@ -1005,7 +1005,7 @@
       const planType  = acct.planType  || parsed.planType;
       const structure = acct.structure || parsed.structure;
       if (!planType)             return setErr(el, err, 'Could not find planType. Make sure you copied the full JSON.');
-      if (planType !== 'free')   return setErr(el, err, `⚠ Package already active (planType: "${planType}"). This service can only be added to a free account.`);
+      if (planType !== 'free')   return setErr(el, err, `⚠ Plan already active (planType: "${planType}"). This service can only be added to a free account.`);
       if (structure !== 'personal') return setErr(el, err, `⚠ Team account detected (structure: "${structure}"). Switch to a personal profile, open the session URL again, and paste the new data.`);
       el.classList.add('ok'); err.classList.remove('show'); checkReady();
     } catch { setErr(el, err, 'Invalid JSON. Please copy the complete content from the session URL page.'); }
@@ -1150,9 +1150,9 @@
   // ── Verification stepper (reflects admin-set stage) ───────────────────────
   const STAGE_META = {
     submitted:  { pill: 'Submitted',             sub: 'Your details have been received and are awaiting verification.' },
-    verifying:  { pill: 'Verifying',             sub: 'Our team is verifying your account details now.' },
+    verifying:  { pill: 'Verifying',             sub: 'Your account details are currently being verified by the system.' },
     verified:   { pill: 'Verification Approved', sub: 'Your details are verified. Preparing your activation.' },
-    processing: { pill: 'Processing',            sub: 'We are activating your subscription. Almost done!' },
+    processing: { pill: 'Processing',            sub: 'Your subscription is being activated. This will be completed shortly.' },
   };
   const _setDot = (id, st) => {
     const dot = document.getElementById(id + '-dot');
@@ -1258,9 +1258,9 @@
     document.getElementById('tl2-title').textContent='Verification Complete';
     document.getElementById('tl2-sub').textContent='Your details have been verified successfully.';
     document.getElementById('tl3-dot').className='tl-dot done'; document.getElementById('tl3-dot').textContent='✓';
-    document.getElementById('tl3-title').textContent='Package Activated';
+    document.getElementById('tl3-title').textContent='Plan Activated';
     document.getElementById('tl3-title').classList.remove('dim');
-    document.getElementById('tl3-sub').textContent='Your package is now live.';
+    document.getElementById('tl3-sub').textContent='Your Plan is now live.';
 
     // Banner
     const ts = approvedAt ? new Date(approvedAt) : new Date();
