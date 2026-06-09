@@ -1275,6 +1275,62 @@ app.post('/admin/keys/delete-unused', (req, res) => {
   res.json({ success: true });
 });
 
+// ── Unassign a used key: clears it from the subscription and returns it to available ──
+app.post('/admin/keys/unassign', (req, res) => {
+  const { adminKey, key } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const keysData = loadKeys();
+  if (!keysData[key]) return res.status(404).json({ error: 'Key not found.' });
+  const token = keysData[key].usedBy;
+  // Clear the key's assignment
+  keysData[key].usedBy       = null;
+  keysData[key].customerName = null;
+  keysData[key].customerId   = null;
+  keysData[key].packageType  = null;
+  keysData[key].assignedAt   = null;
+  saveKeys(keysData);
+  // Also clear it from the token that was using it
+  if (token) {
+    const tokens = loadTokens();
+    if (tokens[token] && tokens[token].subscriptionKey === key) {
+      tokens[token].subscriptionKey = null;
+      saveTokens(tokens);
+    }
+  }
+  res.json({ success: true, stock: keyStockMap() });
+});
+
+// ── Assign an existing unused key to a subscription token ──────────────────────
+app.post('/admin/keys/assign', (req, res) => {
+  const { adminKey, key, token } = req.body;
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const keysData = loadKeys();
+  if (!keysData[key]) return res.status(404).json({ error: 'Key not found.' });
+  if (keysData[key].usedBy) return res.status(400).json({ error: 'Key is already assigned to another subscription.' });
+  const tokens = loadTokens();
+  if (!tokens[token]) return res.status(404).json({ error: 'Subscription not found.' });
+  const t = tokens[token];
+  // If the token already has a key, free the old one first
+  const oldKey = t.subscriptionKey;
+  if (oldKey && keysData[oldKey]) {
+    keysData[oldKey].usedBy = null; keysData[oldKey].customerName = null;
+    keysData[oldKey].customerId = null; keysData[oldKey].packageType = null;
+    keysData[oldKey].assignedAt = null;
+  }
+  // Assign the new key
+  keysData[key].usedBy       = token;
+  keysData[key].customerName = t.customerName || '';
+  keysData[key].customerId   = t.customerId   || '';
+  keysData[key].packageType  = t.packageType  || '';
+  keysData[key].assignedAt   = new Date().toISOString();
+  keysData[key].productId    = keysData[key].productId || t.productId || '';
+  saveKeys(keysData);
+  // Update the token
+  t.subscriptionKey = key;
+  saveTokens(tokens);
+  res.json({ success: true, stock: keyStockMap() });
+});
+
 
 
 
