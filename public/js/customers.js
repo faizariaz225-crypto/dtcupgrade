@@ -187,6 +187,22 @@ const Customers = (() => {
     const log = (h.accessLog || []).slice(-8).reverse().map(e =>
       `<div class="cmore-log-row"><span>${fmtFull(new Date(e.at))}</span><span>${esc(e.ip)}</span><span title="${esc(e.userAgent)}">${esc(parseUA(e.userAgent))}</span></div>`).join('');
 
+    // Per-subscription progress bar
+    const subDays  = daysUntil(h.subscriptionExpiresAt || '9999');
+    const subTotal = h.subscriptionDays || h.durationDays || 30;
+    const subPct   = h.subscriptionExpiresAt
+      ? Math.min(100, Math.max(0, ((subTotal - subDays) / subTotal) * 100))
+      : 0;
+    const subBarColor = subDays < 0 ? '#dc2626' : subDays <= 5 ? '#dc2626' : subDays <= 30 ? '#d97706' : '#16a34a';
+    const subBarHTML = h.subscriptionExpiresAt ? `
+      <div class="exp-bar-wrap" style="margin:.6rem 0 .3rem">
+        <div class="exp-bar-label">
+          <span>Subscription Usage</span>
+          <span style="font-weight:600">${Math.round(subPct)}% used · ${subDays <= 0 ? 'Expired' : subDays + 'd left'}</span>
+        </div>
+        <div class="exp-bar"><div class="exp-bar-fill" style="width:${subPct}%;background:${subBarColor}"></div></div>
+      </div>` : '';
+
     return `<div class="sub-item${h.refunded ? ' refunded' : ''}">
       <div class="sub-head" onclick="Customers.toggleSub('${tk}')">
         <div class="sub-head-main"><span class="sub-prod">${esc(prod)}</span><span class="sub-pkg">${esc(h.packageType || '—')}</span></div>
@@ -198,6 +214,7 @@ const Customers = (() => {
         </div>
       </div>
       <div class="sub-body" id="sibody-${tk}">
+        ${subBarHTML}
         <div class="cmore-grid">
           ${dataDetail}
           <div><div class="cf-lbl">Payment</div><div class="cf-val">${amt}${h.paymentMethod ? ' · ' + esc(h.paymentMethod) : ''}</div></div>
@@ -211,6 +228,7 @@ const Customers = (() => {
         <div class="sub-actions">
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();Modals.openEdit('${tk}')">✏ Edit this package</button>
           ${h.refunded ? '' : `<button class="btn btn-outline btn-sm" style="border-color:var(--warn-border);color:var(--warn)" onclick="event.stopPropagation();Customers.refund('${tk}')">↩ Refund this package</button>`}
+          ${h.refunded ? '' : `<button class="btn btn-delete btn-sm" onclick="event.stopPropagation();Customers.deleteSubscription('${tk}')">🗑 Delete subscription</button>`}
           ${(h.approved && !h.deactivated && !h.refunded && h.email) ? `
             <button class="btn btn-ghost-blue btn-sm" onclick="event.stopPropagation();Customers.sendReminder('${tk}','reminder')">📧 Send renewal reminder</button>
             <button class="btn btn-ghost-blue btn-sm" onclick="event.stopPropagation();Customers.sendReminder('${tk}','expired')">⏱ Send expiry notice</button>` : ''}
@@ -317,6 +335,16 @@ const Customers = (() => {
     const refundNote = prompt('Optional refund note / reason:', '') || '';
     const d = await api('/admin/refund', { adminKey: Store.adminKey, token, refundNote });
     if (d && d.success) Dashboard.reload(); else alert('Refund failed.');
+  };
+
+  const deleteSubscription = async (token) => {
+    const t = Store.tokens[token] || {};
+    const amt = t.amountReceived != null ? Number(t.amountReceived) : (Number(t.price) || 0);
+    const sym = (Store.settings || {}).currencySymbol || '$';
+    const amtStr = amt > 0 ? ` (${sym}${amt.toFixed(2)} will be removed from revenue)` : '';
+    if (!confirm(`Delete this subscription for ${t.customerName || 'this customer'}?${amtStr}\n\nThis marks it as refunded and removes it from revenue totals everywhere. This cannot be undone.`)) return;
+    const d = await api('/admin/refund', { adminKey: Store.adminKey, token, refundNote: 'Deleted by admin' });
+    if (d && d.success) Dashboard.reload(); else alert('Failed to delete subscription.');
   };
 
   // ── Customer grouping + profile / renew / statement ──────────────────────────
@@ -446,5 +474,5 @@ const Customers = (() => {
     else alert('Please allow pop-ups to download the statement.');
   };
 
-  return { render, setFilter, sendReminder, toggleMore, toggleSub, deleteCustomer, refund, openProfile, closeProfile, saveProfile, renew, downloadStatement };
+  return { render, setFilter, sendReminder, toggleMore, toggleSub, deleteCustomer, refund, deleteSubscription, openProfile, closeProfile, saveProfile, renew, downloadStatement };
 })();
