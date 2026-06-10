@@ -110,7 +110,7 @@ const Customers = (() => {
          </div>`
       : '';
 
-    return `<div class="${cardCls}">
+    return `<div class="${cardCls}" data-token="${token}">
       <div class="cust-top">
         <div>
           <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">

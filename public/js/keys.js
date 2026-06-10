@@ -30,13 +30,7 @@ const Keys = (() => {
     const wrap = document.getElementById('keys-list');
     const low  = document.getElementById('keys-lowstock');
     if (!wrap) return;
-    // Bind delegated unassign handler (once per render is fine — we replace innerHTML)
-    wrap.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-unassign-key]');
-      if (!btn) return;
-      const key = decodeURIComponent(btn.dataset.unassignKey);
-      unassign(key);
-    }, { once: true });
+
     wrap.innerHTML = '<div class="empty">Loading…</div>';
 
     let data;
@@ -93,23 +87,28 @@ const Keys = (() => {
       const availHTML = avail.length
         ? `<div style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:.9rem">
             ${avail.map(k => {
-              // Build assign-to-subscription dropdown: only tokens of same product without a key
+              // safe index used as HTML id (avoid special chars in key value)
+              const safeId = 'asel-' + btoa(unescape(encodeURIComponent(k.key))).replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
               const eligibleTokens = Object.entries(tokens)
                 .filter(([, t]) => t.approved && !t.refunded && !t.deactivated && (t.productId === pid || !pid) && !t.subscriptionKey)
                 .sort((a, b) => (a[1].customerName || '').localeCompare(b[1].customerName || ''));
               const assignOpts = eligibleTokens.length
-                ? `<select id="assign-sel-${esc(k.key)}" style="font-size:.72rem;padding:.25rem .4rem;border:1.5px solid var(--border);border-radius:6px;background:#fff;max-width:160px">
+                ? `<select id="${safeId}" style="font-size:.72rem;padding:.25rem .4rem;border:1.5px solid var(--border);border-radius:6px;background:#fff;max-width:160px">
                     <option value="">Assign to…</option>
                     ${eligibleTokens.map(([tk, t]) => `<option value="${tk}">${esc(t.customerName || tk)} · ${esc(t.packageType || '')}</option>`).join('')}
                    </select>
-                   <button class="btn btn-outline btn-sm" style="border-color:var(--blue-mid);color:var(--blue)" onclick="Keys.assign(${JSON.stringify(k.key)}, document.getElementById('assign-sel-${esc(k.key)}').value)">Assign</button>`
+                   <button class="btn btn-outline btn-sm" style="border-color:var(--blue-mid);color:var(--blue)"
+                     data-assign-key="${encodeURIComponent(k.key)}"
+                     data-assign-sel="${safeId}">Assign</button>`
                 : `<span style="font-size:.7rem;color:var(--muted2)">No unkeyed subscriptions</span>`;
 
+              // FIX 1: use data-del-key attribute instead of inline onclick with JSON.stringify
               return `<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;padding:.45rem .8rem">
                 <span style="font-family:'JetBrains Mono',monospace;font-size:.8rem;flex:1;min-width:0;word-break:break-all">${esc(k.key)}</span>
                 <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
                   ${assignOpts}
-                  <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error)" onclick="Keys.del(${JSON.stringify(k.key)})">Delete</button>
+                  <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error)"
+                    data-del-key="${encodeURIComponent(k.key)}">Delete</button>
                 </div>
               </div>`;
             }).join('')}
@@ -121,17 +120,17 @@ const Keys = (() => {
         ? `<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">Used — history (${used.length})</div>
            <div style="display:flex;flex-direction:column;gap:.35rem">
              ${used.map(k => {
-               // Find the token this key belongs to so we can navigate to the customer
                const token = k.usedBy;
                const t     = token ? (tokens[token] || {}) : {};
                const custName = k.customerName || t.customerName || 'Unknown';
                const pkg      = k.packageType  || t.packageType  || '';
                const custLink = token
                  ? `<button class="btn-link-cust" title="Jump to customer in Customers tab"
-                       onclick="Keys.goToCustomer(${JSON.stringify(token)})"
+                       data-goto-token="${token}"
                     >👤 ${esc(custName)}</button>${pkg ? `<span style="color:var(--muted);font-size:.7rem"> · ${esc(pkg)}</span>` : ''}`
                  : `<strong>${esc(custName)}</strong>${pkg ? `<span style="color:var(--muted)"> · ${esc(pkg)}</span>` : ''}`;
 
+               // FIX 2: use data-unassign-key attribute (handled by persistent delegated listener below)
                return `<div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:#f8fafc;border:1px solid var(--border);border-radius:7px;padding:.45rem .8rem">
                  <span style="font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--muted);text-decoration:line-through;flex:1;min-width:0;word-break:break-all">${esc(k.key)}</span>
                  <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
@@ -158,6 +157,41 @@ const Keys = (() => {
         ${usedHTML}
       </div>`;
     }).join('');
+
+    // ── Single persistent delegated listener on #keys-list ──────────────────
+    // (attached once here after render, handles all three button types)
+    _bindListEvents(wrap);
+  };
+
+  // Persistent click delegation — survives re-render since we re-call after each render
+  let _listenerAttached = false;
+  const _boundHandler = (e) => {
+    // Delete unused key
+    const delBtn = e.target.closest('[data-del-key]');
+    if (delBtn) { del(decodeURIComponent(delBtn.dataset.delKey)); return; }
+
+    // Unassign used key
+    const unBtn = e.target.closest('[data-unassign-key]');
+    if (unBtn) { unassign(decodeURIComponent(unBtn.dataset.unassignKey)); return; }
+
+    // Assign available key to subscription
+    const assignBtn = e.target.closest('[data-assign-key]');
+    if (assignBtn) {
+      const key   = decodeURIComponent(assignBtn.dataset.assignKey);
+      const selEl = document.getElementById(assignBtn.dataset.assignSel);
+      assign(key, selEl ? selEl.value : '');
+      return;
+    }
+
+    // Navigate to customer
+    const gotoBtn = e.target.closest('[data-goto-token]');
+    if (gotoBtn) { goToCustomer(gotoBtn.dataset.gotoToken); return; }
+  };
+
+  const _bindListEvents = (wrap) => {
+    // Remove old listener then re-add so we never double-fire
+    wrap.removeEventListener('click', _boundHandler);
+    wrap.addEventListener('click', _boundHandler);
   };
 
   // ── Add keys ───────────────────────────────────────────────────────────────
@@ -174,8 +208,7 @@ const Keys = (() => {
       if (status) status.textContent = `✓ Added ${d.added}${d.skipped ? `, skipped ${d.skipped} duplicate(s)` : ''}.`;
       document.getElementById('keys-add-text').value = '';
       await render();
-      // Also reload dashboard so the key picker in "Create link" reflects new keys immediately
-      try { await Dashboard.reload(); } catch(e) {}
+      await _silentStoreRefresh();
     } else if (status) status.textContent = '✕ ' + ((d && d.error) || 'Failed.');
   };
 
@@ -206,12 +239,53 @@ const Keys = (() => {
     else alert((d && d.error) || 'Failed to assign key.');
   };
 
-  // ── Navigate to customer in Customers tab ──────────────────────────────────
+  // FIX 3: Navigate to Customers tab and scroll/highlight the matching card
   const goToCustomer = (token) => {
-    // Open the customer's active subscription page in a new tab
-    const url = window.location.origin + '/submit?token=' + encodeURIComponent(token);
-    window.open(url, '_blank');
+    // Find the Customers nav item and trigger Shell.navigate
+    const navEl = [...document.querySelectorAll('.nav-item')]
+      .find(el => el.getAttribute('onclick') && el.getAttribute('onclick').includes("'customers'"));
+    if (navEl) {
+      Shell.navigate('customers', navEl);
+    } else {
+      // fallback: directly activate the page
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const pg = document.getElementById('page-customers');
+      if (pg) pg.classList.add('active');
+      Customers.render();
+    }
+
+    // After the tab renders, find the card by token and scroll to it
+    setTimeout(() => {
+      // Customer cards are identified by their token in the cust-more div id (cm-TOKEN)
+      // and the expand button. We look for a card that contains the cm- element.
+      const cmEl = document.getElementById('cm-' + token);
+      if (cmEl) {
+        // Walk up to the .cust-card wrapper
+        const card = cmEl.closest('.cust-card') || cmEl.parentElement;
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const prev = card.style.outline;
+          card.style.outline = '2.5px solid var(--blue)';
+          card.style.outlineOffset = '3px';
+          setTimeout(() => { card.style.outline = prev || ''; card.style.outlineOffset = ''; }, 2500);
+        }
+      } else {
+        // Card may not be rendered yet (customers.render is async) — retry once
+        setTimeout(() => {
+          const cmEl2 = document.getElementById('cm-' + token);
+          if (!cmEl2) return;
+          const card = cmEl2.closest('.cust-card') || cmEl2.parentElement;
+          if (card) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            card.style.outline = '2.5px solid var(--blue)';
+            card.style.outlineOffset = '3px';
+            setTimeout(() => { card.style.outline = ''; card.style.outlineOffset = ''; }, 2500);
+          }
+        }, 600);
+      }
+    }, 200);
   };
 
   return { render, add, del, unassign, assign, goToCustomer };
 })();
+
