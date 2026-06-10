@@ -146,7 +146,7 @@ if (!fs.existsSync(INSTRUCTIONS_FILE)) {
   }, null, 2));
 }
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '7d' }));
 
@@ -1689,6 +1689,7 @@ const BACKUP_FILES = {
   'settings.json': SETTINGS_FILE, 'keys.json': KEYS_FILE, 'payments.json': PAYMENTS_FILE,
   'instructions.json': INSTRUCTIONS_FILE, 'landingContent.json': LANDING_FILE,
   'emailTemplates.json': TEMPLATES_FILE, 'notifications.json': NOTIFY_FILE, 'emailLog.json': EMAIL_LOG,
+  'resellers.json': RESELLERS_FILE,
 };
 app.get('/admin/backup', (req, res) => {
   if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
@@ -1706,10 +1707,13 @@ app.post('/admin/restore', (req, res) => {
   if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
   if (!backup || !backup.files || typeof backup.files !== 'object') return res.status(400).json({ error: 'Invalid backup file.' });
   let restored = 0;
+  const failed = [];
   for (const [name, content] of Object.entries(backup.files)) {
     if (!BACKUP_FILES[name]) continue; // only known files
-    try { fs.writeFileSync(BACKUP_FILES[name], JSON.stringify(content, null, 2)); restored++; } catch (e) {}
+    try { fs.writeFileSync(BACKUP_FILES[name], JSON.stringify(content, null, 2)); restored++; }
+    catch (e) { failed.push(name); }
   }
+  if (failed.length) return res.status(500).json({ error: `Restored ${restored} file(s) but failed to write: ${failed.join(', ')}` });
   res.json({ success: true, restored });
 });
 
