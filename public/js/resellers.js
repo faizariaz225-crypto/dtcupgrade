@@ -8,6 +8,14 @@ const Resellers = (() => {
     ? `${_fmt(r.commissionValue)} / sale`
     : `${r.commissionValue || 0}% of sale`;
 
+  // ── Delegated click handler for the reseller list ─────────────────────────
+  const _onWrapClick = (e) => {
+    const delBtn = e.target.closest('[data-del-reseller-id]');
+    if (delBtn) {
+      del(delBtn.dataset.delResellerId, delBtn.dataset.delResellerName);
+    }
+  };
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const render = async () => {
     const rev = Store.revenue || {};
@@ -143,10 +151,15 @@ const Resellers = (() => {
           <div style="margin-top:.65rem;display:flex;gap:.5rem;flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" onclick="Resellers.toggleEdit('${r.id}')">✎ Edit</button>
             <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error)"
-              onclick="Resellers.del('${r.id}', ${JSON.stringify(r.name)})">🗑 Delete</button>
+              data-del-reseller-id="${esc(r.id)}"
+              data-del-reseller-name="${esc(r.name)}">🗑 Delete</button>
           </div>
         </div>`;
     }).join('');
+
+    // Bind delegated listener (persistent — handles delete across re-renders)
+    wrap.removeEventListener('click', _onWrapClick);
+    wrap.addEventListener('click', _onWrapClick);
   };
 
   // ── Add ────────────────────────────────────────────────────────────────────
