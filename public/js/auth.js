@@ -63,7 +63,6 @@ const Auth = (() => {
 
     // Step 4 — boot all modules independently (a failure in one never blocks others)
     Shell.init();
-    safeRun('ProfileMenu', ProfileMenu.init);
     // Load data that other modules depend on FIRST (await so data is ready)
     await safeRun('Instructions', Instructions.loadData);
     await safeRun('Products',     Products.loadData);

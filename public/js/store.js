@@ -22,16 +22,11 @@ const Store = (() => {
   let _instructions  = { sets: {} };
   let _dashFilter    = 'all';
   let _custFilter    = 'all';
-  let _currentUser   = {};
 
   return {
     // ── Admin key ────────────────────────────────────────────────────────────
     get adminKey()     { return _adminKey; },
     setAdminKey(k)     { _adminKey = k; },
-
-    // ── Current logged-in user ───────────────────────────────────────────────
-    get currentUser()  { return _currentUser; },
-    setCurrentUser(u)  { _currentUser = u || {}; },
 
     // ── Tokens (links) ───────────────────────────────────────────────────────
     get tokens()       { return _tokens; },
@@ -82,16 +77,16 @@ const Store = (() => {
     setKeyStock(s)     { _keyStock = s || {}; },
 
     // ── Bulk load after login ─────────────────────────────────────────────────
-    load({ tokens, emailLog, revenue, customers, resellers, keys, keyStock, settings, currentUser }) {
+    load({ tokens, emailLog, revenue, customers, resellers, keys, keyStock, settings }) {
       this.setTokens(tokens);
       this.setEmailLog(emailLog);
-      if (revenue)     this.setRevenue(revenue);
-      if (customers)   this.setCustomers(customers);
-      if (resellers)   this.setResellers(resellers);
-      if (keys)        this.setKeys(keys);
-      if (keyStock)    this.setKeyStock(keyStock);
-      if (settings)    _settings = { ..._settings, ...settings };
-      if (currentUser) _currentUser = currentUser;
+      if (revenue) this.setRevenue(revenue);
+      if (customers) this.setCustomers(customers);
+      if (resellers) this.setResellers(resellers);
+      if (keys) this.setKeys(keys);
+      if (keyStock) this.setKeyStock(keyStock);
+      // Merge currency + payment methods so every page reflects the configured currency
+      if (settings) _settings = { ..._settings, ...settings };
     },
   };
 })();
