@@ -474,46 +474,7 @@
       </div>
     </div>
 
-    <!-- ── Profile footer ── -->
-    <div class="sb-profile" id="sb-profile" onclick="ProfileMenu.toggle()">
-      <div class="sb-avatar" id="sb-avatar">?</div>
-      <div class="sb-profile-info">
-        <div class="sb-profile-name" id="sb-profile-name">Loading…</div>
-        <div class="sb-profile-role" id="sb-profile-role"></div>
-      </div>
-      <div class="sb-profile-caret">⌄</div>
-    </div>
-
-    <!-- ── Profile dropdown (inside sidebar) ── -->
-    <div class="sb-profile-menu" id="sb-profile-menu">
-      <div class="sb-pmenu-header">
-        <div class="sb-pmenu-avatar" id="sb-pmenu-avatar">?</div>
-        <div>
-          <div class="sb-pmenu-name" id="sb-pmenu-name">—</div>
-          <div class="sb-pmenu-meta" id="sb-pmenu-meta">—</div>
-        </div>
-      </div>
-      <div class="sb-pmenu-divider"></div>
-      <div class="sb-pmenu-item" onclick="ProfileMenu.openSection('profile')">
-        <span>👤</span> My Profile
-      </div>
-      <div class="sb-pmenu-item" onclick="ProfileMenu.openSection('password')">
-        <span>🔒</span> Change Password
-      </div>
-      <div class="sb-pmenu-item" onclick="ProfileMenu.openSection('sessions')">
-        <span>🖥</span> Active Sessions
-      </div>
-      <div class="sb-pmenu-item" onclick="ProfileMenu.openSection('privacy')">
-        <span>🛡</span> Privacy & Data
-      </div>
-      <div class="sb-pmenu-item" onclick="ProfileMenu.openSection('contact')">
-        <span>📬</span> Contact & Support
-      </div>
-      <div class="sb-pmenu-divider"></div>
-      <div class="sb-pmenu-item sb-pmenu-danger" onclick="ProfileMenu.logout()">
-        <span>↩</span> Sign Out
-      </div>
-    </div>
+    <div class="sb-footer">Admin Panel v3.0</div>
   </nav>
 
   <!-- ── Main ── -->
@@ -1210,139 +1171,6 @@
      MODALS
 ═══════════════════════════════════════════════════════════════════════════ -->
 
-<!-- Profile Panel -->
-<div class="modal-overlay" id="profile-panel-overlay" onclick="if(event.target===this)ProfileMenu.closePanel()">
-  <div class="profile-panel" id="profile-panel">
-    <div class="profile-panel-header">
-      <div class="profile-panel-tabs">
-        <button class="pp-tab active" id="pptab-profile"  onclick="ProfileMenu.switchTab('profile')">Profile</button>
-        <button class="pp-tab" id="pptab-password" onclick="ProfileMenu.switchTab('password')">Password</button>
-        <button class="pp-tab" id="pptab-sessions" onclick="ProfileMenu.switchTab('sessions')">Sessions</button>
-        <button class="pp-tab" id="pptab-privacy"  onclick="ProfileMenu.switchTab('privacy')">Privacy</button>
-        <button class="pp-tab" id="pptab-contact"  onclick="ProfileMenu.switchTab('contact')">Contact</button>
-      </div>
-      <button class="pp-close" onclick="ProfileMenu.closePanel()">✕</button>
-    </div>
-
-    <!-- Profile tab -->
-    <div class="pp-section active" id="ppsec-profile">
-      <div class="pp-avatar-wrap">
-        <div class="pp-big-avatar" id="pp-big-avatar">?</div>
-        <div>
-          <div style="font-weight:700;font-size:1.1rem" id="pp-display-name">—</div>
-          <div style="font-size:.78rem;color:var(--muted)" id="pp-display-role">—</div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem" id="pp-display-username">—</div>
-        </div>
-      </div>
-      <div class="form-group" style="margin-top:1.2rem">
-        <label>Display Name</label>
-        <input id="pp-name" placeholder="Your full name"/>
-      </div>
-      <div class="form-group">
-        <label>Email Address</label>
-        <input id="pp-email" type="email" placeholder="you@example.com"/>
-      </div>
-      <div class="form-group">
-        <label>Phone / WhatsApp</label>
-        <input id="pp-phone" placeholder="+1 555 000 0000"/>
-      </div>
-      <div class="form-group">
-        <label>Profile Photo URL <span style="font-weight:400;color:var(--muted);font-size:.65rem">— paste any image URL</span></label>
-        <input id="pp-photo" placeholder="https://…" oninput="ProfileMenu.previewPhoto()"/>
-      </div>
-      <div id="pp-photo-preview" style="display:none;margin-bottom:.8rem">
-        <img id="pp-photo-img" src="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border)"/>
-      </div>
-      <div id="pp-profile-msg" style="font-size:.75rem;margin-bottom:.5rem"></div>
-      <button class="btn btn-primary btn-sm" onclick="ProfileMenu.saveProfile()">Save Profile</button>
-    </div>
-
-    <!-- Password tab -->
-    <div class="pp-section" id="ppsec-password">
-      <div style="font-weight:700;font-size:1rem;margin-bottom:1rem">Change Password</div>
-      <div class="form-group">
-        <label>Current Password</label>
-        <input id="pp-cur-pw" type="password" placeholder="Current password"/>
-      </div>
-      <div class="form-group">
-        <label>New Password</label>
-        <input id="pp-new-pw" type="password" placeholder="At least 8 characters" oninput="ProfileMenu.checkPwStrength()"/>
-        <div id="pp-pw-strength" style="margin-top:.3rem;font-size:.7rem"></div>
-      </div>
-      <div class="form-group">
-        <label>Confirm New Password</label>
-        <input id="pp-conf-pw" type="password" placeholder="Repeat new password"/>
-      </div>
-      <div id="pp-pw-msg" style="font-size:.75rem;margin-bottom:.5rem"></div>
-      <button class="btn btn-primary btn-sm" onclick="ProfileMenu.changePassword()">Update Password</button>
-      <div style="font-size:.68rem;color:var(--muted);margin-top:.6rem">You will be signed out on all other devices after changing your password.</div>
-    </div>
-
-    <!-- Sessions tab -->
-    <div class="pp-section" id="ppsec-sessions">
-      <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">Active Sessions</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">Devices currently signed in with your account.</div>
-      <div id="pp-sessions-list"><div class="empty">Loading…</div></div>
-      <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error);margin-top:1rem" onclick="ProfileMenu.revokeOtherSessions()">Sign out all other devices</button>
-    </div>
-
-    <!-- Privacy tab -->
-    <div class="pp-section" id="ppsec-privacy">
-      <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">Privacy & Data</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.7">Control how your account data is used within the admin panel.</div>
-      <div class="pp-privacy-block">
-        <div class="pp-privacy-title">📋 What data we store about you</div>
-        <div class="pp-privacy-body">Your username, display name, email, role, and last login time. No tracking cookies or third-party analytics are used in the admin panel.</div>
-      </div>
-      <div class="pp-privacy-block">
-        <div class="pp-privacy-title">🔍 Activity logging</div>
-        <div class="pp-privacy-body">Admin actions (approvals, edits, refunds) are logged with your username and timestamp for audit purposes. These logs are stored on your server only.</div>
-      </div>
-      <div class="pp-privacy-block">
-        <div class="pp-privacy-title">🗑 Delete your account</div>
-        <div class="pp-privacy-body">Only a superadmin can delete user accounts. Contact your system administrator to request account deletion.</div>
-      </div>
-      <div class="pp-privacy-block">
-        <div class="pp-privacy-title">📦 Export your data</div>
-        <div class="pp-privacy-body">
-          <button class="btn btn-outline btn-sm" onclick="ProfileMenu.exportMyData()">⬇ Download my account data</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Contact tab -->
-    <div class="pp-section" id="ppsec-contact">
-      <div style="font-weight:700;font-size:1rem;margin-bottom:.3rem">Contact & Support</div>
-      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.7">Resources and help for the DTC admin panel.</div>
-      <div class="pp-contact-block">
-        <div class="pp-contact-icon">🛠</div>
-        <div>
-          <div class="pp-contact-title">Technical Support</div>
-          <div class="pp-contact-body">For bugs, server errors, or feature questions — contact your system administrator or the developer who set up this panel.</div>
-        </div>
-      </div>
-      <div class="pp-contact-block">
-        <div class="pp-contact-icon">📖</div>
-        <div>
-          <div class="pp-contact-title">Admin Panel Version</div>
-          <div class="pp-contact-body">DTC Admin Panel v3.0 — Node.js + Express. Data stored in JSON files on the server.</div>
-        </div>
-      </div>
-      <div class="pp-contact-block">
-        <div class="pp-contact-icon">⚡</div>
-        <div>
-          <div class="pp-contact-title">Quick Actions</div>
-          <div class="pp-contact-body" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem">
-            <button class="btn btn-outline btn-sm" onclick="ProfileMenu.closePanel();Shell.navigate('settings',document.querySelector('[onclick*=settings]'))">⚙ Settings</button>
-            <button class="btn btn-outline btn-sm" onclick="ProfileMenu.closePanel();Dashboard.reload()">↻ Refresh Data</button>
-            <button class="btn btn-outline btn-sm" style="border-color:var(--error-border);color:var(--error)" onclick="ProfileMenu.logout()">↩ Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Decline -->
 <div class="modal-overlay" id="decline-modal">
   <div class="modal">
@@ -1586,7 +1414,6 @@
 <script src="js/notifications.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/keys.js"></script>
-<script src="js/profile-menu.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
