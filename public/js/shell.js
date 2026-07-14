@@ -32,6 +32,8 @@ const Shell = (() => {
     if (pageId === 'revenue')      Revenue.render();
     if (pageId === 'notifications')  { Notifications.init(); Notifications.load(); }
     if (pageId === 'landing')         Landing.load();
+    if (pageId === 'requests')       Requests.render();
+    if (pageId === 'paymethods')     PayMethods.load();
   };
 
   // Called by nav-items: onclick="Shell.navigate('dashboard', this)"
