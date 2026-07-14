@@ -31,12 +31,26 @@ const RESELLERS_FILE    = path.join(DATA_DIR, 'resellers.json');
 const ADMINS_FILE       = path.join(DATA_DIR, 'admins.json');
 const USERS_FILE        = path.join(DATA_DIR, 'users.json');
 const SESSIONS_MAP_FILE = path.join(DATA_DIR, 'sessions_map.json');
+const REQUESTS_FILE     = path.join(DATA_DIR, 'requests.json');
+const PORTAL_SESS_FILE  = path.join(DATA_DIR, 'portal_sessions.json');
+const PAYMETHODS_FILE   = path.join(DATA_DIR, 'payMethods.json');
+const RECEIPTS_DIR      = path.join(DATA_DIR, 'receipts');
 
 const LINK_EXPIRY_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
 if (!fs.existsSync(DATA_DIR))       fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(UPLOADS_DIR))    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(TOKENS_FILE))    fs.writeFileSync(TOKENS_FILE,  JSON.stringify({}));
+if (!fs.existsSync(REQUESTS_FILE))  fs.writeFileSync(REQUESTS_FILE, JSON.stringify([], null, 2));
+if (!fs.existsSync(PORTAL_SESS_FILE)) fs.writeFileSync(PORTAL_SESS_FILE, JSON.stringify({}, null, 2));
+if (!fs.existsSync(RECEIPTS_DIR))   fs.mkdirSync(RECEIPTS_DIR, { recursive: true });
+if (!fs.existsSync(PAYMETHODS_FILE)) fs.writeFileSync(PAYMETHODS_FILE, JSON.stringify({
+  methods: [
+    { id: 'wechat',  name: 'WeChat Pay', qrUrl: '', account: '', note: '', enabled: true,  builtin: true },
+    { id: 'alipay',  name: 'Alipay',     qrUrl: '', account: '', note: '', enabled: true,  builtin: true },
+    { id: 'binance', name: 'Binance Pay',qrUrl: '', account: '', note: '', enabled: true,  builtin: true },
+  ],
+}, null, 2));
 if (!fs.existsSync(SESSIONS_FILE))  fs.writeFileSync(SESSIONS_FILE, '');
 if (!fs.existsSync(EMAIL_CONFIG))   fs.writeFileSync(EMAIL_CONFIG,  JSON.stringify({}));
 if (!fs.existsSync(EMAIL_LOG))      fs.writeFileSync(EMAIL_LOG,     JSON.stringify([]));
@@ -201,6 +215,12 @@ const loadInstructions= () => JSON.parse(fs.readFileSync(INSTRUCTIONS_FILE, 'utf
 const saveInstructions= i  => fs.writeFileSync(INSTRUCTIONS_FILE, JSON.stringify(i, null, 2));
 const loadNotify      = () => JSON.parse(fs.readFileSync(NOTIFY_FILE,  'utf8'));
 const saveNotify      = n  => fs.writeFileSync(NOTIFY_FILE,  JSON.stringify(n, null, 2));
+const loadPayMethods  = () => { try { return JSON.parse(fs.readFileSync(PAYMETHODS_FILE,'utf8')); } catch(e) { return { methods: [] }; } };
+const savePayMethods  = m  => fs.writeFileSync(PAYMETHODS_FILE, JSON.stringify(m, null, 2));
+const loadRequests    = () => { try { return JSON.parse(fs.readFileSync(REQUESTS_FILE,'utf8')); } catch(e) { return []; } };
+const saveRequests    = r  => fs.writeFileSync(REQUESTS_FILE, JSON.stringify(r, null, 2));
+const loadPortalSess  = () => { try { return JSON.parse(fs.readFileSync(PORTAL_SESS_FILE,'utf8')); } catch(e) { return {}; } };
+const savePortalSess  = m  => fs.writeFileSync(PORTAL_SESS_FILE, JSON.stringify(m, null, 2));
 const loadProducts    = () => JSON.parse(fs.readFileSync(PRODUCTS_FILE,'utf8'));
 const saveProducts    = p  => fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(p, null, 2));
 const isAdmin         = k  => k === ADMIN_KEY;
@@ -623,7 +643,37 @@ app.post('/admin/generate', (req, res) => {
     saveKeys(keysData);
   }
 
-  const link = `${req.protocol}://${req.get('host')}/submit?token=${token}`;
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const base  = process.env.BASE_URL || (proto + '://' + req.get('host'));
+  const link  = `${base}/submit?token=${token}`;
+
+  // Auto-deliver to the customer portal: if this customer had a pending request
+  // for this exact package, mark it fulfilled and attach the link.
+  if (email) {
+    try {
+      const reqs = loadRequests();
+      const match = reqs.find(r => String(r.email || '').toLowerCase() === String(email).toLowerCase()
+                                && r.productId === productId
+                                && r.packageLabel === packageLabel
+                                && r.status === 'pending');
+      if (match) {
+        match.status    = 'approved';
+        match.link      = link;
+        match.token     = token;
+        match.updatedAt = new Date().toISOString();
+        saveRequests(reqs);
+        sendEmail({
+          to: match.email,
+          subject: `Your ${match.productName} link is ready — DTC`,
+          html: `<p>Hi,</p><p>Your activation link for <strong>${match.productName} — ${match.packageLabel}</strong> is ready.</p>`
+              + `<p><a href="${link}">Open your activation link</a></p>`
+              + `<p>It is also waiting in your portal.</p><p>— DTC</p>`,
+          type: 'request_approved',
+        }).catch(() => {});
+      }
+    } catch (e) {}
+  }
+
   res.json({ link, token, expiresAt, price: parseFloat(price) });
 });
 
@@ -1987,6 +2037,7 @@ app.post('/admin/notification', (req, res) => {
 
 // ── Landing page content (public read, admin write) ───────────────────────────
 app.get('/api/landing-content', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   try { res.json({ ...LANDING_DEFAULTS, ...loadLanding() }); }
   catch(e) { res.json({ ...LANDING_DEFAULTS }); }
 });
@@ -1995,6 +2046,7 @@ app.get('/api/landing-content', (req, res) => {
 // Prices come straight from products.json (so they always stay in sync with the
 // product page) unless the admin has set an explicit override in the landing editor.
 app.get('/api/public-products', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
   try {
     const landing   = (() => { try { return { ...LANDING_DEFAULTS, ...loadLanding() }; } catch(e) { return { ...LANDING_DEFAULTS }; } })();
     const overrides = landing.productOverrides || {};
@@ -2069,11 +2121,16 @@ function portalSubStatus(t) {
 }
 function portalSubs(email) {
   const tokens = loadTokens();
-  return Object.values(tokens)
+  return Object.entries(tokens)
+    .map(([tok, v]) => ({ ...v, token: tok }))
     .filter(t => t.email && String(t.email).toLowerCase() === email.toLowerCase())
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
     .map(t => ({
       // NOTE: deliberately NO payment method, NO times (date only), NO orgId, NO session data
+      // The activation link is the customer's own, so it is surfaced until used.
+      actionLink:    (!t.used && !t.deactivated && !(t.expiresAt && new Date() > new Date(t.expiresAt)))
+                       ? '/submit?token=' + t.token
+                       : '',
       product:       t.productName || t.portalName || t.product || 'Subscription',
       package:       t.packageType || '',
       status:        portalSubStatus(t),
@@ -2094,20 +2151,46 @@ const portalOtpEmail = (otp, link) => `
     <p style="color:#94a3b8;font-size:12px;margin-top:18px">If you didn't request this, you can ignore this email.</p>
   </div>`;
 
+// ── Portal sessions ───────────────────────────────────────────────────────────
+const PORTAL_SESS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+function portalIssueSession(email) {
+  const sessions = loadPortalSess();
+  // prune expired
+  const now = Date.now();
+  Object.keys(sessions).forEach(k => { if (!sessions[k] || sessions[k].expires < now) delete sessions[k]; });
+  const token = uuidv4() + uuidv4();
+  sessions[token] = { email, expires: now + PORTAL_SESS_MS };
+  savePortalSess(sessions);
+  return token;
+}
+
+function portalEmailFromReq(req) {
+  const hdr = req.headers['authorization'] || '';
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : (req.body && req.body.session) || req.query.session;
+  if (!token) return null;
+  const sessions = loadPortalSess();
+  const rec = sessions[token];
+  if (!rec || rec.expires < Date.now()) return null;
+  return rec.email;
+}
+
 app.post('/api/portal/request-otp', async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Please enter a valid email address.' });
-  const subs = portalSubs(email);
-  if (subs.length) {
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    const magic = uuidv4();
-    portalCodes.set(email, { otp, magic, expires: Date.now() + 15 * 60 * 1000 });
-    const proto = req.headers['x-forwarded-proto'] || req.protocol;
-    const base = process.env.BASE_URL || (proto + '://' + req.get('host'));
-    const link = `${base}/portal?magic=${magic}&email=${encodeURIComponent(email)}`;
-    try { await sendEmail({ to: email, subject: 'Your access code — DTC', html: portalOtpEmail(otp, link), type: 'portal_otp' }); } catch (e) {}
-  }
-  // Generic response so we don't reveal whether an email exists
+
+  // Anyone with a valid email may sign in or sign up.
+  const otp   = String(Math.floor(100000 + Math.random() * 900000));
+  const magic = uuidv4();
+  portalCodes.set(email, { otp, magic, expires: Date.now() + 15 * 60 * 1000 });
+
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const base  = process.env.BASE_URL || (proto + '://' + req.get('host'));
+  const link  = `${base}/portal?magic=${magic}&email=${encodeURIComponent(email)}`;
+  try {
+    await sendEmail({ to: email, subject: 'Your access code — DTC', html: portalOtpEmail(otp, link), type: 'portal_otp' });
+  } catch (e) {}
+
   res.json({ ok: true });
 });
 
@@ -2120,13 +2203,252 @@ app.post('/api/portal/verify', (req, res) => {
   const ok = (magic && magic === rec.magic) || (otp && String(otp).trim() === rec.otp);
   if (!ok) return res.status(401).json({ error: 'Incorrect code. Please check and try again.' });
   portalCodes.delete(email); // one-time use
-  res.json({ ok: true, email, subscriptions: portalSubs(email) });
+  const session = portalIssueSession(email);
+  res.json({ ok: true, email, session, subscriptions: portalSubs(email), requests: portalRequests(email) });
 });
 
 app.get('/', (req, res) => {
   const inPublic = path.join(__dirname, 'public', 'index.html');
   const inRoot   = path.join(__dirname, 'index.html');
   res.sendFile(fs.existsSync(inPublic) ? inPublic : inRoot);
+});
+
+// ── Payment methods (QR codes shown in every customer portal) ────────────────
+app.get('/api/portal/payment-methods', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const all = (loadPayMethods().methods || []).filter(m => m.enabled !== false);
+  res.json({ methods: all.map(m => ({ id: m.id, name: m.name, qrUrl: m.qrUrl || '', account: m.account || '', note: m.note || '' })) });
+});
+
+app.get('/admin/payment-methods', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  res.json(loadPayMethods());
+});
+
+app.post('/admin/payment-methods', (req, res) => {
+  const { adminKey, methods } = req.body || {};
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  if (!Array.isArray(methods)) return res.status(400).json({ error: 'Invalid payment methods.' });
+  const clean = methods
+    .filter(m => m && m.id && m.name)
+    .map(m => ({
+      id:      String(m.id).slice(0, 40),
+      name:    String(m.name).slice(0, 60),
+      qrUrl:   String(m.qrUrl || ''),
+      account: String(m.account || '').slice(0, 120),
+      note:    String(m.note || '').slice(0, 200),
+      enabled: m.enabled !== false,
+      builtin: !!m.builtin,
+    }));
+  savePayMethods({ methods: clean });
+  res.json({ ok: true });
+});
+
+// ── Receipts (private: only the owner or an admin may read one) ───────────────
+const _receiptStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, RECEIPTS_DIR),
+  filename:    (req, file, cb) => {
+    let ext = (path.extname(file.originalname || '') || '').toLowerCase().replace(/[^.a-z0-9]/g, '');
+    if (!ext || ext.length > 6) ext = '.img';
+    cb(null, uuidv4() + ext);
+  },
+});
+const _receiptUpload = multer({
+  storage: _receiptStorage,
+  limits:  { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+    if (ok.includes(file.mimetype)) cb(null, true);
+    else cb(new Error('Upload a JPG, PNG, WEBP or PDF receipt.'));
+  },
+});
+
+app.post('/api/portal/upload-receipt', (req, res) => {
+  const email = portalEmailFromReq(req);
+  if (!email) return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+  _receiptUpload.single('receipt')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message || 'Upload failed.' });
+    if (!req.file) return res.status(400).json({ error: 'No file received.' });
+    res.json({ ok: true, file: req.file.filename });
+  });
+});
+
+// Receipts are not statically served — they are fetched through this guard.
+app.get('/receipts/:file', (req, res) => {
+  const file = String(req.params.file || '').replace(/[^a-zA-Z0-9.\-]/g, '');
+  const full = path.join(RECEIPTS_DIR, file);
+  if (!file || !fs.existsSync(full)) return res.status(404).send('Not found');
+
+  const admin = isAdmin(req.query.adminKey);
+  const email = portalEmailFromReq(req);
+  if (!admin) {
+    if (!email) return res.status(401).send('Unauthorized');
+    const owns = loadRequests().some(r => r.receiptFile === file
+                  && String(r.email || '').toLowerCase() === String(email).toLowerCase());
+    if (!owns) return res.status(403).send('Forbidden');
+  }
+  res.sendFile(full);
+});
+
+// ── Portal: product requests ──────────────────────────────────────────────────
+function portalRequests(email) {
+  const e = String(email || '').toLowerCase();
+  return loadRequests()
+    .filter(r => String(r.email || '').toLowerCase() === e)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .map(r => ({
+      id:          r.id,
+      productName: r.productName,
+      packageLabel: r.packageLabel,
+      note:        r.note || '',
+      paymentMethod: r.paymentMethodName || '',
+      receiptId:   r.receiptId || '',
+      receiptUrl:  r.receiptFile ? ('/receipts/' + r.receiptFile) : '',
+      status:      r.status,
+      link:        r.status === 'approved' ? (r.link || '') : '',
+      adminNote:   r.adminNote || '',
+      price:       r.price != null ? r.price : null,
+      createdAt:   r.createdAt,
+      updatedAt:   r.updatedAt || '',
+    }));
+}
+
+// Logged-in snapshot
+app.get('/api/portal/me', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const email = portalEmailFromReq(req);
+  if (!email) return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+  res.json({ ok: true, email, subscriptions: portalSubs(email), requests: portalRequests(email) });
+});
+
+// Catalogue the customer may request from (admin-approved products only)
+app.get('/api/portal/catalogue', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const landing   = (() => { try { return { ...LANDING_DEFAULTS, ...loadLanding() }; } catch(e) { return { ...LANDING_DEFAULTS }; } })();
+    const overrides = landing.productOverrides || {};
+    const settings  = (() => { try { return loadSettings(); } catch(e) { return {}; } })();
+    const list = (loadProducts().products || [])
+      .filter(p => (overrides[p.id] || {}).visible === true)
+      .map(p => {
+        const o = overrides[p.id] || {};
+        return {
+          id:   p.id,
+          name: p.name,
+          packages: (p.packages || [])
+            .filter(k => !(o.hidden || []).includes(k.label))
+            .map(k => {
+              const c = (o.prices || {})[k.label];
+              return { label: k.label, price: (c !== undefined && c !== '' && !isNaN(Number(c))) ? Number(c) : k.price };
+            }),
+        };
+      })
+      .filter(p => p.packages.length);
+    res.json({ products: list, currencySymbol: settings.currencySymbol || '$' });
+  } catch(e) { res.json({ products: [], currencySymbol: '$' }); }
+});
+
+app.post('/api/portal/request-product', (req, res) => {
+  const email = portalEmailFromReq(req);
+  if (!email) return res.status(401).json({ error: 'Session expired. Please sign in again.' });
+
+  const { productId, packageLabel, note, paymentMethodId, receiptId, receiptFile } = req.body || {};
+  if (!productId || !packageLabel) return res.status(400).json({ error: 'Please choose a product and a package.' });
+  if (!paymentMethodId) return res.status(400).json({ error: 'Please choose how you paid.' });
+  if (!receiptFile)     return res.status(400).json({ error: 'Please attach your payment receipt.' });
+
+  const method = (loadPayMethods().methods || []).find(m => m.id === paymentMethodId && m.enabled !== false);
+  if (!method) return res.status(400).json({ error: 'That payment method is not available.' });
+
+  const safeReceipt = String(receiptFile).replace(/[^a-zA-Z0-9.\-]/g, '');
+  if (!safeReceipt || !fs.existsSync(path.join(RECEIPTS_DIR, safeReceipt))) {
+    return res.status(400).json({ error: 'Your receipt upload was not found. Please attach it again.' });
+  }
+
+  const product = (loadProducts().products || []).find(p => p.id === productId);
+  if (!product) return res.status(400).json({ error: 'That product is not available.' });
+  const pkg = (product.packages || []).find(k => k.label === packageLabel);
+  if (!pkg) return res.status(400).json({ error: 'That package is not available.' });
+
+  const requests = loadRequests();
+  const open = requests.find(r => String(r.email).toLowerCase() === email.toLowerCase()
+                              && r.productId === productId
+                              && r.packageLabel === packageLabel
+                              && r.status === 'pending');
+  if (open) return res.status(400).json({ error: 'You already have a pending request for this package.' });
+
+  const landing   = (() => { try { return { ...LANDING_DEFAULTS, ...loadLanding() }; } catch(e) { return {}; } })();
+  const o         = (landing.productOverrides || {})[productId] || {};
+  const custom    = (o.prices || {})[packageLabel];
+  const price     = (custom !== undefined && custom !== '' && !isNaN(Number(custom))) ? Number(custom) : pkg.price;
+
+  const rec = {
+    id:           uuidv4(),
+    email,
+    productId,
+    productName:  product.name,
+    packageLabel,
+    price,
+    note:         String(note || '').slice(0, 500),
+    paymentMethodId,
+    paymentMethodName: method.name,
+    receiptId:    String(receiptId || '').slice(0, 80),
+    receiptFile:  safeReceipt,
+    status:       'pending',
+    link:         '',
+    adminNote:    '',
+    createdAt:    new Date().toISOString(),
+    updatedAt:    '',
+  };
+  requests.push(rec);
+  saveRequests(requests);
+  res.json({ ok: true, requests: portalRequests(email) });
+});
+
+// ── Admin: manage requests ────────────────────────────────────────────────────
+app.get('/admin/requests', (req, res) => {
+  if (!isAdmin(req.query.adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  const all = loadRequests().sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  res.json({ requests: all, pending: all.filter(r => r.status === 'pending').length });
+});
+
+app.post('/admin/requests/update', async (req, res) => {
+  const { adminKey, id, status, link, adminNote } = req.body || {};
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+
+  const requests = loadRequests();
+  const r = requests.find(x => x.id === id);
+  if (!r) return res.status(404).json({ error: 'Request not found.' });
+
+
+  if (status) r.status = status;
+  if (link !== undefined) r.link = String(link).trim();
+  if (adminNote !== undefined) r.adminNote = String(adminNote).slice(0, 500);
+  r.updatedAt = new Date().toISOString();
+  saveRequests(requests);
+
+  // Tell the customer their link is ready
+  if (r.status === 'approved' && r.link) {
+    try {
+      await sendEmail({
+        to: r.email,
+        subject: `Your ${r.productName} link is ready — DTC`,
+        html: `<p>Hi,</p><p>Your activation link for <strong>${r.productName} — ${r.packageLabel}</strong> is ready.</p>`
+            + `<p><a href="${r.link}">Open your activation link</a></p>`
+            + `<p>You can also see it any time in your portal.</p><p>— DTC</p>`,
+        type: 'request_approved',
+      });
+    } catch (e) {}
+  }
+
+  res.json({ ok: true });
+});
+
+app.post('/admin/requests/delete', (req, res) => {
+  const { adminKey, id } = req.body || {};
+  if (!isAdmin(adminKey)) return res.status(401).json({ error: 'Unauthorized' });
+  saveRequests(loadRequests().filter(r => r.id !== id));
+  res.json({ ok: true });
 });
 
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
