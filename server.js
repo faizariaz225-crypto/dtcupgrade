@@ -2061,6 +2061,12 @@ app.post('/api/portal/verify', (req, res) => {
   res.json({ ok: true, email, subscriptions: portalSubs(email) });
 });
 
+app.get('/', (req, res) => {
+  const inPublic = path.join(__dirname, 'public', 'index.html');
+  const inRoot   = path.join(__dirname, 'index.html');
+  res.sendFile(fs.existsSync(inPublic) ? inPublic : inRoot);
+});
+
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
 
 app.get('/submit', (req, res) => res.sendFile(path.join(__dirname, 'public', 'form.html')));
