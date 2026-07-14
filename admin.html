@@ -59,18 +59,29 @@
 
     /* Action buttons inside table */
     .action-wrap  { display: flex; flex-direction: column; gap: .4rem; }
-    .approve-btn  { background: var(--success-bg); border: 1.5px solid var(--success-border); border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--success); cursor: pointer; transition: all .18s; white-space: nowrap; }
-    .approve-btn:hover:not(:disabled)  { background: #dcfce7; border-color: #86efac; transform: translateY(-1px); }
-    .approve-btn:disabled  { opacity: .4; cursor: not-allowed; }
-    .decline-btn  { background: var(--error-bg);   border: 1.5px solid var(--error-border);   border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--error);   cursor: pointer; transition: all .18s; white-space: nowrap; }
-    .decline-btn:hover:not(:disabled)  { background: #fee2e2; border-color: #fca5a5; transform: translateY(-1px); }
+    .stage-pill   { display: inline-block; align-self: flex-start; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); border-radius: 20px; padding: .18rem .6rem; font-size: .66rem; font-weight: 700; letter-spacing: .02em; }
+    .approve-btn  { background: var(--success-bg); border: 1.5px solid var(--success-border); border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--success); cursor: pointer; transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .18s, border-color .18s; white-space: nowrap; animation: approveGlow 2.2s ease-in-out infinite; }
+    .approve-btn:hover:not(:disabled)  { background: #dcfce7; border-color: #86efac; transform: translateY(-2px); }
+    .approve-btn:active:not(:disabled) { transform: scale(.96); }
+    .approve-btn:disabled  { opacity: .4; cursor: not-allowed; animation: none; }
+    @keyframes approveGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,.0); } 50% { box-shadow: 0 0 0 4px rgba(22,163,74,.12); } }
+    .decline-btn  { background: var(--error-bg);   border: 1.5px solid var(--error-border);   border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--error);   cursor: pointer; transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .18s, border-color .18s; white-space: nowrap; }
+    .decline-btn:hover:not(:disabled)  { background: #fee2e2; border-color: #fca5a5; transform: translateY(-2px); }
+    .decline-btn:active:not(:disabled) { transform: scale(.96); }
     /* Generic small action buttons */
     .action-btn       { border-radius: 7px; padding: .28rem .75rem; font-family: 'Inter',sans-serif; font-size: .72rem; font-weight: 700; cursor: pointer; transition: all .18s; white-space: nowrap; border: 1.5px solid; }
     .action-btn:hover { transform: translateY(-1px); }
+    .action-btn:active { transform: scale(.96); }
     .action-btn.deact { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
     .action-btn.deact:hover { background: #e5e7eb; border-color: #9ca3af; }
     .action-btn.react { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); }
     .action-btn.react:hover { background: #dbeafe; }
+    .action-btn.edit { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); margin-right: .35rem; }
+    .action-btn.edit:hover { background: #dbeafe; }
+    .action-btn.delete { background: #ffffff; border-color: var(--error-border); color: var(--error); margin-top: .4rem; }
+    .action-btn.delete:hover { background: var(--error-bg); }
+    .action-btn.refund { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn); margin-top: .4rem; }
+    .action-btn.refund:hover { filter: brightness(.97); }
 
     /* ── Customers ─────────────────────────────────────────────────────────── */
     .cust-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.3rem 1.5rem; margin-bottom: .9rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -90,6 +101,86 @@
     .exp-bar       { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .exp-bar-fill  { height: 100%; border-radius: 3px; transition: width .5s ease; }
     .email-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+    /* ── Customer card "See more" expand ───────────────────────────────────── */
+    .cust-more-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: .72rem; font-weight: 600; padding: 0; margin: 0 0 .6rem; font-family: 'Inter',sans-serif; }
+    .cust-more-btn:hover { text-decoration: underline; }
+    .cust-more { display: none; margin-bottom: .9rem; padding-top: .2rem; border-top: 1px dashed var(--border); }
+    .cust-more.open { display: block; padding-top: .9rem; }
+    .cmore-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .55rem .9rem; margin-bottom: .8rem; }
+    @media (max-width:560px) { .cmore-grid { grid-template-columns: 1fr 1fr; } }
+    .cmore-log { background: #f8faff; border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem; font-family: 'JetBrains Mono',monospace; }
+    .cmore-log-hdr, .cmore-log-row { display: grid; grid-template-columns: 1.3fr .9fr 1fr; gap: .4rem; font-size: .62rem; }
+    .cmore-log-hdr { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; padding-bottom: .3rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; }
+    .cmore-log-row { color: var(--muted); padding: .22rem 0; border-bottom: 1px solid #eef2f7; }
+    .cmore-log-row:last-child { border-bottom: none; }
+    .cust-history { margin: .2rem 0 .9rem; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .cust-history-hdr { background: #f8faff; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: .45rem .7rem; border-bottom: 1px solid var(--border); }
+    .cust-history-row { display: grid; grid-template-columns: 1fr 1fr .8fr 1.1fr; gap: .5rem; font-size: .72rem; color: var(--text); padding: .45rem .7rem; border-bottom: 1px solid #eef2f7; }
+    .cust-history-row:last-child { border-bottom: none; }
+    .ptag { background: #fff; border: 1.5px solid var(--border); color: var(--muted); border-radius: 16px; padding: .3rem .8rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: 'Inter',sans-serif; transition: all .15s; }
+    .ptag:hover { border-color: var(--blue-mid); }
+    .ptag.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    /* ── Live activation preview ─────────────────────────────────────────────── */
+    .pv-tabs { display:flex; gap:.4rem; margin-bottom:.8rem; flex-wrap:wrap; }
+    .pv-tab { background:#fff; border:1.5px solid var(--border); color:var(--muted); border-radius:8px; padding:.35rem .8rem; font-size:.74rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
+    .pv-tab.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .pv-phone { --pv-accent:#2563eb; --pv-accent-d:#1e40af; --pv-accent-l:#dbeafe; width:300px; max-width:100%; height:560px; margin:0 auto; border-radius:30px; border:9px solid #0f172a; box-shadow:0 18px 50px rgba(0,0,0,.25); overflow:hidden; position:relative; }
+    .pv-screen { position:absolute; inset:0; overflow:auto; padding:22px 18px; }
+    .pv-brand { display:flex; align-items:center; gap:.45rem; font-weight:800; font-size:.92rem; color:var(--pv-accent-d); margin-bottom:1.1rem; }
+    .pv-brand-ic { width:26px;height:26px;border-radius:7px;background:var(--pv-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem; }
+    .pv-card { background:#fff; border-radius:16px; padding:18px 16px; box-shadow:0 8px 30px rgba(15,23,42,.10); }
+    .pv-h { font-size:1.1rem; font-weight:800; color:#0f172a; }
+    .pv-sub { font-size:.76rem; color:#64748b; margin:.25rem 0 1rem; }
+    .pv-flabel { font-size:.7rem; font-weight:700; color:#475569; margin-bottom:.3rem; }
+    .pv-input { height:38px; border:1.5px solid #e2e8f0; border-radius:9px; margin-bottom:1rem; background:#f8fafc; }
+    .pv-btn { width:100%; background:var(--pv-accent); color:#fff; border:none; border-radius:11px; padding:.8rem; font-weight:700; font-size:.9rem; cursor:default; }
+    .pv-steps { display:flex; flex-direction:column; gap:.85rem; margin-top:.6rem; }
+    .pv-step { display:flex; align-items:center; gap:.6rem; font-size:.82rem; color:#94a3b8; }
+    .pv-step.done, .pv-step.spin { color:#0f172a; font-weight:600; }
+    .pv-dot { width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;border:2px solid #e2e8f0; flex-shrink:0; }
+    .pv-step.done .pv-dot { background:var(--pv-accent); border-color:var(--pv-accent); color:#fff; }
+    .pv-step.spin .pv-dot { border-color:var(--pv-accent); color:var(--pv-accent); }
+    .pv-ring { width:70px;height:70px;border-radius:50%;border:3px solid #16a34a;display:flex;align-items:center;justify-content:center;color:#16a34a;font-size:1.8rem;margin:1rem auto; }
+    .pv-popup { position:absolute; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:14px; }
+    .pv-pop-box { background:#fff; border-radius:16px; padding:16px 14px; text-align:center; width:100%; }
+    .pv-pop-title { font-weight:800; font-size:.95rem; color:#0f172a; }
+    .pv-pop-text { font-size:.72rem; color:#64748b; margin:.3rem 0 .8rem; }
+    .pv-qrs { display:flex; gap:.6rem; justify-content:center; margin-bottom:.8rem; }
+    .pv-qr { flex:1; background:#f8faff; border:1px solid #e2e8f0; border-radius:10px; padding:.5rem; }
+    .pv-qr img { width:100%; border-radius:6px; display:block; }
+    .pv-qr-l { font-size:.7rem; font-weight:700; margin-top:.35rem; }
+    .pv-qr-empty { font-size:.7rem; color:#94a3b8; padding:1.4rem .4rem; }
+    .pv-anim-full .pv-step.spin .pv-dot { animation:pvPulse 1.6s ease-in-out infinite; }
+    .pv-anim-full .pv-ring { animation:pvBounce .6s cubic-bezier(.34,1.56,.64,1); }
+    .pv-anim-full .pv-card, .pv-anim-full .pv-pop-box { animation:pvIn .5s cubic-bezier(.2,.7,.2,1) both; }
+    .pv-anim-subtle .pv-card, .pv-anim-subtle .pv-pop-box { animation:pvFade .5s ease both; }
+    @keyframes pvPulse { 0%{box-shadow:0 0 0 0 var(--pv-accent-l)} 70%{box-shadow:0 0 0 8px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+    @keyframes pvBounce { 0%{transform:scale(.7);opacity:.4} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+    @keyframes pvIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @keyframes pvFade { from{opacity:0} to{opacity:1} }
+    .cust-subs { margin: .3rem 0 .9rem; }
+    .cust-subs-hdr { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .4rem; }
+    .sub-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
+    .sub-item.refunded { opacity: .8; }
+    .sub-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .8rem; cursor: pointer; background: #fbfcfe; transition: background .15s; }
+    .sub-head:hover { background: #f1f5ff; }
+    .sub-head-main { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+    .sub-prod { font-weight: 700; font-size: .82rem; color: var(--text); }
+    .sub-pkg { font-size: .74rem; color: var(--muted); }
+    .sub-head-meta { display: flex; align-items: center; gap: .8rem; font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .sub-caret { color: var(--blue); font-weight: 700; }
+    .sub-body { display: none; padding: .8rem; border-top: 1px solid var(--border); }
+    .sub-body.open { display: block; }
+    .sub-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
+
+    /* ── Activation Portal slide editor ────────────────────────────────────── */
+    .slide-edit-row { border: 1.5px solid var(--border); border-radius: 10px; padding: .8rem .9rem; margin-bottom: .7rem; background: #fbfcfe; }
+    .slide-edit-row .form-row { margin-bottom: .5rem; }
+    .slide-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+    .slide-edit-head .slide-idx { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .slide-image-controls { display: flex; gap: .7rem; align-items: flex-start; margin-top: .35rem; }
+    .slide-thumb { width: 84px; height: 58px; border-radius: 8px; border: 1px solid var(--border); background-size: cover; background-position: center; background-color: #eef2f7; flex-shrink: 0; }
 
     /* ── Instructions ──────────────────────────────────────────────────────── */
     .instr-card    { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: .8rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -232,10 +323,6 @@
     .notif-type-btn.sel-warning{background:#fffbeb;border-color:#fde68a;color:#b45309}
     .notif-type-btn.sel-error  {background:#fef2f2;border-color:#fecaca;color:#dc2626}
 
-    /* ── Landing Page Editor ──────────────────────────────────────────────────── */
-    @media(max-width:960px){#page-landing [style*="grid-template-columns:1fr 420px"]{display:block!important}}
-    #page-landing [style*="grid-template-columns:1fr 420px"] > div:last-child{margin-top:1.2rem}
-
     /* ── Login screen ──────────────────────────────────────────────────────── */
     #login-wrap {
       min-height: 100vh;
@@ -345,6 +432,7 @@
       <div class="nav-sec">Main</div>
       <div class="nav-item active" onclick="Shell.navigate('dashboard', this)">
         <span class="icon">⚡</span>Dashboard
+        <span class="nav-badge" id="nb-sub" style="display:none;background:var(--warn);color:#fff">0</span>
       </div>
       <div class="nav-item" onclick="Shell.navigate('customers', this)">
         <span class="icon">👤</span>Customers
@@ -358,14 +446,20 @@
       <div class="nav-item" onclick="Shell.navigate('resellers', this)">
         <span class="icon">🤝</span>Resellers
       </div>
+      <div class="nav-item" onclick="Shell.navigate('reports', this)">
+        <span class="icon">📊</span>Reports
+      </div>
+      <div class="nav-item" onclick="Shell.navigate('keys', this)">
+        <span class="icon">🔑</span>Keys
+      </div>
       <div class="nav-sec" style="margin-top:.5rem">Catalogue</div>
       <div class="nav-item" onclick="Shell.navigate('products', this)">
         <span class="icon">📦</span>Products
       </div>
-      <div class="nav-sec" style="margin-top:.5rem">Settings</div>
       <div class="nav-item" onclick="Shell.navigate('landing', this)">
         <span class="icon">🌐</span>Landing Page
       </div>
+      <div class="nav-sec" style="margin-top:.5rem">Settings</div>
       <div class="nav-item" onclick="Shell.navigate('instructions', this)">
         <span class="icon">📋</span>Instructions
       </div>
@@ -401,6 +495,14 @@
       <div class="card">
         <div class="card-title">Generate Activation Link</div>
 
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Customer <span style="font-weight:400;color:var(--muted)">— pick an existing customer to avoid duplicates, or add a new one</span></label>
+          <input id="gen-cust-search" placeholder="Search existing customers by name, email, WeChat or ID…" oninput="Dashboard.filterCustomers()" autocomplete="off"/>
+          <select id="gen-customer" onchange="Dashboard.onCustomerPick()" style="margin-top:.4rem">
+            <option value="">➕ New customer</option>
+          </select>
+        </div>
+
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
             <label>Customer Name</label>
@@ -416,13 +518,24 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Email <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="email" id="gen-email" placeholder="customer@email.com"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="text" id="gen-wechat" placeholder="WeChat ID"/>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
             <label>Package</label>
             <select id="pkg" onchange="Dashboard.onPackageChange()">
               <option value="">— Select Package —</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
-            <label>Price (USD) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
+            <label>Price (<span class="price-cur-code">USD</span>) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
             <div class="price-input-wrap">
               <span class="price-currency-icon">$</span>
               <input type="number" id="gen-price" min="0.01" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--success)"/>
@@ -432,33 +545,81 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Purchase Price / Cost (<span class="price-cur-code">USD</span>) <span style="font-weight:400;color:var(--muted);font-size:.65rem">— your cost, for profit</span></label>
+            <div class="price-input-wrap">
+              <span class="price-currency-icon">$</span>
+              <input type="number" id="gen-cost" min="0" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--warn)"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product Key <span style="font-weight:400;color:var(--muted);font-size:.65rem">— optional, from this product's stock</span></label>
+            <select id="gen-key"><option value="">— No key —</option></select>
+            <div id="gen-key-stock" style="font-size:.68rem;margin-top:.25rem"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Payment Method</label>
+            <select id="gen-method">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
             <label>Pre-Activation Instructions</label>
             <select id="gen-instr-set">
               <option value="">— Default —</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
             <label>Post-Activation Instructions</label>
             <select id="gen-post-instr-set">
               <option value="">— Same as Pre —</option>
             </select>
           </div>
+          <div class="form-group" style="margin-bottom:0"></div>
         </div>
 
         <!-- Reseller (optional) -->
         <div style="margin-top:.5rem">
-          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem">
-            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller tracking (optional)</summary>
-            <div class="form-row" style="margin-top:.7rem;margin-bottom:0">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller ID</label>
-                <input id="gen-reseller-id" placeholder="e.g. reseller-ahmed"/>
+          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem" id="gen-reseller-details">
+            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller / referral (optional)</summary>
+            <div class="form-group" style="margin-top:.7rem;margin-bottom:.6rem">
+              <label>Referred by reseller?</label>
+              <select id="gen-reseller" onchange="Dashboard.onResellerPick()">
+                <option value="">— Direct (no reseller) —</option>
+                <option value="__new__">➕ New reseller…</option>
+              </select>
+            </div>
+            <div id="gen-reseller-new" style="display:none">
+              <div class="form-row" style="margin-bottom:.6rem">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Reseller Name</label>
+                  <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Contact (optional)</label>
+                  <input id="gen-reseller-contact" placeholder="WeChat / phone / email"/>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller Name</label>
-                <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Type</label>
+                  <select id="gen-reseller-ctype">
+                    <option value="percent">Percentage of sale (%)</option>
+                    <option value="flat">Flat amount per sale</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Value</label>
+                  <input type="number" id="gen-reseller-cvalue" min="0" step="0.01" placeholder="e.g. 20"/>
+                </div>
               </div>
             </div>
+            <div id="gen-reseller-info" style="display:none;font-size:.72rem;color:var(--muted);margin-top:.3rem"></div>
           </details>
         </div>
 
@@ -484,14 +645,27 @@
         <div class="stat"><div class="stat-val sv-warn" id="s-sub">0</div><div class="stat-lbl">Submitted</div></div>
         <div class="stat"><div class="stat-val sv-green" id="s-act">0</div><div class="stat-lbl">Activated</div></div>
         <div class="stat"><div class="stat-val sv-red" id="s-exp">0</div><div class="stat-lbl">Expired / Declined</div></div>
-        <div class="stat"><div class="stat-val sv-green" id="s-rev">$0</div><div class="stat-lbl">Total Revenue</div></div>
+        <div class="stat"><div class="stat-val sv-green" id="s-rev">$0</div><div class="stat-lbl">Net Revenue <span id="s-refund" style="color:var(--error);font-weight:600"></span></div></div>
       </div>
 
       <!-- Links table -->
       <div class="card">
         <div class="card-title">
           <span>All Links</span>
-          <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+            <span id="last-updated" style="font-size:.66rem;color:var(--muted2);font-weight:500"></span>
+            <label class="toggle" style="margin-bottom:0" title="Automatically refresh customer data">
+              <input type="checkbox" id="auto-refresh" checked onchange="Dashboard.setAuto(this.checked)"/>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              <span style="font-size:.72rem;color:var(--text);margin-left:.4rem;font-weight:600">Auto-refresh</span>
+            </label>
+            <label class="toggle" style="margin-bottom:0" title="Sound + notification when a new submission arrives">
+              <input type="checkbox" id="alerts-on" checked onchange="Dashboard.setAlerts(this.checked)"/>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              <span style="font-size:.72rem;color:var(--text);margin-left:.4rem;font-weight:600">🔔 Alerts</span>
+            </label>
+            <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          </div>
         </div>
         <div class="filters" id="df">
           <button class="fb active" onclick="Dashboard.setFilter('all',this)">All</button>
@@ -543,12 +717,48 @@
         <div class="ph-title">Resellers</div>
         <div class="ph-sub">Track sales made through resellers separately from direct sales.</div>
       </div>
-      <div class="stats" style="grid-template-columns:repeat(2,1fr);max-width:420px;margin-bottom:1.4rem">
-        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Revenue</div></div>
-        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Revenue</div></div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr);max-width:620px;margin-bottom:1.4rem">
+        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Sales</div></div>
+        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Sales</div></div>
+        <div class="stat"><div class="stat-val" style="color:#7c3aed" id="reseller-commission">$0</div><div class="stat-lbl">Reseller Commission (profit owed)</div></div>
       </div>
       <div id="reseller-breakdown"><div class="empty">Loading…</div></div>
     </div><!-- /page-resellers -->
+
+    <!-- ── PAGE: Reports ── -->
+    <div class="page" id="page-reports">
+      <div class="ph">
+        <div class="ph-title">Reports</div>
+        <div class="ph-sub">Download Excel or PDF reports. Choose a time grouping where relevant.</div>
+      </div>
+      <div id="reports-cards"></div>
+    </div><!-- /page-reports -->
+
+    <!-- ── PAGE: Keys ── -->
+    <div class="page" id="page-keys">
+      <div class="ph">
+        <div class="ph-title">Product Keys</div>
+        <div class="ph-sub">Stock of activation keys per product. Unused keys appear in the create-link dropdown; used keys show who used them.</div>
+      </div>
+      <div id="keys-lowstock"></div>
+      <div class="card" style="margin-bottom:1.2rem">
+        <div class="card-title"><span>➕ Add Keys</span></div>
+        <div class="form-row" style="margin-bottom:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product</label>
+            <select id="keys-add-product"><option value="">— Select product —</option></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Keys <span style="font-weight:400;color:var(--muted)">— one per line</span></label>
+          <textarea id="keys-add-text" rows="4" placeholder="KEY-ABC-123&#10;KEY-DEF-456" style="font-family:'JetBrains Mono',monospace;font-size:.82rem"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="Keys.add()">Add keys</button>
+        <span id="keys-add-status" style="font-size:.75rem;color:var(--muted);margin-left:.6rem"></span>
+      </div>
+      <div id="keys-list"></div>
+    </div><!-- /page-keys -->
 
     <!-- ── PAGE: Revenue ── -->
     <div class="page" id="page-revenue">
@@ -559,6 +769,9 @@
       <div class="card" style="margin-bottom:1.2rem">
         <div style="display:flex;align-items:flex-end;gap:2rem;flex-wrap:wrap">
           <div><div class="rev-big" id="rev-total">$0.00</div><div class="rev-big-label">Total Revenue (Activated)</div></div>
+          <div><div class="rev-big" id="rev-cost" style="color:var(--warn);font-size:1.5rem">$0.00</div><div class="rev-big-label">Total Cost</div></div>
+          <div><div class="rev-big" id="rev-commission" style="color:#7c3aed;font-size:1.5rem">$0.00</div><div class="rev-big-label">Reseller Commission</div></div>
+          <div><div class="rev-big" id="rev-profit" style="color:var(--success);font-size:1.7rem">$0.00</div><div class="rev-big-label">Net Profit</div></div>
         </div>
       </div>
       <div id="rev-breakdown"><div class="empty">Loading…</div></div>
@@ -611,6 +824,12 @@
         <div class="msg ok" id="notif-ok"></div>
         <div class="msg err" id="notif-err"></div>
       </div>
+
+      <div class="card" style="margin-top:1.2rem">
+        <div class="card-title"><span>⚠ Server Load Alerts — per product</span></div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">Lists <strong>all your products</strong>. Turn on a heavy-load <strong>warning</strong> and a live <strong>processing timer</strong> for <strong>only the products that are slow right now</strong> — customers of every other product see nothing. Changes reach waiting customers within seconds.</div>
+        <div id="proc-alert-list"><div class="empty">Loading…</div></div>
+      </div>
     </div><!-- /page-notifications -->
 
     <!-- ── PAGE: Email Campaigns ── -->
@@ -643,8 +862,16 @@
               <option value="expiring">Expiring within 30 days</option>
               <option value="expired">Expired subscriptions</option>
               <option value="submitted">Submitted, awaiting approval</option>
+              <option value="custom-only">Custom recipients only (below)</option>
             </select>
             <span class="recipient-count-badge" id="recipient-count">0 recipients</span>
+          </div>
+
+          <!-- Custom / external recipients -->
+          <div class="form-group" style="margin-bottom:.8rem">
+            <label>Add custom recipients <span style="font-weight:400;color:var(--muted)">— people not in your customer list</span></label>
+            <textarea id="bulk-custom-emails" rows="3" placeholder="One per line, e.g.&#10;jane@example.com&#10;Ahmed Khan &lt;ahmed@example.com&gt;" style="font-family:'JetBrains Mono',monospace;font-size:.8rem" oninput="BulkEmail._renderRecipientCount()"></textarea>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">Added on top of the filter above (or choose “Custom recipients only”). Use <code>Name &lt;email&gt;</code> to personalise <code>{{name}}</code>; duplicates of existing customers are skipped.</div>
           </div>
 
           <!-- Template type indicator -->
@@ -715,6 +942,129 @@
     </div><!-- /page-campaigns -->
 
     <!-- ── PAGE: Settings ── -->
+    <div class="page" id="page-landing">
+      <div class="ph">
+        <div class="ph-title">Landing Page</div>
+        <div class="ph-sub">Control what the public site shows: products, prices, and contact channels.</div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Products &amp; Pricing</div>
+        <div class="setting-block-sub">Only ticked products appear on the landing page. Prices are pulled live from the Products page, so they always match — enter a custom price only if you want to override one.</div>
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="lp-show-pricing"> Show the pricing section on the landing page
+          </label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Pricing section title</label>
+            <input type="text" id="lp-pricing-title">
+          </div>
+          <div class="form-group">
+            <label>Pricing section subtitle</label>
+            <input type="text" id="lp-pricing-subtitle">
+          </div>
+        </div>
+        <div id="lp-products" style="margin-top:.5rem"></div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Contact Channels</div>
+        <div class="setting-block-sub">Untick a channel to hide it from the landing page completely.</div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="lp-email-enabled"> Show email
+          </label>
+          <input type="text" id="lp-email" placeholder="dtc@dtc1.shop">
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="lp-whatsapp-enabled"> Show WhatsApp chat button
+          </label>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Display number</label>
+              <input type="text" id="lp-whatsapp" placeholder="+86 19738122807">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>WhatsApp link</label>
+              <input type="text" id="lp-whatsapp-link" placeholder="https://wa.me/8619738122807">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="lp-phone-enabled"> Show phone number
+          </label>
+          <input type="text" id="lp-phone" placeholder="+86 197 3812 2807">
+        </div>
+
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+            <input type="checkbox" id="lp-wechat-enabled"> Show WeChat
+          </label>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>WeChat ID (optional)</label>
+              <input type="text" id="lp-wechat-id" placeholder="dtc_support">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>QR image URL</label>
+              <input type="text" id="lp-wechat-qr" placeholder="/uploads/…" readonly>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:.6rem">
+            <div id="lp-qr-preview"></div>
+            <div>
+              <input type="file" id="lp-qr-file" accept="image/*" onchange="Landing.uploadQr(this)" style="font-size:.8rem">
+              <div style="margin-top:.5rem">
+                <button class="btn btn-sm btn-secondary" type="button" onclick="Landing.removeQr()">Remove QR</button>
+              </div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">PNG/JPG, max 5 MB.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Hero &amp; About</div>
+        <div class="setting-block-sub">Headline text shown at the top of the landing page.</div>
+        <div class="form-group">
+          <label>Hero title (HTML allowed)</label>
+          <input type="text" id="lp-hero-title">
+        </div>
+        <div class="form-group">
+          <label>Hero subtitle</label>
+          <textarea id="lp-hero-subtitle" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Customers</label><input type="text" id="lp-stat-customers"></div>
+          <div class="form-group"><label>Activations</label><input type="text" id="lp-stat-activations"></div>
+          <div class="form-group"><label>Tools</label><input type="text" id="lp-stat-tools"></div>
+          <div class="form-group"><label>Countries</label><input type="text" id="lp-stat-countries"></div>
+        </div>
+        <div class="form-group">
+          <label>About title</label>
+          <input type="text" id="lp-about-title">
+        </div>
+        <div class="form-group">
+          <label>About description</label>
+          <textarea id="lp-about-desc" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem">
+        <button class="btn btn-primary" type="button" onclick="Landing.save()">Save Landing Page</button>
+        <a class="btn btn-secondary" href="/" target="_blank">View site</a>
+      </div>
+      <div class="msg msg-ok"  id="lp-ok"></div>
+      <div class="msg msg-err" id="lp-err"></div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="ph">
         <div class="ph-title">Settings</div>
@@ -746,136 +1096,140 @@
         </div>
       </div>
 
+      <div class="setting-block">
+        <div class="setting-block-title">Backup &amp; Restore</div>
+        <div class="setting-block-sub">Download a full backup of all your data (links, customers, products, settings, payments) as a single file, or restore from one. Restoring overwrites current data.</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="Settings.downloadBackup()">⬇ Download backup</button>
+          <input type="file" id="restore-file" accept="application/json,.json" style="display:none" onchange="Settings.restoreBackup(this)"/>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('restore-file').click()">⬆ Restore from file</button>
+          <span id="restore-status" style="font-size:.72rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Activation Page Theme &amp; Animation</div>
+        <div class="setting-block-sub">Controls the colours and motion of the customer activation page — the form, the verification-status steps, badges and buttons.</div>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Accent Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-accent" value="#2563eb" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-accent-hex').value=this.value"/>
+              <input type="text" id="portal-accent-hex" placeholder="#2563eb" style="flex:1" oninput="document.getElementById('portal-accent').value=this.value"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Background Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-bg" value="#f0f4ff" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-bg-hex').value=this.value"/>
+              <input type="text" id="portal-bg-hex" placeholder="#f0f4ff" style="flex:1" oninput="document.getElementById('portal-bg').value=this.value"/>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Animation Level</label>
+          <select id="portal-anim">
+            <option value="full">Full — all motion (cross-zoom, aurora, glow, entrances)</option>
+            <option value="subtle">Subtle — gentle fades only</option>
+            <option value="off">Off — no animation</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Live Preview</div>
+        <div class="setting-block-sub">Updates instantly as you change the colours, animation, slides and popup above — no need to save or open the link.</div>
+        <div class="pv-tabs">
+          <button type="button" class="pv-tab on" data-view="form" onclick="Settings.previewView('form')">Form</button>
+          <button type="button" class="pv-tab" data-view="status" onclick="Settings.previewView('status')">Status</button>
+          <button type="button" class="pv-tab" data-view="activated" onclick="Settings.previewView('activated')">Activated</button>
+          <button type="button" class="pv-tab" data-view="popup" onclick="Settings.previewView('popup')">Popup</button>
+        </div>
+        <div class="pv-phone" id="pv-phone"><div class="pv-screen" id="pv-screen"></div></div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Pre-Activation Contact Popup</div>
+        <div class="setting-block-sub">Show a popup with your WeChat &amp; WhatsApp QR codes before the customer sees the activation form. Upload your own QR images.</div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:.7rem">
+          <input type="checkbox" id="portal-intro-on" style="width:auto"/> Show contact popup before activation
+        </label>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0"><label>Popup Title</label><input id="portal-intro-title" placeholder="Contact us before activating"/></div>
+          <div class="form-group" style="margin-bottom:0"><label>Popup Message</label><input id="portal-intro-text" placeholder="Scan to reach us on WeChat or WhatsApp first."/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-wechat-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-wechat-qr"/>
+              <input type="file" accept="image/*" id="qr-wechat-file" style="display:none" onchange="Settings.uploadQR(this,'wechat')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-wechat-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('wechat')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-wechat-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WhatsApp QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-whatsapp-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-whatsapp-qr"/>
+              <input type="file" accept="image/*" id="qr-whatsapp-file" style="display:none" onchange="Settings.uploadQR(this,'whatsapp')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-whatsapp-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('whatsapp')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-whatsapp-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Tip: if you leave WhatsApp QR empty but set a WhatsApp number above, one will be generated automatically.</div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Payment Methods</div>
+        <div class="setting-block-sub">One per line. These appear in the "Payment Method" dropdown when you create a link and when you edit a customer.</div>
+        <textarea id="payment-methods" rows="7" placeholder="Cash&#10;Bank Transfer&#10;Alipay&#10;WeChat Pay&#10;PayPal" style="font-family:'JetBrains Mono',monospace;font-size:.8rem"></textarea>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Activation Page Slideshow &amp; WhatsApp</div>
+        <div class="setting-block-sub">These slides appear beside the customer's activation page. Clicking any slide opens your WhatsApp. Use them to promote current subscriptions and offers.</div>
+
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>WhatsApp Link or Number</label>
+          <input id="portal-whatsapp" placeholder="e.g. https://wa.me/8619738122807  or  +86 19738122807"/>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">A full https://wa.me/… link is used as-is. A plain number is converted to a wa.me link automatically.</div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:1rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Panel Size (desktop)</label>
+            <select id="portal-panel-size">
+              <option value="narrow">Narrow (40%)</option>
+              <option value="half">Half (50%)</option>
+              <option value="wide">Wide (60%)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Layout</label>
+            <select id="portal-layout">
+              <option value="single">Single animated slide</option>
+              <option value="grid">Grid — show multiple at once</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <label style="margin-bottom:0">Slides</label>
+          <button class="btn btn-outline btn-sm" onclick="Settings.addSlide()">+ Add Slide</button>
+        </div>
+        <div id="portal-slides-rows"></div>
+      </div>
+
       <button class="btn btn-primary" onclick="Settings.save()">Save Settings</button>
       <div class="msg ok" id="settings-ok"></div>
       <div class="msg err" id="settings-err"></div>
     </div><!-- /page-settings -->
-
-    <!-- ── PAGE: Landing Page Editor ── -->
-    <div class="page" id="page-landing">
-      <div class="ph">
-        <div class="ph-title">🌐 Landing Page</div>
-        <div class="ph-sub">Edit all content displayed on your public-facing landing page.</div>
-      </div>
-
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center">
-        <button class="btn btn-primary" onclick="Landing.save()">💾 Save Changes</button>
-        <button class="btn btn-outline" onclick="Landing.openLandingPage()">↗ View Live Page</button>
-        <button class="btn btn-outline" onclick="Landing.reset()" style="margin-left:auto;color:var(--error);border-color:var(--error-border)">↺ Reset to Defaults</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 420px;gap:1.5rem;align-items:start">
-        <!-- LEFT: Edit forms -->
-        <div>
-
-          <!-- Hero Section -->
-          <div class="setting-block">
-            <div class="setting-block-title">🚀 Hero Section</div>
-            <div class="setting-block-sub">The main headline and subtitle visitors see first.</div>
-            <div class="form-group">
-              <label>Hero Title <span style="font-weight:400;color:var(--muted)">(HTML supported — use &lt;span&gt; for blue text)</span></label>
-              <input id="lp-hero-title" placeholder="Your Gateway to <span>AI & Academic</span> Excellence"/>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Hero Subtitle</label>
-              <textarea id="lp-hero-subtitle" rows="3" placeholder="Short compelling description of DTC's value…"></textarea>
-            </div>
-          </div>
-
-          <!-- Statistics -->
-          <div class="setting-block">
-            <div class="setting-block-title">📊 Statistics Bar</div>
-            <div class="setting-block-sub">Key numbers shown prominently on the landing page.</div>
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Active Customers</label>
-                <input id="lp-stat-customers" placeholder="2,000+"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Accounts Activated</label>
-                <input id="lp-stat-activations" placeholder="10,000+"/>
-              </div>
-            </div>
-            <div class="form-row" style="margin-top:.7rem">
-              <div class="form-group" style="margin-bottom:0">
-                <label>AI Tools Count</label>
-                <input id="lp-stat-tools" placeholder="100+"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Countries Served</label>
-                <input id="lp-stat-countries" placeholder="50+"/>
-              </div>
-            </div>
-          </div>
-
-          <!-- About -->
-          <div class="setting-block">
-            <div class="setting-block-title">ℹ About Section</div>
-            <div class="setting-block-sub">Text in the "About DTC" section of the page.</div>
-            <div class="form-group">
-              <label>Section Title</label>
-              <input id="lp-about-title" placeholder="Premium AI Access, Made Affordable"/>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Description</label>
-              <textarea id="lp-about-desc" rows="3" placeholder="Describe DTC's mission and value proposition…"></textarea>
-            </div>
-          </div>
-
-          <!-- Contact -->
-          <div class="setting-block">
-            <div class="setting-block-title">📞 Contact Details</div>
-            <div class="setting-block-sub">Shown in the contact section and page footer.</div>
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Email Address</label>
-                <input id="lp-email" type="email" placeholder="dtc@dtc1.shop"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>WhatsApp Number</label>
-                <input id="lp-whatsapp" placeholder="+86 19738122807"/>
-              </div>
-            </div>
-          </div>
-
-          <!-- WeChat QR -->
-          <div class="setting-block">
-            <div class="setting-block-title">💬 WeChat QR Code</div>
-            <div class="setting-block-sub">Upload your WeChat QR code image. It will be embedded on the landing page. Max 500 KB.</div>
-            <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
-              <div id="lp-qr-preview" style="width:80px;height:80px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:.65rem;text-align:center;background:#f8fafc">
-                No QR set
-              </div>
-              <div style="flex:1;min-width:200px">
-                <label class="btn btn-outline" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-                  📁 Upload QR Image
-                  <input type="file" accept="image/*" style="display:none" onchange="Landing.handleQrUpload(this)"/>
-                </label>
-                <div class="form-group" style="margin-bottom:0">
-                  <label>Or paste Image URL / Base64</label>
-                  <input id="lp-wechat-qr" placeholder="https://… or data:image/png;base64,…" style="font-size:.75rem"/>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- RIGHT: Live preview -->
-        <div style="position:sticky;top:1.5rem">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-title" style="margin-bottom:.9rem">
-              <span>Live Preview</span>
-              <button class="btn btn-outline btn-sm" onclick="Landing.save()">Save →</button>
-            </div>
-            <div id="lp-preview" style="font-size:.78rem"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="msg ok" id="lp-ok" style="margin-top:1rem"></div>
-      <div class="msg err" id="lp-err" style="margin-top:1rem"></div>
-    </div><!-- /page-landing -->
 
     <!-- ── PAGE: Email Config ── -->
     <div class="page" id="page-email">
@@ -974,6 +1328,62 @@
   </div>
 </div>
 
+<!-- Customer Profile -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:680px">
+    <div id="profile-body"></div>
+  </div>
+</div>
+
+<!-- Edit Customer / Package -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">Edit Customer &amp; Package</div>
+    <div class="modal-sub">Update package details mid-subscription without re-issuing the activation link.</div>
+    <input type="hidden" id="edit-token"/>
+    <div class="form-row">
+      <div class="form-group"><label>Customer Name</label><input type="text" id="edit-name"/></div>
+      <div class="form-group"><label>Package</label><input type="text" id="edit-package" placeholder="e.g. 1 Month Pro"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email</label><input type="email" id="edit-email"/></div>
+      <div class="form-group"><label>WeChat</label><input type="text" id="edit-wechat"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Price</label><input type="number" id="edit-price" min="0" step="0.01"/></div>
+      <div class="form-group"><label>Purchase Price / Cost</label><input type="number" id="edit-cost" min="0" step="0.01" placeholder="Your cost"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Subscription Length (days)</label><input type="number" id="edit-days" min="1" step="1"/></div>
+      <div class="form-group"><label>Amount Received</label><input type="number" id="edit-amount" min="0" step="0.01" placeholder="Actual amount paid"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Payment Method</label>
+        <select id="edit-method">
+          <option value="">— Select —</option>
+          <option>Cash</option>
+          <option>Bank Transfer</option>
+          <option>Alipay</option>
+          <option>WeChat Pay</option>
+          <option>PayPal</option>
+          <option>Card</option>
+          <option>Crypto</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Subscription Expiry Date</label>
+      <input type="date" id="edit-expiry"/>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:.3rem">This is when the subscription ends. "Length" only sets the total used by the usage bar.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="Modals.closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="Modals.confirmEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- Instruction Set Editor -->
 <div class="modal-overlay" id="instr-modal">
   <div class="modal" style="max-width:600px">
@@ -1065,10 +1475,17 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Description</label><input id="prod-desc" placeholder="Short description shown in admin"/></div>
+      <div class="form-group"><label>Default Purchase Price / Cost <span style="font-weight:400;color:var(--muted);font-size:.7rem">— your cost per sale (used for profit; pre-fills the create-link form)</span></label><input type="number" id="prod-cost" min="0" step="0.01" placeholder="0.00"/></div>
       <div class="form-group" style="display:flex;align-items:flex-end;gap:1rem;padding-bottom:.1rem">
         <div style="flex:1"><label>Colour</label><input type="color" id="prod-color" value="#2563eb" style="height:2.4rem;padding:.2rem .3rem;cursor:pointer"/></div>
         <label class="toggle" style="margin-bottom:.35rem"><input type="checkbox" id="prod-active" checked/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;font-weight:600;margin-left:.4rem">Active</span></label>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>Activation Page Name <span style="font-weight:400;color:var(--muted)">(Portal title shown to the customer)</span></label>
+      <input id="prod-portal-name" placeholder="e.g. Premium AI Activation — leave blank to use the default"/>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Appears as the heading on this product's activation page instead of the fixed "Claude" / "ChatGPT" label. Leave blank to keep the default.</div>
     </div>
 
     <div style="margin-bottom:.8rem">
@@ -1118,10 +1535,12 @@
 <script src="js/settings.js"></script>
 <script src="js/resellers.js"></script>
 <script src="js/bulk-email.js"></script>
-<script src="js/landing.js"></script>
 <script src="js/products.js"></script>
 <script src="js/revenue.js"></script>
 <script src="js/notifications.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/keys.js"></script>
+<script src="js/landing.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
