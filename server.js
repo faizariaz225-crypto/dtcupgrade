@@ -1,5 +1,5 @@
 const express    = require('express');
-const { randomUUID: uuidv4 } = require('crypto');
+const { v4: uuidv4 } = require('uuid');
 const fs         = require('fs');
 const path       = require('path');
 const nodemailer = require('nodemailer');
@@ -12,7 +12,9 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_KEY         = process.env.ADMIN_KEY || 'dtc2024';
 const DATA_DIR          = process.env.DATA_DIR
-                          || path.join(__dirname, 'data');
+                          || (process.env.NODE_ENV === 'production'
+                              ? '/opt/render/project/src/data'
+                              : path.join(__dirname, 'data'));
 const TOKENS_FILE       = path.join(DATA_DIR, 'tokens.json');
 const SESSIONS_FILE     = path.join(DATA_DIR, 'sessions.txt');
 const EMAIL_CONFIG      = path.join(DATA_DIR, 'emailConfig.json');
@@ -34,7 +36,7 @@ const SESSIONS_MAP_FILE = path.join(DATA_DIR, 'sessions_map.json');
 
 const LINK_EXPIRY_MS = 6 * 30 * 24 * 60 * 60 * 1000;
 
-if (!fs.existsSync(DATA_DIR))       fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(DATA_DIR))       fs.mkdirSync(DATA_DIR);
 if (!fs.existsSync(UPLOADS_DIR))    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fs.existsSync(TOKENS_FILE))    fs.writeFileSync(TOKENS_FILE,  JSON.stringify({}));
 if (!fs.existsSync(SESSIONS_FILE))  fs.writeFileSync(SESSIONS_FILE, '');
@@ -2059,12 +2061,6 @@ app.post('/api/portal/verify', (req, res) => {
   if (!ok) return res.status(401).json({ error: 'Incorrect code. Please check and try again.' });
   portalCodes.delete(email); // one-time use
   res.json({ ok: true, email, subscriptions: portalSubs(email) });
-});
-
-app.get('/', (req, res) => {
-  const inPublic = path.join(__dirname, 'public', 'index.html');
-  const inRoot   = path.join(__dirname, 'index.html');
-  res.sendFile(fs.existsSync(inPublic) ? inPublic : inRoot);
 });
 
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal.html')));
