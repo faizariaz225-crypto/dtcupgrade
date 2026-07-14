@@ -5,12 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "echo 'No build step required — static frontend served by Express'"
+    "build": "echo 'No build step required'"
   },
   "engines": {
     "node": ">=18.0.0"
   },
-  "keywords": [],
   "author": "DTC",
   "license": "ISC",
   "dependencies": {
