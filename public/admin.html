@@ -456,6 +456,16 @@
       <div class="nav-item" onclick="Shell.navigate('products', this)">
         <span class="icon">📦</span>Products
       </div>
+      <div class="nav-item" onclick="Shell.navigate('landing', this)">
+        <span class="icon">🌐</span>Landing Page
+      </div>
+      <div class="nav-item" onclick="Shell.navigate('paymethods', this)">
+        <span class="icon">💳</span>Payment QR
+      </div>
+      <div class="nav-item" onclick="Shell.navigate('requests', this)">
+        <span class="icon">📨</span>Requests
+        <span id="req-nav-badge" style="display:none;margin-left:auto;background:#ef4444;color:#fff;font-size:.6rem;font-weight:700;padding:.1rem .4rem;border-radius:999px"></span>
+      </div>
       <div class="nav-sec" style="margin-top:.5rem">Settings</div>
       <div class="nav-item" onclick="Shell.navigate('instructions', this)">
         <span class="icon">📋</span>Instructions
@@ -939,6 +949,173 @@
     </div><!-- /page-campaigns -->
 
     <!-- ── PAGE: Settings ── -->
+    <div class="page" id="page-paymethods">
+      <div class="ph">
+        <div class="ph-title">Payment QR Codes</div>
+        <div class="ph-sub">These appear in every customer portal when they request a product. Upload a QR for each method you accept.</div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Accepted methods</div>
+        <div class="setting-block-sub">Turn a method off to hide it from customers. Built-in methods can be renamed but not deleted.</div>
+        <div id="pm-list"></div>
+
+        <div style="display:flex;gap:.5rem;align-items:center;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <input type="text" id="pm-new-name" placeholder="Add another method (e.g. Bank Transfer)"
+                 style="flex:1;padding:.5rem .7rem;border:1px solid var(--border);border-radius:8px;font-size:.82rem">
+          <button class="btn btn-outline btn-sm" onclick="PayMethods.add()">+ Add method</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:1rem;align-items:center;margin-top:1rem">
+        <button class="btn btn-primary" onclick="PayMethods.save()">Save payment methods</button>
+      </div>
+      <div class="msg msg-ok"  id="pm-ok"></div>
+      <div class="msg msg-err" id="pm-err"></div>
+    </div>
+
+    <div class="page" id="page-requests">
+      <div class="ph">
+        <div class="ph-title">Customer Requests</div>
+        <div class="ph-sub">Requests sent from the customer portal. Paste an activation link to fulfil one.</div>
+      </div>
+
+      <div style="display:flex;gap:.4rem;margin-bottom:1rem">
+        <button class="btn btn-outline btn-sm active" data-req-filter onclick="Requests.setFilter('pending', this)">Pending</button>
+        <button class="btn btn-outline btn-sm" data-req-filter onclick="Requests.setFilter('approved', this)">Approved</button>
+        <button class="btn btn-outline btn-sm" data-req-filter onclick="Requests.setFilter('rejected', this)">Rejected</button>
+        <button class="btn btn-outline btn-sm" data-req-filter onclick="Requests.setFilter('all', this)">All</button>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="Requests.render()">↻ Refresh</button>
+      </div>
+
+      <div class="msg msg-ok"  id="rq-ok"></div>
+      <div class="msg msg-err" id="rq-err"></div>
+      <div id="req-list"></div>
+    </div>
+
+    <div class="page" id="page-landing">
+      <div class="ph">
+        <div class="ph-title">Landing Page</div>
+        <div class="ph-sub">Control what the public site shows: products, prices, and contact channels.</div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Products &amp; Pricing</div>
+        <div class="setting-block-sub">Only ticked products appear on the landing page. Prices are pulled live from the Products page, so they always match — enter a custom price only if you want to override one.</div>
+        <div class="form-group">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label class="toggle" style="margin-bottom:0"><input type="checkbox" id="lp-show-pricing"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;color:var(--text);margin-left:.5rem;font-weight:600">Show the pricing section on the landing page</span></label>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Pricing section title</label>
+            <input type="text" id="lp-pricing-title">
+          </div>
+          <div class="form-group">
+            <label>Pricing section subtitle</label>
+            <input type="text" id="lp-pricing-subtitle">
+          </div>
+        </div>
+        <div id="lp-products" style="margin-top:.5rem"></div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Contact Channels</div>
+        <div class="setting-block-sub">Untick a channel to hide it from the landing page completely.</div>
+
+        <div class="form-group">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label class="toggle" style="margin-bottom:0"><input type="checkbox" id="lp-email-enabled"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;color:var(--text);margin-left:.5rem;font-weight:600">Show email</span></label>
+          </div>
+          <input type="text" id="lp-email" placeholder="dtc@dtc1.shop">
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label class="toggle" style="margin-bottom:0"><input type="checkbox" id="lp-whatsapp-enabled"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;color:var(--text);margin-left:.5rem;font-weight:600">Show WhatsApp chat button</span></label>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>Display number</label>
+              <input type="text" id="lp-whatsapp" placeholder="+86 19738122807">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>WhatsApp link</label>
+              <input type="text" id="lp-whatsapp-link" placeholder="https://wa.me/8619738122807">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label class="toggle" style="margin-bottom:0"><input type="checkbox" id="lp-phone-enabled"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;color:var(--text);margin-left:.5rem;font-weight:600">Show phone number</span></label>
+          </div>
+          <input type="text" id="lp-phone" placeholder="+86 197 3812 2807">
+        </div>
+
+        <div class="form-group">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <label class="toggle" style="margin-bottom:0"><input type="checkbox" id="lp-wechat-enabled"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;color:var(--text);margin-left:.5rem;font-weight:600">Show WeChat</span></label>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label>WeChat ID (optional)</label>
+              <input type="text" id="lp-wechat-id" placeholder="dtc_support">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label>QR image URL</label>
+              <input type="text" id="lp-wechat-qr" placeholder="/uploads/…" readonly>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem;margin-top:.6rem">
+            <div id="lp-qr-preview"></div>
+            <div>
+              <input type="file" id="lp-qr-file" accept="image/*" onchange="Landing.uploadQr(this)" style="font-size:.8rem">
+              <div style="margin-top:.5rem">
+                <button class="btn btn-sm btn-secondary" type="button" onclick="Landing.removeQr()">Remove QR</button>
+              </div>
+              <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem">PNG/JPG, max 5 MB.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Hero &amp; About</div>
+        <div class="setting-block-sub">Headline text shown at the top of the landing page.</div>
+        <div class="form-group">
+          <label>Hero title (HTML allowed)</label>
+          <input type="text" id="lp-hero-title">
+        </div>
+        <div class="form-group">
+          <label>Hero subtitle</label>
+          <textarea id="lp-hero-subtitle" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Customers</label><input type="text" id="lp-stat-customers"></div>
+          <div class="form-group"><label>Activations</label><input type="text" id="lp-stat-activations"></div>
+          <div class="form-group"><label>Tools</label><input type="text" id="lp-stat-tools"></div>
+          <div class="form-group"><label>Countries</label><input type="text" id="lp-stat-countries"></div>
+        </div>
+        <div class="form-group">
+          <label>About title</label>
+          <input type="text" id="lp-about-title">
+        </div>
+        <div class="form-group">
+          <label>About description</label>
+          <textarea id="lp-about-desc" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:1rem;margin-top:1rem">
+        <button class="btn btn-primary" type="button" onclick="Landing.save()">Save Landing Page</button>
+        <a class="btn btn-secondary" href="/" target="_blank">View site</a>
+      </div>
+      <div class="msg msg-ok"  id="lp-ok"></div>
+      <div class="msg msg-err" id="lp-err"></div>
+    </div>
+
     <div class="page" id="page-settings">
       <div class="ph">
         <div class="ph-title">Settings</div>
@@ -1414,6 +1591,9 @@
 <script src="js/notifications.js"></script>
 <script src="js/reports.js"></script>
 <script src="js/keys.js"></script>
+<script src="js/landing.js"></script>
+<script src="js/requests.js"></script>
+<script src="js/paymethods.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
