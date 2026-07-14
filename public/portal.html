@@ -42,11 +42,31 @@
   .foot{font-size:.72rem;color:#94a3b8;text-align:center;margin-top:1.3rem;line-height:1.6}
   .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:.4rem}
   @keyframes sp{to{transform:rotate(360deg)}}
+  .tabs{display:flex;gap:.35rem;margin:1rem 0 1.1rem;border-bottom:1px solid var(--border)}
+  .tab{flex:1;background:none;border:none;padding:.6rem .4rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  .tab.active{color:#2563eb;border-bottom-color:#2563eb}
+  .pill{display:inline-block;min-width:16px;padding:0 .3rem;border-radius:99px;background:#e2e8f0;color:#475569;font-size:.62rem;font-weight:700;line-height:16px;text-align:center}
+  .pill.hot{background:#dcfce7;color:#15803d}
+  select,textarea{width:100%;padding:.7rem .9rem;border:1px solid var(--border);border-radius:10px;font:inherit;background:#fff;box-sizing:border-box;margin-bottom:.2rem}
+  .rq{border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;margin-bottom:.7rem;background:#fff}
+  .rq-top{display:flex;justify-content:space-between;align-items:center;gap:.8rem;margin-bottom:.25rem}
+  .badge{font-size:.62rem;font-weight:700;padding:.2rem .5rem;border-radius:99px;text-transform:uppercase;letter-spacing:.03em}
+  .b-pending{background:#fef3c7;color:#b45309}
+  .b-approved{background:#dcfce7;color:#15803d}
+  .b-rejected{background:#fee2e2;color:#b91c1c}
+  .go{display:block;text-align:center;margin-top:.6rem;background:#2563eb;color:#fff;text-decoration:none;font-size:.8rem;font-weight:600;padding:.6rem 1rem;border-radius:8px}
+  .paywrap{border:1px solid var(--border);border-radius:12px;padding:.9rem;margin:.2rem 0 .8rem;background:#f8fafc;text-align:center}
+  .payqr{width:170px;height:170px;object-fit:contain;background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px}
+  .payacct{font-size:.78rem;font-weight:600;margin-top:.5rem;word-break:break-all}
+  .paynote{font-size:.72rem;color:var(--muted);margin-top:.3rem;line-height:1.5}
+  input[type=file]{width:100%;font-size:.8rem;padding:.5rem 0}
+  .logout{background:#fff;border:1px solid var(--border);color:#475569;font:inherit;font-size:.74rem;font-weight:600;padding:.35rem .8rem;border-radius:8px;cursor:pointer;white-space:nowrap}
+  .logout:hover{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
 </style>
 </head>
 <body>
 <div class="box">
-  <div class="brand"><div class="logo">◆</div><div><h1>My Subscriptions</h1></div></div>
+  <div class="brand"><div class="logo">◆</div><div><h1>Customer Portal</h1></div></div>
 
   <!-- Step 1: email -->
   <div id="step-email">
@@ -69,9 +89,47 @@
 
   <!-- Step 3: results -->
   <div id="step-result" class="hidden">
-    <div class="sub">Showing subscriptions for <b id="result-email"></b>.</div>
-    <div id="subs"></div>
-    <button class="link" onclick="backToEmail()">← Check another email</button>
+    <div class="sub" style="display:flex;justify-content:space-between;align-items:center;gap:1rem">
+      <span>Signed in as <b id="result-email"></b></span>
+      <button class="logout" onclick="signOut()" title="Log out of the portal">Log out</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-subs" onclick="showTab('subs')">Subscriptions</button>
+      <button class="tab" id="tab-req"  onclick="showTab('req')">Request</button>
+      <button class="tab" id="tab-mine" onclick="showTab('mine')">My requests <span id="req-count" class="pill"></span></button>
+    </div>
+
+    <div id="pane-subs">
+      <div id="subs"></div>
+    </div>
+
+    <div id="pane-req" class="hidden">
+      <div class="sub">Choose what you need. Once approved, your activation link appears under “My requests”.</div>
+      <label for="req-product">Product</label>
+      <select id="req-product" onchange="onProductChange()"></select>
+      <label for="req-package">Package</label>
+      <select id="req-package"></select>
+      <label for="req-pay">Pay with</label>
+      <select id="req-pay" onchange="onPayChange()"></select>
+      <div id="pay-box"></div>
+
+      <label for="req-receipt">Payment receipt <span style="color:#ef4444">*</span></label>
+      <input type="file" id="req-receipt" accept="image/*,application/pdf" onchange="onReceiptPick(this)"/>
+      <div id="receipt-state" class="sub" style="margin:.3rem 0 .6rem"></div>
+
+      <label for="req-receipt-id">Receipt / transaction ID (optional)</label>
+      <input id="req-receipt-id" type="text" placeholder="e.g. 4200001234202601011234"/>
+
+      <label for="req-note">Note (optional)</label>
+      <textarea id="req-note" rows="2" placeholder="Anything we should know?"></textarea>
+      <button class="btn" id="req-btn" onclick="submitRequest()">Send request</button>
+      <div class="msg" id="req-msg"></div>
+    </div>
+
+    <div id="pane-mine" class="hidden">
+      <div id="myreqs"></div>
+    </div>
   </div>
 
   <div class="foot">For your privacy, we never show payment methods, login/session details or organization IDs here. Need help? Contact support.</div>
@@ -81,6 +139,176 @@
   const $ = id => document.getElementById(id);
   const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   let currentEmail = '';
+  let SESSION = '';
+  let CATALOGUE = [];
+  let PAYMETHODS = [];
+  let RECEIPT_FILE = '';
+  let SYM = '$';
+  try { SESSION = localStorage.getItem('dtc_portal_session') || ''; } catch(_) {}
+
+  const authHeaders = () => ({ 'Content-Type':'application/json', 'Authorization':'Bearer '+SESSION });
+
+  function showTab(which){
+    ['subs','req','mine'].forEach(t=>{
+      const pane=$('pane-'+t), tab=$('tab-'+t);
+      if(pane) pane.classList.toggle('hidden', t!==which);
+      if(tab)  tab.classList.toggle('active', t===which);
+    });
+  }
+
+  function signOut(){
+    SESSION=''; currentEmail=''; RECEIPT_FILE=''; CATALOGUE=[]; PAYMETHODS=[];
+    try{ localStorage.removeItem('dtc_portal_session'); }catch(_){}
+    ['email','otp','req-note','req-receipt-id'].forEach(id=>{ const e=$(id); if(e) e.value=''; });
+    const rf=$('req-receipt'); if(rf) rf.value='';
+    const rs=$('receipt-state'); if(rs) rs.textContent='';
+    ['email-msg','otp-msg','req-msg'].forEach(id=>{ const e=$(id); if(e) e.className='msg'; });
+    const subs=$('subs'); if(subs) subs.innerHTML='';
+    const mine=$('myreqs'); if(mine) mine.innerHTML='';
+    showTab('subs');
+    show('email');
+  }
+
+  function renderAll(d){
+    renderSubs(d.email, d.subscriptions);
+    renderRequests(d.requests||[]);
+  }
+
+  async function loadCatalogue(){
+    try{
+      const r = await fetch('/api/portal/catalogue', { headers: authHeaders(), cache:'no-store' });
+      const d = await r.json();
+      CATALOGUE = d.products||[]; SYM = d.currencySymbol||'$';
+      const sel = $('req-product');
+      if(!sel) return;
+      sel.innerHTML = CATALOGUE.length
+        ? CATALOGUE.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('')
+        : '<option value="">No products available right now</option>';
+      onProductChange();
+    }catch(e){}
+    try{
+      const r2 = await fetch('/api/portal/payment-methods', { cache:'no-store' });
+      const d2 = await r2.json();
+      PAYMETHODS = d2.methods||[];
+      const ps = $('req-pay');
+      if(ps){
+        ps.innerHTML = PAYMETHODS.length
+          ? '<option value="">— Choose how you paid —</option>' + PAYMETHODS.map(m=>`<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')
+          : '<option value="">No payment methods configured</option>';
+        onPayChange();
+      }
+    }catch(e){}
+  }
+
+  function onPayChange(){
+    const id = $('req-pay') ? $('req-pay').value : '';
+    const m = PAYMETHODS.find(x=>x.id===id);
+    const box = $('pay-box'); if(!box) return;
+    if(!m){
+      box.innerHTML = '<div class="paynote" style="padding:.6rem 0">Choose a payment method to see its QR code and details.</div>';
+      return;
+    }
+    const qr   = m.qrUrl ? `<img class="payqr" src="${esc(m.qrUrl)}" alt="${esc(m.name)} QR">` : '<div class="paynote">No QR code uploaded for this method yet.</div>';
+    const acct = m.account ? `<div class="payacct">${esc(m.account)}</div>` : '';
+    const note = m.note ? `<div class="paynote">${esc(m.note)}</div>` : '';
+    box.innerHTML = `<div class="paywrap">${qr}${acct}${note}
+      <div class="paynote">Scan and pay, then attach your receipt below.</div></div>`;
+  }
+
+  async function onReceiptPick(input){
+    const f = input.files && input.files[0];
+    RECEIPT_FILE = '';
+    const st = $('receipt-state');
+    if(!f){ if(st) st.textContent=''; return; }
+    if(st) st.innerHTML = '<span class="spin" style="border-color:#94a3b8;border-top-color:transparent"></span>Uploading receipt…';
+    const fd = new FormData(); fd.append('receipt', f);
+    try{
+      const r = await fetch('/api/portal/upload-receipt', {
+        method:'POST', headers:{ 'Authorization':'Bearer '+SESSION }, body: fd
+      });
+      const d = await r.json();
+      if(!r.ok || d.error) throw new Error(d.error||'Upload failed');
+      RECEIPT_FILE = d.file;
+      if(st) st.innerHTML = '<span style="color:#15803d;font-weight:600">✓ Receipt attached</span>';
+    }catch(e){
+      if(st) st.innerHTML = '<span style="color:#b91c1c">'+esc(e.message)+'</span>';
+    }
+  }
+
+  function onProductChange(){
+    const pid = $('req-product') ? $('req-product').value : '';
+    const p = CATALOGUE.find(x=>x.id===pid);
+    const sel = $('req-package');
+    if(!sel) return;
+    sel.innerHTML = (p && p.packages.length)
+      ? p.packages.map(k=>`<option value="${esc(k.label)}">${esc(k.label)} — ${esc(SYM)}${esc(String(k.price))}</option>`).join('')
+      : '<option value="">—</option>';
+  }
+
+  async function submitRequest(){
+    const productId = $('req-product').value;
+    const packageLabel = $('req-package').value;
+    const paymentMethodId = $('req-pay') ? $('req-pay').value : '';
+    if(!productId || !packageLabel){ setMsg('req-msg','Please choose a product and package.'); return; }
+    if(!paymentMethodId){ setMsg('req-msg','Please choose how you paid.'); return; }
+    if(!RECEIPT_FILE){ setMsg('req-msg','Please attach your payment receipt.'); return; }
+    const btn=$('req-btn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>Sending…';
+    try{
+      const r = await fetch('/api/portal/request-product', {
+        method:'POST', headers: authHeaders(),
+        body: JSON.stringify({ productId, packageLabel, paymentMethodId,
+                               receiptId: $('req-receipt-id').value.trim(),
+                               receiptFile: RECEIPT_FILE,
+                               note: $('req-note').value.trim() })
+      });
+      const d = await r.json();
+      if(d.ok){
+        setMsg('req-msg','Request sent. We\u2019ll post your link here once approved.','ok');
+        $('req-note').value=''; $('req-receipt-id').value='';
+        $('req-receipt').value=''; RECEIPT_FILE=''; $('receipt-state').textContent='';
+        renderRequests(d.requests||[]);
+        showTab('mine');
+      } else setMsg('req-msg', d.error||'Could not send request.');
+    }catch(e){ setMsg('req-msg','Something went wrong. Please try again.'); }
+    btn.disabled=false; btn.textContent='Send request';
+  }
+
+  function renderRequests(list){
+    const wrap=$('myreqs'); if(!wrap) return;
+    const cnt=$('req-count');
+    const ready=(list||[]).filter(r=>r.status==='approved'&&r.link).length;
+    if(cnt){ cnt.textContent=(list||[]).length||''; cnt.className='pill'+(ready?' hot':''); }
+    if(!list || !list.length){ wrap.innerHTML='<div class="rq">You haven\u2019t requested anything yet.</div>'; return; }
+    wrap.innerHTML = list.map(r=>{
+      const cls = r.status==='approved' ? 'b-approved' : (r.status==='rejected' ? 'b-rejected' : 'b-pending');
+      const link = (r.status==='approved' && r.link)
+        ? `<a class="go" href="${esc(r.link)}">Open my activation link</a>` : '';
+      const note = r.adminNote ? `<div class="sub-pkg" style="margin-top:.35rem">${esc(r.adminNote)}</div>` : '';
+      const pay  = r.paymentMethod ? `<div class="sub-pkg" style="margin-top:.2rem">Paid via ${esc(r.paymentMethod)}${r.receiptId?' · ID '+esc(r.receiptId):''}</div>` : '';
+      const wait = r.status==='pending' ? '<div class="sub-pkg" style="margin-top:.35rem">We\u2019re preparing your link \u2014 you\u2019ll see it here.</div>' : '';
+      return `<div class="rq">
+        <div class="rq-top">
+          <div><div class="sub-name">${esc(r.productName)}</div><div class="sub-pkg">${esc(r.packageLabel)}</div></div>
+          <span class="badge ${cls}">${esc(r.status)}</span>
+        </div>
+        <div class="sub-pkg">Requested ${esc((r.createdAt||'').slice(0,10))}</div>
+        ${pay}${note}${wait}${link}
+      </div>`;
+    }).join('');
+  }
+
+  async function resume(){
+    if(!SESSION) return false;
+    try{
+      const r = await fetch('/api/portal/me', { headers: authHeaders(), cache:'no-store' });
+      if(!r.ok) return false;
+      const d = await r.json();
+      if(!d.ok) return false;
+      currentEmail = d.email;
+      renderAll(d); show('result'); loadCatalogue();
+      return true;
+    }catch(e){ return false; }
+  }
 
   const show = step => { ['email','otp','result'].forEach(s=>$('step-'+s).classList.toggle('hidden', s!==step)); };
   const setMsg = (id,text,kind) => { const m=$(id); m.textContent=text; m.className='msg show '+(kind||'err'); };
@@ -111,7 +339,8 @@
     try{
       const r=await fetch('/api/portal/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       const d=await r.json();
-      if(d.ok){ renderSubs(d.email, d.subscriptions); show('result'); }
+      if(d.ok){ SESSION=d.session||''; try{localStorage.setItem('dtc_portal_session',SESSION);}catch(_){}
+                currentEmail=d.email; renderAll(d); show('result'); loadCatalogue(); }
       else setMsg('otp-msg', d.error||'Verification failed.');
     }catch(e){ setMsg('otp-msg','Something went wrong. Please try again.'); }
     if(btn){btn.disabled=false; btn.textContent='View my subscriptions';}
@@ -134,6 +363,7 @@
           <div><div class="k">Activated</div><div class="v">${esc(s.activatedDate||'—')}</div></div>
           <div><div class="k">Expires</div><div class="v">${esc(s.expiryDate||'—')}</div></div>
         </div>
+        ${s.actionLink ? `<a class="go" href="${esc(s.actionLink)}">Activate now — open your link</a>` : ''}
       </div>`;
     }).join('');
     const total = subs.reduce((a,s)=>a+(Number(s.amount)||0),0);
@@ -142,11 +372,17 @@
 
   function backToEmail(){ $('otp').value=''; clrMsg('otp-msg'); clrMsg('email-msg'); show('email'); }
 
-  // Magic-link auto-verify
-  (function(){
+  // Magic-link auto-verify, else resume an existing session
+  (async function(){
     const p=new URLSearchParams(location.search);
     const magic=p.get('magic'), email=p.get('email');
-    if(magic){ show('otp'); currentEmail=email||''; $('email-echo').textContent=email||'your account'; doVerify({email:email||'', magic}); }
+    if(magic){
+      show('otp'); currentEmail=email||''; $('email-echo').textContent=email||'your account';
+      await doVerify({email:email||'', magic});
+      history.replaceState({}, '', location.pathname);
+      return;
+    }
+    await resume();
   })();
 
   $('email').addEventListener('keydown',e=>{ if(e.key==='Enter') requestOtp(); });
