@@ -3,172 +3,704 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>My Subscriptions — DTC</title>
+<meta name="theme-color" content="#3157e5"/>
+<title>DTC Customer Portal</title>
 <style>
-  :root{--bg:#eef2ff;--white:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--blue:#2563eb;--blue-d:#1e40af;--success:#16a34a;--warn:#d97706;--error:#dc2626}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(160deg,#eef2ff,#f8fafc);color:var(--text);min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
-  .box{background:var(--white);border:1px solid var(--border);border-radius:18px;box-shadow:0 20px 60px rgba(15,23,42,.12);width:100%;max-width:960px;padding:2rem 2.5rem;animation:in .4s ease}
-  @media(max-width:640px){.box{max-width:100%;padding:1.5rem 1.2rem;border-radius:14px}}
-  .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem .9rem;font-size:.82rem}
-  @media(max-width:640px){.meta{grid-template-columns:1fr 1fr}}
-  @keyframes in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  .brand{display:flex;align-items:center;gap:.6rem;margin-bottom:1.2rem}
-  .logo{width:36px;height:36px;border-radius:10px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
-  h1{font-size:1.3rem;margin:0;font-weight:800}
-  .sub{color:var(--muted);font-size:.9rem;margin:.15rem 0 1.4rem}
-  label{display:block;font-size:.78rem;font-weight:700;color:#475569;margin-bottom:.35rem}
-  input{width:100%;padding:.8rem .9rem;border:1.5px solid var(--border);border-radius:10px;font-size:1rem;font-family:inherit}
-  input:focus{outline:none;border-color:var(--blue)}
-  .otp-input{letter-spacing:.5rem;text-align:center;font-weight:800;font-size:1.3rem}
-  .btn{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:.85rem;font-family:inherit;font-size:.98rem;font-weight:700;cursor:pointer;margin-top:.4rem;transition:filter .15s,transform .12s}
-  .btn:hover{filter:brightness(1.07)}.btn:active{transform:scale(.98)}
-  .btn:disabled{opacity:.6;cursor:default}
-  .link{background:none;border:none;color:var(--blue);font-weight:600;font-size:.84rem;cursor:pointer;margin-top:.9rem;padding:0;font-family:inherit}
-  .msg{font-size:.84rem;border-radius:9px;padding:.7rem .85rem;margin-top:.9rem;display:none}
-  .msg.show{display:block}
-  .msg.err{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
-  .msg.ok{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
-  .hidden{display:none}
-  .sub-card{border:1px solid var(--border);border-radius:13px;padding:1rem 1.1rem;margin-bottom:.8rem}
-  .sub-top{display:flex;justify-content:space-between;align-items:flex-start;gap:.6rem;margin-bottom:.55rem}
-  .sub-name{font-weight:700;font-size:1rem}
-  .sub-pkg{font-size:.78rem;color:var(--muted)}
-  .status{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em;border-radius:6px;padding:.18rem .5rem;white-space:nowrap}
-  .st-Active{background:#dcfce7;color:#166534}.st-Expired{background:#fee2e2;color:#991b1b}
-  .st-Processing{background:#fef9c3;color:#854d0e}.st-Pending{background:#e0e7ff;color:#3730a3}
-  .st-Refunded,.st-Inactive,.st-Declined{background:#f1f5f9;color:#475569}
-
-  .meta .k{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em}
-  .meta .v{font-weight:600}
-  .total{text-align:right;font-size:.84rem;color:var(--muted);margin-top:.4rem}
-  .foot{font-size:.72rem;color:#94a3b8;text-align:center;margin-top:1.3rem;line-height:1.6}
-  .spin{display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:.4rem}
-  @keyframes sp{to{transform:rotate(360deg)}}
-  .form-inner{max-width:480px}
-  @media(min-width:641px){
-    .subs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:1rem}
+  :root{
+    --bg:#f5f7ff;--surface:#ffffff;--surface-soft:#f8faff;--text:#111827;--muted:#64748b;
+    --border:#e7eaf3;--primary:#3157e5;--primary-dark:#2445c4;--purple:#7657f6;
+    --success:#168a55;--success-bg:#eafaf1;--warning:#a76508;--warning-bg:#fff7df;
+    --danger:#c43d4d;--danger-bg:#fff0f2;--neutral:#596579;--neutral-bg:#eef1f6;
+    --shadow:0 28px 80px rgba(32,48,110,.15);--shadow-soft:0 12px 35px rgba(36,69,196,.10);
   }
+  *{box-sizing:border-box}
+  html{min-height:100%;background:var(--bg)}
+  body{
+    margin:0;min-height:100vh;color:var(--text);
+    font-family:Inter,"Plus Jakarta Sans",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    background:
+      radial-gradient(circle at 8% 10%,rgba(118,87,246,.13),transparent 30%),
+      radial-gradient(circle at 92% 90%,rgba(49,87,229,.12),transparent 32%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:28px;
+  }
+  button,input{font:inherit}
+  button{appearance:none}
+  a{color:inherit}
+  .hidden{display:none!important}
+
+  .portal-shell{
+    width:min(1180px,100%);min-height:700px;background:rgba(255,255,255,.94);
+    border:1px solid rgba(255,255,255,.9);border-radius:30px;overflow:hidden;
+    box-shadow:var(--shadow);display:grid;grid-template-columns:minmax(0,1.08fr) minmax(430px,.92fr);
+    animation:shellIn .5s ease both;
+  }
+  @keyframes shellIn{from{opacity:0;transform:translateY(14px) scale(.99)}to{opacity:1;transform:none}}
+
+  .brand-panel{
+    position:relative;overflow:hidden;padding:56px;color:white;
+    background:linear-gradient(145deg,#2445c4 0%,#3157e5 48%,#7657f6 100%);
+    display:flex;flex-direction:column;justify-content:space-between;
+  }
+  .brand-panel::before,.brand-panel::after{
+    content:"";position:absolute;border-radius:999px;filter:blur(2px);pointer-events:none;
+  }
+  .brand-panel::before{width:350px;height:350px;right:-160px;top:-120px;background:rgba(255,255,255,.12)}
+  .brand-panel::after{width:260px;height:260px;left:-120px;bottom:-110px;background:rgba(255,255,255,.09)}
+  .brand-grid{
+    position:absolute;inset:0;opacity:.12;pointer-events:none;
+    background-image:linear-gradient(rgba(255,255,255,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.14) 1px,transparent 1px);
+    background-size:42px 42px;mask-image:linear-gradient(to bottom,black,transparent 88%);
+  }
+  .brand-top,.brand-content,.preview-wrap{position:relative;z-index:1}
+  .brand-top{display:flex;align-items:center;gap:12px}
+  .logo-mark{
+    width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.28);display:grid;place-items:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 10px 24px rgba(22,32,99,.18);
+    backdrop-filter:blur(12px);font-size:16px;font-weight:900;letter-spacing:-.04em;
+  }
+  .brand-name{font-weight:800;font-size:1.05rem;letter-spacing:-.02em}
+  .brand-caption{font-size:.72rem;opacity:.74;margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+  .brand-content{max-width:520px;margin:44px 0 34px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:750;letter-spacing:.1em;text-transform:uppercase;opacity:.84;margin-bottom:18px}
+  .eyebrow::before{content:"";width:28px;height:1px;background:rgba(255,255,255,.62)}
+  .brand-content h1{font-size:clamp(2.25rem,4vw,4rem);line-height:1.04;letter-spacing:-.055em;margin:0 0 20px;max-width:540px}
+  .brand-content p{font-size:1rem;line-height:1.75;color:rgba(255,255,255,.78);margin:0;max-width:500px}
+
+  .preview-wrap{margin-top:auto}
+  .preview-card{
+    width:min(100%,500px);background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);
+    border-radius:22px;padding:18px;backdrop-filter:blur(18px);box-shadow:0 24px 50px rgba(13,27,92,.22);
+  }
+  .preview-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+  .preview-title{font-weight:750;font-size:.86rem}
+  .preview-live{display:flex;align-items:center;gap:7px;font-size:.7rem;color:rgba(255,255,255,.76)}
+  .preview-live::before{content:"";width:7px;height:7px;border-radius:50%;background:#84f0b5;box-shadow:0 0 0 4px rgba(132,240,181,.13)}
+  .preview-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .mini-card{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px}
+  .mini-label{font-size:.65rem;color:rgba(255,255,255,.65);margin-bottom:6px}
+  .mini-value{font-size:1.18rem;font-weight:850;letter-spacing:-.03em}
+  .preview-row{margin-top:10px;background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:12px 13px;display:flex;align-items:center;gap:11px}
+  .preview-product{width:34px;height:34px;border-radius:10px;background:white;color:#3157e5;display:grid;place-items:center;font-weight:900;font-size:.75rem}
+  .preview-info{min-width:0;flex:1}
+  .preview-info strong{display:block;font-size:.78rem;margin-bottom:4px}
+  .preview-info span{display:block;font-size:.65rem;color:rgba(255,255,255,.64)}
+  .preview-status{font-size:.64rem;font-weight:750;background:rgba(112,243,171,.18);color:#b7ffd4;border:1px solid rgba(112,243,171,.25);border-radius:999px;padding:5px 8px}
+
+  .form-panel{padding:50px 58px;display:flex;flex-direction:column;justify-content:center;background:rgba(255,255,255,.96);position:relative}
+  .mobile-brand{display:none}
+  .step-progress{display:flex;align-items:center;gap:8px;margin-bottom:38px}
+  .step-dot{width:8px;height:8px;border-radius:50%;background:#dce1ee;transition:.25s ease}
+  .step-dot.active{width:27px;border-radius:999px;background:linear-gradient(90deg,var(--primary),var(--purple))}
+  .step-label{font-size:.69rem;color:#8b95a8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-left:4px}
+  .form-block{max-width:440px;width:100%;margin:auto}
+  .form-icon{width:48px;height:48px;border-radius:15px;background:linear-gradient(145deg,#edf1ff,#f7f5ff);color:var(--primary);display:grid;place-items:center;margin-bottom:22px;border:1px solid #e2e5f7}
+  .form-icon svg{width:22px;height:22px}
+  .form-block h2{font-size:2rem;letter-spacing:-.045em;margin:0 0 10px;line-height:1.15}
+  .form-lead{color:var(--muted);font-size:.93rem;line-height:1.65;margin:0 0 28px}
+  .form-lead b{color:#334155}
+  .field-label{display:flex;justify-content:space-between;align-items:center;font-size:.76rem;font-weight:750;color:#384152;margin-bottom:9px}
+  .field-shell{position:relative}
+  .field-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:19px;height:19px;color:#93a0b5;pointer-events:none}
+  .text-input{
+    width:100%;height:56px;border:1.5px solid var(--border);border-radius:15px;background:#fbfcff;
+    padding:0 16px 0 48px;color:var(--text);outline:none;font-size:.94rem;transition:.2s ease;
+  }
+  .text-input:hover{border-color:#d7dcec}
+  .text-input:focus{background:#fff;border-color:var(--primary);box-shadow:0 0 0 4px rgba(49,87,229,.10)}
+  .text-input::placeholder{color:#a4adbd}
+  .primary-btn{
+    width:100%;height:56px;margin-top:15px;border:0;border-radius:15px;color:white;cursor:pointer;
+    background:linear-gradient(115deg,var(--primary),#4864e9 55%,var(--purple));font-size:.92rem;font-weight:780;
+    display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 14px 30px rgba(49,87,229,.24);
+    transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+  }
+  .primary-btn:hover{transform:translateY(-1px);box-shadow:0 18px 36px rgba(49,87,229,.3);filter:saturate(1.05)}
+  .primary-btn:active{transform:translateY(0)}
+  .primary-btn:disabled{cursor:not-allowed;opacity:.7;transform:none;box-shadow:none}
+  .primary-btn svg{width:18px;height:18px}
+  .security-note{display:flex;align-items:flex-start;gap:9px;color:#7c8799;font-size:.73rem;line-height:1.55;margin:17px 4px 0}
+  .security-note svg{width:15px;height:15px;flex:0 0 auto;margin-top:2px;color:#7f8ba1}
+  .support-line{text-align:center;margin-top:32px;color:#8691a3;font-size:.76rem}
+  .support-line a{color:var(--primary);font-weight:750;text-decoration:none}
+  .support-line a:hover{text-decoration:underline}
+
+  .otp-grid{display:grid;grid-template-columns:repeat(var(--otp-digits,6),minmax(0,1fr));gap:9px;margin:12px 0 5px}
+  .otp-box{width:100%;aspect-ratio:1/1.1;max-height:58px;border:1.5px solid var(--border);border-radius:14px;background:#fbfcff;text-align:center;font-weight:850;font-size:1.25rem;color:var(--text);outline:none;transition:.18s ease}
+  .otp-box:focus{border-color:var(--primary);background:white;box-shadow:0 0 0 4px rgba(49,87,229,.09)}
+  .otp-actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:18px}
+  .text-btn{border:0;background:none;padding:0;color:var(--primary);font-size:.76rem;font-weight:750;cursor:pointer}
+  .text-btn:disabled{color:#9aa4b5;cursor:default}
+  .timer-text{color:#8a94a5;font-size:.72rem;text-align:right}
+
+  .msg{display:none;margin-top:13px;padding:11px 13px;border-radius:12px;font-size:.76rem;line-height:1.45}
+  .msg.show{display:block}
+  .msg.err{color:#a92f3d;background:var(--danger-bg);border:1px solid #ffd3d9}
+  .msg.ok{color:#236346;background:#edf9f3;border:1px solid #c9efdc}
+  .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .result-layout{width:100%;max-width:none;margin:0}
+  body.result-mode{align-items:flex-start;padding-block:28px}
+  body.result-mode .portal-shell{display:block;max-width:1100px;min-height:auto}
+  body.result-mode .brand-panel{display:none}
+  body.result-mode .form-panel{padding:38px 44px 44px;display:block}
+  body.result-mode .step-progress{display:none}
+  .result-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:28px}
+  .result-brand{display:flex;align-items:center;gap:12px;margin-bottom:25px}
+  .result-brand .logo-mark{background:linear-gradient(135deg,var(--primary),var(--purple));color:white;border:0;width:42px;height:42px}
+  .result-brand-text strong{display:block;font-size:.92rem}
+  .result-brand-text span{display:block;color:var(--muted);font-size:.68rem;margin-top:2px}
+  .result-header h2{font-size:2rem;letter-spacing:-.04em;margin:0 0 8px}
+  .result-header p{color:var(--muted);margin:0;font-size:.88rem}
+  .switch-btn{border:1px solid var(--border);background:white;color:#455164;border-radius:12px;padding:10px 13px;cursor:pointer;font-size:.76rem;font-weight:750;white-space:nowrap;transition:.18s ease}
+  .switch-btn:hover{border-color:#cbd2e2;background:#f9faff}
+  .subs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .sub-card{position:relative;border:1px solid var(--border);border-radius:20px;padding:20px;background:linear-gradient(145deg,#fff,#fbfcff);box-shadow:0 8px 24px rgba(37,56,130,.06);overflow:hidden}
+  .sub-card::after{content:"";position:absolute;width:110px;height:110px;border-radius:50%;right:-55px;bottom:-60px;background:rgba(49,87,229,.05)}
+  .sub-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}
+  .sub-name{font-weight:820;font-size:1rem;letter-spacing:-.02em}
+  .sub-pkg{font-size:.75rem;color:var(--muted);margin-top:4px}
+  .status{font-size:.63rem;font-weight:850;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:6px 9px;white-space:nowrap}
+  .st-Active{background:var(--success-bg);color:var(--success)}
+  .st-Expired{background:var(--danger-bg);color:var(--danger)}
+  .st-Processing,.st-Pending{background:var(--warning-bg);color:var(--warning)}
+  .st-Refunded,.st-Inactive,.st-Declined{background:var(--neutral-bg);color:var(--neutral)}
+  .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px}
+  .meta-item{padding-top:12px;border-top:1px solid #edf0f6}
+  .meta .k{color:#8a94a5;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}
+  .meta .v{font-size:.8rem;font-weight:720;color:#344054;overflow-wrap:anywhere}
+  .total{margin-top:20px;padding:17px 18px;border-radius:16px;background:#f6f8ff;border:1px solid #e7eafe;text-align:right;font-size:.78rem;color:#657085;font-weight:650}
+  .empty-state{grid-column:1/-1;border:1px dashed #ced5e4;background:#fafbff;border-radius:20px;padding:42px 24px;text-align:center;color:var(--muted)}
+  .empty-state strong{display:block;color:var(--text);font-size:1rem;margin-bottom:7px}
+  .result-foot{display:flex;justify-content:center;align-items:center;gap:8px;color:#8b95a7;font-size:.7rem;margin-top:28px}
+  .result-foot svg{width:14px;height:14px}
+
+
+
+  /* Premium motion system */
+  @keyframes ambientDriftA{
+    0%,100%{transform:translate3d(0,0,0) scale(1)}
+    45%{transform:translate3d(34px,22px,0) scale(1.08)}
+    75%{transform:translate3d(-12px,38px,0) scale(.96)}
+  }
+  @keyframes ambientDriftB{
+    0%,100%{transform:translate3d(0,0,0) scale(1)}
+    50%{transform:translate3d(-42px,-24px,0) scale(1.1)}
+  }
+  @keyframes gridTravel{to{background-position:42px 42px}}
+  @keyframes gentleFloat{
+    0%,100%{transform:translate3d(0,0,0)}
+    50%{transform:translate3d(0,-8px,0)}
+  }
+  @keyframes previewFloat{
+    0%,100%{transform:perspective(900px) translate3d(0,0,0) rotateX(var(--tilt-y,0deg)) rotateY(var(--tilt-x,0deg))}
+    50%{transform:perspective(900px) translate3d(0,-8px,0) rotateX(var(--tilt-y,0deg)) rotateY(var(--tilt-x,0deg))}
+  }
+  @keyframes iconBreathe{
+    0%,100%{transform:translateY(0);box-shadow:0 8px 20px rgba(49,87,229,.07)}
+    50%{transform:translateY(-4px);box-shadow:0 14px 28px rgba(49,87,229,.13)}
+  }
+  @keyframes panelReveal{
+    from{opacity:0;transform:translate3d(0,16px,0)}
+    to{opacity:1;transform:translate3d(0,0,0)}
+  }
+  @keyframes contentRise{
+    from{opacity:0;transform:translate3d(0,18px,0)}
+    to{opacity:1;transform:translate3d(0,0,0)}
+  }
+  @keyframes cardReveal{
+    from{opacity:0;transform:translate3d(0,18px,0) scale(.985)}
+    to{opacity:1;transform:translate3d(0,0,0) scale(1)}
+  }
+  @keyframes livePulse{
+    0%,100%{box-shadow:0 0 0 4px rgba(132,240,181,.13)}
+    50%{box-shadow:0 0 0 9px rgba(132,240,181,0)}
+  }
+  @keyframes softShine{
+    0%{transform:translateX(-140%) skewX(-18deg)}
+    42%,100%{transform:translateX(260%) skewX(-18deg)}
+  }
+  @keyframes otpPop{
+    0%{transform:scale(.86)}
+    65%{transform:scale(1.07)}
+    100%{transform:scale(1)}
+  }
+  @keyframes shake{
+    0%,100%{transform:translateX(0)}
+    25%{transform:translateX(-5px)}
+    50%{transform:translateX(5px)}
+    75%{transform:translateX(-3px)}
+  }
+
+  body{position:relative;isolation:isolate;overflow-x:hidden}
+  body::before,body::after{
+    content:"";position:fixed;border-radius:50%;pointer-events:none;z-index:0;
+    filter:blur(18px);opacity:.65;will-change:transform;
+  }
+  body::before{
+    width:320px;height:320px;left:-100px;top:-90px;
+    background:radial-gradient(circle,rgba(118,87,246,.20),rgba(118,87,246,0) 68%);
+    animation:ambientDriftA 15s ease-in-out infinite;
+  }
+  body::after{
+    width:380px;height:380px;right:-125px;bottom:-130px;
+    background:radial-gradient(circle,rgba(49,87,229,.18),rgba(49,87,229,0) 68%);
+    animation:ambientDriftB 18s ease-in-out infinite;
+  }
+  .portal-shell{position:relative;isolation:isolate;z-index:1}
+  .brand-panel::before{animation:ambientDriftB 14s ease-in-out infinite}
+  .brand-panel::after{animation:ambientDriftA 17s ease-in-out infinite reverse}
+  .brand-grid{animation:gridTravel 14s linear infinite}
+  .brand-top{animation:contentRise .65s .08s ease both}
+  .brand-content{animation:contentRise .72s .18s ease both}
+  .preview-wrap{animation:contentRise .78s .29s ease both}
+  .brand-panel .logo-mark{animation:gentleFloat 5s ease-in-out infinite}
+  .preview-card{
+    animation:previewFloat 7s ease-in-out infinite;
+    transition:transform .22s ease-out,border-color .25s ease,background .25s ease;
+    will-change:transform;
+  }
+  .preview-card:hover{border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.16)}
+  .mini-card{transition:transform .25s ease,background .25s ease}
+  .mini-card:hover{transform:translateY(-4px);background:rgba(255,255,255,.16)}
+  .preview-live::before{animation:livePulse 2.2s ease-out infinite}
+  .preview-row{transition:transform .25s ease,background .25s ease}
+  .preview-row:hover{transform:translateX(4px);background:rgba(255,255,255,.15)}
+  .form-panel::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.8;
+    background:radial-gradient(circle at var(--pointer-x,70%) var(--pointer-y,20%),rgba(118,87,246,.055),transparent 28%);
+    transition:background-position .2s ease;
+  }
+  .form-panel>*{position:relative;z-index:1}
+  .form-block:not(.hidden){animation:panelReveal .45s cubic-bezier(.2,.75,.25,1) both}
+  .form-icon{animation:iconBreathe 4.5s ease-in-out infinite}
+  .step-dot.active{box-shadow:0 0 0 5px rgba(49,87,229,.08)}
+  .text-input:focus+.input-focus-ring{opacity:1}
+  .primary-btn{position:relative;overflow:hidden;isolation:isolate}
+  .primary-btn::before{
+    content:"";position:absolute;top:-30%;bottom:-30%;left:-35%;width:28%;z-index:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.36),transparent);
+    transform:translateX(-140%) skewX(-18deg);
+  }
+  .primary-btn>*{position:relative;z-index:1}
+  .primary-btn:hover::before{animation:softShine 1.05s ease}
+  .primary-btn:hover svg{transform:translateX(3px)}
+  .primary-btn svg{transition:transform .2s ease}
+  .otp-box.filled{animation:otpPop .28s ease;border-color:#9baaf0;background:#fff}
+  .otp-grid.shake{animation:shake .32s ease}
+  .msg.show{animation:panelReveal .28s ease both}
+  .sub-card{
+    opacity:0;animation:cardReveal .52s cubic-bezier(.2,.75,.25,1) forwards;
+    transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
+  }
+  .sub-card:nth-child(1){animation-delay:.04s}
+  .sub-card:nth-child(2){animation-delay:.11s}
+  .sub-card:nth-child(3){animation-delay:.18s}
+  .sub-card:nth-child(4){animation-delay:.25s}
+  .sub-card:nth-child(5){animation-delay:.32s}
+  .sub-card:nth-child(6){animation-delay:.39s}
+  .sub-card:hover{transform:translateY(-5px);box-shadow:0 18px 38px rgba(37,56,130,.11);border-color:#d8def0}
+  .sub-card::after{transition:transform .45s ease,background .45s ease}
+  .sub-card:hover::after{transform:scale(1.3);background:rgba(118,87,246,.075)}
+  .status{position:relative;overflow:hidden}
+  .status::after{
+    content:"";position:absolute;inset:0;transform:translateX(-120%);
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+    animation:softShine 4.8s 1.2s ease-in-out infinite;
+  }
+  .switch-btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(37,56,130,.08)}
+  .total{animation:panelReveal .45s .3s ease both}
+
+
+  @media(max-width:900px){
+    body{padding:18px;align-items:flex-start}
+    .portal-shell{grid-template-columns:1fr;min-height:auto;max-width:620px}
+    .brand-panel{display:none}
+    .form-panel{min-height:680px;padding:38px 42px}
+    .mobile-brand{display:flex;align-items:center;gap:10px;margin-bottom:48px}
+    .mobile-brand .logo-mark{background:linear-gradient(135deg,var(--primary),var(--purple));color:white;border:0;width:40px;height:40px;border-radius:12px}
+    .mobile-brand strong{display:block;font-size:.88rem}
+    .mobile-brand span{display:block;color:var(--muted);font-size:.65rem;margin-top:2px}
+    body.result-mode .portal-shell{max-width:760px}
+    body.result-mode .form-panel{min-height:auto}
+    .subs-grid{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){
+    body{padding:0;background:white}
+    .portal-shell{border:0;border-radius:0;box-shadow:none;min-height:100vh}
+    .form-panel{padding:28px 22px 34px;min-height:100vh;justify-content:flex-start}
+    .mobile-brand{margin-bottom:38px}
+    .step-progress{margin-bottom:28px}
+    .form-block{margin:0}
+    .form-block h2{font-size:1.7rem}
+    .form-lead{font-size:.88rem}
+    .otp-grid{gap:6px}
+    .otp-box{border-radius:11px;font-size:1.05rem}
+    .otp-actions{align-items:flex-start}
+    body.result-mode{padding:0}
+    body.result-mode .form-panel{padding:24px 18px 30px}
+    .result-header{flex-direction:column;gap:15px}
+    .switch-btn{width:100%}
+    .result-header h2{font-size:1.65rem}
+    .sub-card{padding:17px;border-radius:17px}
+    .meta{gap:12px}
+  }
+  @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<div class="box">
-  <div class="brand"><div class="logo">◆</div><div><h1>My Subscriptions</h1></div></div>
-
-  <!-- Step 1: email -->
-  <div id="step-email">
-    <div class="form-inner">
-    <div class="sub">Enter your email and we'll send you a one-time code (and a magic link) to view your subscriptions.</div>
-    <label for="email">Email address</label>
-    <input id="email" type="email" placeholder="you@example.com" autocomplete="email"/>
-    <button class="btn" id="send-btn" onclick="requestOtp()">Send my code</button>
-    <div class="msg" id="email-msg"></div>
+<main class="portal-shell" aria-live="polite">
+  <section class="brand-panel" aria-label="Digital Tools Corner customer portal introduction">
+    <div class="brand-grid"></div>
+    <div class="brand-top">
+      <div class="logo-mark" aria-hidden="true">DTC</div>
+      <div>
+        <div class="brand-name">Digital Tools Corner</div>
+        <div class="brand-caption">Customer Portal</div>
+      </div>
     </div>
-  </div>
 
-  <!-- Step 2: otp -->
-  <div id="step-otp" class="hidden">
-    <div class="form-inner">
-    <div class="sub">We've emailed a 6-digit code and a magic link to <b id="email-echo"></b>. Enter the code below, or just click the link in the email.</div>
-    <label for="otp">6-digit code</label>
-    <input id="otp" class="otp-input" inputmode="numeric" maxlength="6" placeholder="••••••"/>
-    <button class="btn" id="verify-btn" onclick="verifyOtp()">View my subscriptions</button>
-    <button class="link" onclick="backToEmail()">← Use a different email</button>
-    <div class="msg" id="otp-msg"></div>
+    <div class="brand-content">
+      <div class="eyebrow">Secure subscription access</div>
+      <h1>Everything you purchased, in one place.</h1>
+      <p>View activation progress, subscription status, important dates, and your recent purchase information through one secure portal.</p>
     </div>
-  </div>
 
-  <!-- Step 3: results -->
-  <div id="step-result" class="hidden">
-    <div class="sub">Showing subscriptions for <b id="result-email"></b>.</div>
-    <div id="subs" class="subs-grid"></div>
-    <button class="link" onclick="backToEmail()">← Check another email</button>
-  </div>
+    <div class="preview-wrap" aria-hidden="true">
+      <div class="preview-card">
+        <div class="preview-head">
+          <div class="preview-title">Your subscription overview</div>
+          <div class="preview-live">Secure access</div>
+        </div>
+        <div class="preview-stats">
+          <div class="mini-card"><div class="mini-label">Active</div><div class="mini-value">03</div></div>
+          <div class="mini-card"><div class="mini-label">Processing</div><div class="mini-value">01</div></div>
+          <div class="mini-card"><div class="mini-label">Support</div><div class="mini-value">24/7</div></div>
+        </div>
+        <div class="preview-row">
+          <div class="preview-product">AI</div>
+          <div class="preview-info"><strong>Premium AI Subscription</strong><span>Activation and expiry details available</span></div>
+          <div class="preview-status">Active</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
-  <div class="foot">For your privacy, we never show payment methods, login/session details or organization IDs here. Need help? Contact support.</div>
-</div>
+  <section class="form-panel">
+    <div class="mobile-brand">
+      <div class="logo-mark" aria-hidden="true">DTC</div>
+      <div><strong>Digital Tools Corner</strong><span>Customer Portal</span></div>
+    </div>
+
+    <div class="step-progress" id="step-progress" aria-label="Login progress">
+      <span class="step-dot active" data-step="email"></span>
+      <span class="step-dot" data-step="otp"></span>
+      <span class="step-label" id="step-label">Email verification</span>
+    </div>
+
+    <div id="step-email" class="form-block">
+      <div class="form-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6.5h16v11H4z"/><path d="m4.5 7 7.5 6 7.5-6"/></svg>
+      </div>
+      <h2>Welcome to your portal</h2>
+      <p class="form-lead">Sign in securely to view your subscriptions, activation progress, expiry dates, and order history.</p>
+      <label class="field-label" for="email">Email address</label>
+      <div class="field-shell">
+        <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="m4.5 7 7.5 6 7.5-6"/></svg>
+        <input class="text-input" id="email" type="email" placeholder="name@example.com" autocomplete="email" inputmode="email"/>
+      </div>
+      <button class="primary-btn" id="send-btn" type="button" onclick="requestOtp()">
+        <span>Continue securely</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div class="msg" id="email-msg" role="alert"></div>
+      <div class="security-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M12 14v2"/></svg>
+        <span>No password required. We will email you a secure one-time verification code and magic link.</span>
+      </div>
+      <div class="support-line">Having trouble? <a href="mailto:dtc@dtc1.shop">Contact DTC Support</a></div>
+    </div>
+
+    <div id="step-otp" class="form-block hidden">
+      <div class="form-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M12 14v2"/></svg>
+      </div>
+      <h2>Check your email</h2>
+      <p class="form-lead">We sent a <span id="otp-digit-label">6-digit</span> verification code<span id="magic-link-label"> and secure link</span> to <b id="email-echo"></b>.</p>
+      <label class="field-label" for="otp-1">Verification code</label>
+      <div class="otp-grid" id="otp-grid" style="--otp-digits:6"></div>
+      <button class="primary-btn" id="verify-btn" type="button" onclick="verifyOtp()">
+        <span>Open my portal</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+      <div class="msg" id="otp-msg" role="alert"></div>
+      <div class="otp-actions">
+        <button class="text-btn" type="button" onclick="backToEmail()">Use another email</button>
+        <div class="timer-text"><button class="text-btn" id="resend-btn" type="button" onclick="resendOtp()" disabled>Resend code</button> <span id="resend-timer"></span></div>
+      </div>
+      <div class="security-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.8 8.4 7 10 4.2-1.6 7-5.6 7-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span id="otp-expiry-note">This code expires in 15 minutes and can only be used once.</span>
+      </div>
+    </div>
+
+    <div id="step-result" class="form-block result-layout hidden">
+      <div class="result-brand">
+        <div class="logo-mark" aria-hidden="true">DTC</div>
+        <div class="result-brand-text"><strong>Digital Tools Corner</strong><span>Secure customer portal</span></div>
+      </div>
+      <div class="result-header">
+        <div>
+          <h2>Your subscriptions</h2>
+          <p>Showing subscription information for <b id="result-email"></b>.</p>
+        </div>
+        <button class="switch-btn" type="button" onclick="backToEmail()">Check another email</button>
+      </div>
+      <div id="subs" class="subs-grid"></div>
+      <div class="result-foot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3"/><rect x="5" y="10" width="14" height="10" rx="2"/></svg>
+        For your privacy, payment methods, passwords, and session details are never displayed here.
+      </div>
+    </div>
+  </section>
+</main>
 
 <script>
   const $ = id => document.getElementById(id);
-  const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+  let otpInputs = [];
   let currentEmail = '';
+  let resendInterval = null;
+  let portalConfig = { digits: 6, expiryMinutes: 15, resendSeconds: 45, magicLinkEnabled: true };
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const show = step => { ['email','otp','result'].forEach(s=>$('step-'+s).classList.toggle('hidden', s!==step)); };
-  const setMsg = (id,text,kind) => { const m=$(id); m.textContent=text; m.className='msg show '+(kind||'err'); };
-  const clrMsg = id => { $(id).className='msg'; };
-
-  async function requestOtp(){
-    const email = $('email').value.trim();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ setMsg('email-msg','Please enter a valid email address.'); return; }
-    clrMsg('email-msg');
-    const btn=$('send-btn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span>Sending…';
-    try{
-      await fetch('/api/portal/request-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-      currentEmail=email; $('email-echo').textContent=email;
-      show('otp'); $('otp').focus();
-    }catch(e){ setMsg('email-msg','Something went wrong. Please try again.'); }
-    btn.disabled=false; btn.textContent='Send my code';
+  function pulseOtpError(){
+    const grid=$('otp-grid');
+    grid.classList.remove('shake');
+    void grid.offsetWidth;
+    grid.classList.add('shake');
+    setTimeout(()=>grid.classList.remove('shake'),360);
   }
 
+  function setupPremiumMotion(){
+    if(reduceMotion) return;
+    const brand=document.querySelector('.brand-panel');
+    const preview=document.querySelector('.preview-card');
+    const formPanel=document.querySelector('.form-panel');
+    if(brand && preview){
+      brand.addEventListener('pointermove',event=>{
+        const rect=brand.getBoundingClientRect();
+        const x=(event.clientX-rect.left)/rect.width-.5;
+        const y=(event.clientY-rect.top)/rect.height-.5;
+        preview.style.setProperty('--tilt-x',`${x*3.2}deg`);
+        preview.style.setProperty('--tilt-y',`${y*-3.2}deg`);
+      });
+      brand.addEventListener('pointerleave',()=>{
+        preview.style.setProperty('--tilt-x','0deg');
+        preview.style.setProperty('--tilt-y','0deg');
+      });
+    }
+    if(formPanel){
+      formPanel.addEventListener('pointermove',event=>{
+        const rect=formPanel.getBoundingClientRect();
+        formPanel.style.setProperty('--pointer-x',`${((event.clientX-rect.left)/rect.width)*100}%`);
+        formPanel.style.setProperty('--pointer-y',`${((event.clientY-rect.top)/rect.height)*100}%`);
+      });
+    }
+  }
+
+  function maskEmail(email){
+    const [name, domain] = String(email || '').split('@');
+    if(!name || !domain) return email || 'your email';
+    const visible = name.length <= 2 ? name.charAt(0) : name.slice(0,2);
+    return `${visible}${'*'.repeat(Math.max(2, Math.min(5, name.length-visible)))}@${domain}`;
+  }
+
+  function show(step){
+    ['email','otp','result'].forEach(name => $('step-'+name).classList.toggle('hidden', name !== step));
+    document.body.classList.toggle('result-mode', step === 'result');
+    document.querySelectorAll('.step-dot').forEach(dot => dot.classList.toggle('active', dot.dataset.step === step));
+    $('step-label').textContent = step === 'otp' ? 'Secure verification' : 'Email verification';
+  }
+
+  function setMsg(id,text,kind='err'){
+    const el=$(id); el.textContent=text; el.className='msg show '+kind;
+  }
+  function clearMsg(id){ const el=$(id); el.textContent=''; el.className='msg'; }
+  function setButtonLoading(button, loading, idleHtml, loadingText){
+    button.disabled=loading;
+    button.innerHTML=loading ? `<span class="spin"></span><span>${loadingText}</span>` : idleHtml;
+  }
+
+  const sendIdle = '<span>Continue securely</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+  const verifyIdle = '<span>Open my portal</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+  async function loadPortalConfig(){
+    try{
+      const response=await fetch('/api/portal/config',{cache:'no-store'});
+      const data=await response.json();
+      if(response.ok) portalConfig={...portalConfig,...data};
+    }catch(error){}
+    setupOtpInputs();
+    updateOtpCopy();
+  }
+
+  function updateOtpCopy(){
+    $('otp-digit-label').textContent=`${portalConfig.digits}-digit`;
+    $('magic-link-label').textContent=portalConfig.magicLinkEnabled?' and secure link':'';
+    $('otp-expiry-note').textContent=`This code expires in ${portalConfig.expiryMinutes} minute${portalConfig.expiryMinutes===1?'':'s'} and can only be used once.`;
+  }
+
+  function setupOtpInputs(){
+    const grid=$('otp-grid');
+    grid.style.setProperty('--otp-digits',String(portalConfig.digits));
+    grid.innerHTML=Array.from({length:portalConfig.digits},(_,index)=>`<input class="otp-box" ${index===0?'id="otp-1" autocomplete="one-time-code"':''} aria-label="Digit ${index+1}" inputmode="numeric" maxlength="1"/>`).join('');
+    otpInputs=Array.from(grid.querySelectorAll('.otp-box'));
+    otpInputs.forEach((input,index)=>{
+      input.addEventListener('input',event=>{
+        event.target.value=event.target.value.replace(/\D/g,'').slice(-1);
+        event.target.classList.toggle('filled',Boolean(event.target.value));
+        if(event.target.value && index<otpInputs.length-1) otpInputs[index+1].focus();
+        if(getOtp().length===portalConfig.digits) clearMsg('otp-msg');
+      });
+      input.addEventListener('keydown',event=>{
+        if(event.key==='Backspace' && !input.value && index>0) otpInputs[index-1].focus();
+        if(event.key==='ArrowLeft' && index>0) otpInputs[index-1].focus();
+        if(event.key==='ArrowRight' && index<otpInputs.length-1) otpInputs[index+1].focus();
+        if(event.key==='Enter') verifyOtp();
+      });
+      input.addEventListener('paste',event=>{
+        const digits=(event.clipboardData.getData('text') || '').replace(/\D/g,'').slice(0,portalConfig.digits);
+        if(!digits) return;
+        event.preventDefault();
+        clearOtp();
+        digits.split('').forEach((digit,i)=>{if(otpInputs[i]){otpInputs[i].value=digit;otpInputs[i].classList.add('filled');}});
+        otpInputs[Math.max(0,Math.min(digits.length,portalConfig.digits)-1)].focus();
+      });
+    });
+  }
+
+  async function requestOtp(isResend=false){
+    const email = isResend ? currentEmail : $('email').value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      setMsg('email-msg','Please enter a valid email address.');
+      $('email').focus();
+      return;
+    }
+    clearMsg('email-msg'); clearMsg('otp-msg');
+    const btn=$('send-btn');
+    if(!isResend) setButtonLoading(btn,true,sendIdle,'Sending secure code…');
+    try{
+      const response=await fetch('/api/portal/request-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error || 'Unable to send the code.');
+      portalConfig={...portalConfig,...data};
+      if(otpInputs.length!==portalConfig.digits) setupOtpInputs();
+      updateOtpCopy();
+      currentEmail=email.toLowerCase();
+      $('email-echo').textContent=maskEmail(currentEmail);
+      clearOtp(); show('otp'); startResendTimer();
+      if(otpInputs[0]) otpInputs[0].focus();
+      if(isResend) setMsg('otp-msg','A new verification code has been sent.','ok');
+    }catch(error){
+      if(isResend) setMsg('otp-msg',error.message || 'Unable to resend the code.');
+      else setMsg('email-msg',error.message || 'Something went wrong. Please try again.');
+    }finally{ if(!isResend) setButtonLoading(btn,false,sendIdle,''); }
+  }
+
+  function getOtp(){ return otpInputs.map(input => input.value).join(''); }
+  function clearOtp(){ otpInputs.forEach(input => {input.value='';input.classList.remove('filled');}); }
+
   async function verifyOtp(){
-    const otp=$('otp').value.trim();
-    if(otp.length<4){ setMsg('otp-msg','Enter the code from your email.'); return; }
-    await doVerify({email:currentEmail, otp});
+    const otp=getOtp();
+    if(otp.length !== portalConfig.digits){
+      setMsg('otp-msg',`Please enter all ${portalConfig.digits} digits from your email.`);
+      pulseOtpError();
+      const firstEmpty=otpInputs.find(input => !input.value);
+      if(firstEmpty) firstEmpty.focus();
+      return;
+    }
+    await doVerify({email:currentEmail,otp});
   }
 
   async function doVerify(payload){
-    clrMsg('otp-msg');
-    const btn=$('verify-btn'); if(btn){btn.disabled=true; btn.innerHTML='<span class="spin"></span>Checking…';}
+    clearMsg('otp-msg');
+    const btn=$('verify-btn');
+    setButtonLoading(btn,true,verifyIdle,'Verifying securely…');
     try{
-      const r=await fetch('/api/portal/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const d=await r.json();
-      if(d.ok){ renderSubs(d.email, d.subscriptions); show('result'); }
-      else setMsg('otp-msg', d.error||'Verification failed.');
-    }catch(e){ setMsg('otp-msg','Something went wrong. Please try again.'); }
-    if(btn){btn.disabled=false; btn.textContent='View my subscriptions';}
+      const response=await fetch('/api/portal/verify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok || !data.ok) throw new Error(data.error || 'Verification failed.');
+      currentEmail=data.email || currentEmail;
+      renderSubs(currentEmail,data.subscriptions || []);
+      stopResendTimer(); show('result');
+      history.replaceState({},document.title,location.pathname);
+      window.scrollTo({top:0,behavior:'smooth'});
+    }catch(error){
+      setMsg('otp-msg',error.message || 'Something went wrong. Please try again.');
+      pulseOtpError(); clearOtp();
+      if(otpInputs[0]) otpInputs[0].focus();
+    }finally{ setButtonLoading(btn,false,verifyIdle,''); }
   }
 
-  function renderSubs(email, subs){
+  function statusClass(status){ return 'st-' + String(status || 'Inactive').replace(/[^a-zA-Z0-9_-]/g,''); }
+
+  function renderSubs(email,subs){
     $('result-email').textContent=email;
     const wrap=$('subs');
-    if(!subs || !subs.length){ wrap.innerHTML='<div class="sub-card">No subscriptions found for this email.</div>'; return; }
-    wrap.innerHTML = subs.map(s=>{
-      const sym=esc(s.currencySymbol||'$');
-      const isRefunded = s.status === 'Refunded';
-      const amountDisplay = isRefunded
-        ? `<span style="text-decoration:line-through;color:var(--muted)">${sym}${(Number(s.amount)||0).toFixed(2)}</span> <span style="font-size:.7rem;color:var(--muted)">(refunded)</span>`
-        : `${sym}${(Number(s.amount)||0).toFixed(2)}`;
-      return `<div class="sub-card">
-        <div class="sub-top">
-          <div><div class="sub-name">${esc(s.product)}</div><div class="sub-pkg">${esc(s.package)}</div></div>
-          <span class="status st-${esc(s.status)}">${esc(s.status)}</span>
-        </div>
-        <div class="meta">
-          <div><div class="k">Amount</div><div class="v">${amountDisplay}</div></div>
-          <div><div class="k">Order date</div><div class="v">${esc(s.orderDate||'—')}</div></div>
-          <div><div class="k">Activated</div><div class="v">${esc(s.activatedDate||'—')}</div></div>
-          <div><div class="k">Expires</div><div class="v">${esc(s.expiryDate||'—')}</div></div>
-        </div>
-      </div>`;
+    if(!subs.length){ wrap.innerHTML='<div class="empty-state"><strong>No subscriptions found</strong>There are currently no subscription records connected to this email address.</div>'; return; }
+    wrap.innerHTML=subs.map(item=>{
+      const symbol=esc(item.currencySymbol || '$');
+      const status=String(item.status || 'Inactive');
+      const isRefunded=status.toLowerCase()==='refunded';
+      const amount=`${symbol}${(Number(item.amount)||0).toFixed(2)}`;
+      const amountDisplay=isRefunded ? `<span style="text-decoration:line-through;color:#8a94a5">${amount}</span> <span style="font-size:.67rem;color:#8a94a5">refunded</span>` : amount;
+      return `<article class="sub-card"><div class="sub-top"><div><div class="sub-name">${esc(item.product || 'Subscription')}</div><div class="sub-pkg">${esc(item.package || 'Digital service')}</div></div><span class="status ${statusClass(status)}">${esc(status)}</span></div><div class="meta"><div class="meta-item"><div class="k">Amount</div><div class="v">${amountDisplay}</div></div><div class="meta-item"><div class="k">Order date</div><div class="v">${esc(item.orderDate || '—')}</div></div><div class="meta-item"><div class="k">Activated</div><div class="v">${esc(item.activatedDate || '—')}</div></div><div class="meta-item"><div class="k">Expires</div><div class="v">${esc(item.expiryDate || '—')}</div></div></div></article>`;
     }).join('');
-    const paidSubs = subs.filter(s => s.status !== 'Refunded');
-    const total = paidSubs.reduce((a,s)=>a+(Number(s.amount)||0),0);
-    const refundCount = subs.length - paidSubs.length;
-    const refundNote = refundCount > 0 ? ` · ${refundCount} refunded` : '';
-    wrap.innerHTML += `<div class="total" style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">${subs.length} subscription${subs.length!==1?'s':''}${refundNote} · total paid ${esc((paidSubs[0]||subs[0]).currencySymbol||'$')}${total.toFixed(2)}</div>`;
+    const paid=subs.filter(item => String(item.status || '').toLowerCase() !== 'refunded');
+    const total=paid.reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+    const refunded=subs.length-paid.length;
+    const currency=esc(((paid[0] || subs[0]).currencySymbol) || '$');
+    const old=$('subscription-total'); if(old) old.remove();
+    wrap.insertAdjacentHTML('afterend',`<div class="total" id="subscription-total">${subs.length} subscription${subs.length!==1?'s':''}${refunded?` · ${refunded} refunded`:''} · Total paid ${currency}${total.toFixed(2)}</div>`);
   }
 
-  function backToEmail(){ $('otp').value=''; clrMsg('otp-msg'); clrMsg('email-msg'); show('email'); }
+  function backToEmail(){
+    stopResendTimer(); clearOtp(); clearMsg('otp-msg'); clearMsg('email-msg');
+    const total=$('subscription-total'); if(total) total.remove();
+    show('email'); $('email').value=currentEmail; setTimeout(()=>$('email').focus(),0);
+  }
 
-  // Magic-link auto-verify
-  (function(){
-    const p=new URLSearchParams(location.search);
-    const magic=p.get('magic'), email=p.get('email');
-    if(magic){ show('otp'); currentEmail=email||''; $('email-echo').textContent=email||'your account'; doVerify({email:email||'', magic}); }
+  function startResendTimer(){
+    stopResendTimer();
+    let seconds=Number(portalConfig.resendSeconds)||45;
+    $('resend-btn').disabled=true;
+    $('resend-timer').textContent=`in ${seconds}s`;
+    resendInterval=setInterval(()=>{
+      seconds-=1;
+      if(seconds<=0){ stopResendTimer(); $('resend-btn').disabled=false; $('resend-timer').textContent=''; }
+      else $('resend-timer').textContent=`in ${seconds}s`;
+    },1000);
+  }
+  function stopResendTimer(){ if(resendInterval){clearInterval(resendInterval);resendInterval=null;} }
+  function resendOtp(){ if(!$('resend-btn').disabled) requestOtp(true); }
+
+  $('email').addEventListener('keydown',event=>{if(event.key==='Enter')requestOtp();});
+  setupPremiumMotion();
+
+  (async function initialisePortal(){
+    await loadPortalConfig();
+    const params=new URLSearchParams(location.search);
+    const magic=params.get('magic');
+    const email=params.get('email') || '';
+    if(!magic) return;
+    currentEmail=email;
+    $('email-echo').textContent=maskEmail(email);
+    show('otp'); setMsg('otp-msg','Opening your secure portal…','ok');
+    doVerify({email,magic});
   })();
-
-  $('email').addEventListener('keydown',e=>{ if(e.key==='Enter') requestOtp(); });
-  $('otp').addEventListener('keydown',e=>{ if(e.key==='Enter') verifyOtp(); });
 </script>
 </body>
 </html>

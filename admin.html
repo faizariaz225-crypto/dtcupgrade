@@ -11,6 +11,7 @@
   <!-- Modular CSS -->
   <link rel="stylesheet" href="css/theme.css"/>
   <link rel="stylesheet" href="css/layout.css"/>
+  <link rel="stylesheet" href="css/admin-enhancements.css"/>
 
   <!-- Page-specific component styles (inline — scoped per component) -->
   <style>
@@ -59,18 +60,29 @@
 
     /* Action buttons inside table */
     .action-wrap  { display: flex; flex-direction: column; gap: .4rem; }
-    .approve-btn  { background: var(--success-bg); border: 1.5px solid var(--success-border); border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--success); cursor: pointer; transition: all .18s; white-space: nowrap; }
-    .approve-btn:hover:not(:disabled)  { background: #dcfce7; border-color: #86efac; transform: translateY(-1px); }
-    .approve-btn:disabled  { opacity: .4; cursor: not-allowed; }
-    .decline-btn  { background: var(--error-bg);   border: 1.5px solid var(--error-border);   border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--error);   cursor: pointer; transition: all .18s; white-space: nowrap; }
-    .decline-btn:hover:not(:disabled)  { background: #fee2e2; border-color: #fca5a5; transform: translateY(-1px); }
+    .stage-pill   { display: inline-block; align-self: flex-start; background: var(--warn-bg); color: var(--warn); border: 1px solid var(--warn-border); border-radius: 20px; padding: .18rem .6rem; font-size: .66rem; font-weight: 700; letter-spacing: .02em; }
+    .approve-btn  { background: var(--success-bg); border: 1.5px solid var(--success-border); border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--success); cursor: pointer; transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .18s, border-color .18s; white-space: nowrap; animation: approveGlow 2.2s ease-in-out infinite; }
+    .approve-btn:hover:not(:disabled)  { background: #dcfce7; border-color: #86efac; transform: translateY(-2px); }
+    .approve-btn:active:not(:disabled) { transform: scale(.96); }
+    .approve-btn:disabled  { opacity: .4; cursor: not-allowed; animation: none; }
+    @keyframes approveGlow { 0%,100% { box-shadow: 0 0 0 0 rgba(22,163,74,.0); } 50% { box-shadow: 0 0 0 4px rgba(22,163,74,.12); } }
+    .decline-btn  { background: var(--error-bg);   border: 1.5px solid var(--error-border);   border-radius: 7px; padding: .3rem .75rem; font-family: 'Inter',sans-serif; font-size: .73rem; font-weight: 700; color: var(--error);   cursor: pointer; transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .18s, border-color .18s; white-space: nowrap; }
+    .decline-btn:hover:not(:disabled)  { background: #fee2e2; border-color: #fca5a5; transform: translateY(-2px); }
+    .decline-btn:active:not(:disabled) { transform: scale(.96); }
     /* Generic small action buttons */
     .action-btn       { border-radius: 7px; padding: .28rem .75rem; font-family: 'Inter',sans-serif; font-size: .72rem; font-weight: 700; cursor: pointer; transition: all .18s; white-space: nowrap; border: 1.5px solid; }
     .action-btn:hover { transform: translateY(-1px); }
+    .action-btn:active { transform: scale(.96); }
     .action-btn.deact { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
     .action-btn.deact:hover { background: #e5e7eb; border-color: #9ca3af; }
     .action-btn.react { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); }
     .action-btn.react:hover { background: #dbeafe; }
+    .action-btn.edit { background: var(--blue-light); border-color: var(--blue-mid); color: var(--blue); margin-right: .35rem; }
+    .action-btn.edit:hover { background: #dbeafe; }
+    .action-btn.delete { background: #ffffff; border-color: var(--error-border); color: var(--error); margin-top: .4rem; }
+    .action-btn.delete:hover { background: var(--error-bg); }
+    .action-btn.refund { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn); margin-top: .4rem; }
+    .action-btn.refund:hover { filter: brightness(.97); }
 
     /* ── Customers ─────────────────────────────────────────────────────────── */
     .cust-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.3rem 1.5rem; margin-bottom: .9rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -90,6 +102,86 @@
     .exp-bar       { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .exp-bar-fill  { height: 100%; border-radius: 3px; transition: width .5s ease; }
     .email-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+    /* ── Customer card "See more" expand ───────────────────────────────────── */
+    .cust-more-btn { background: none; border: none; color: var(--blue); cursor: pointer; font-size: .72rem; font-weight: 600; padding: 0; margin: 0 0 .6rem; font-family: 'Inter',sans-serif; }
+    .cust-more-btn:hover { text-decoration: underline; }
+    .cust-more { display: none; margin-bottom: .9rem; padding-top: .2rem; border-top: 1px dashed var(--border); }
+    .cust-more.open { display: block; padding-top: .9rem; }
+    .cmore-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: .55rem .9rem; margin-bottom: .8rem; }
+    @media (max-width:560px) { .cmore-grid { grid-template-columns: 1fr 1fr; } }
+    .cmore-log { background: #f8faff; border: 1px solid var(--border); border-radius: 8px; padding: .55rem .7rem; font-family: 'JetBrains Mono',monospace; }
+    .cmore-log-hdr, .cmore-log-row { display: grid; grid-template-columns: 1.3fr .9fr 1fr; gap: .4rem; font-size: .62rem; }
+    .cmore-log-hdr { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 700; padding-bottom: .3rem; border-bottom: 1px solid var(--border); margin-bottom: .25rem; }
+    .cmore-log-row { color: var(--muted); padding: .22rem 0; border-bottom: 1px solid #eef2f7; }
+    .cmore-log-row:last-child { border-bottom: none; }
+    .cust-history { margin: .2rem 0 .9rem; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .cust-history-hdr { background: #f8faff; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: .45rem .7rem; border-bottom: 1px solid var(--border); }
+    .cust-history-row { display: grid; grid-template-columns: 1fr 1fr .8fr 1.1fr; gap: .5rem; font-size: .72rem; color: var(--text); padding: .45rem .7rem; border-bottom: 1px solid #eef2f7; }
+    .cust-history-row:last-child { border-bottom: none; }
+    .ptag { background: #fff; border: 1.5px solid var(--border); color: var(--muted); border-radius: 16px; padding: .3rem .8rem; font-size: .74rem; font-weight: 600; cursor: pointer; font-family: 'Inter',sans-serif; transition: all .15s; }
+    .ptag:hover { border-color: var(--blue-mid); }
+    .ptag.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+    /* ── Live activation preview ─────────────────────────────────────────────── */
+    .pv-tabs { display:flex; gap:.4rem; margin-bottom:.8rem; flex-wrap:wrap; }
+    .pv-tab { background:#fff; border:1.5px solid var(--border); color:var(--muted); border-radius:8px; padding:.35rem .8rem; font-size:.74rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; }
+    .pv-tab.on { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .pv-phone { --pv-accent:#2563eb; --pv-accent-d:#1e40af; --pv-accent-l:#dbeafe; width:300px; max-width:100%; height:560px; margin:0 auto; border-radius:30px; border:9px solid #0f172a; box-shadow:0 18px 50px rgba(0,0,0,.25); overflow:hidden; position:relative; }
+    .pv-screen { position:absolute; inset:0; overflow:auto; padding:22px 18px; }
+    .pv-brand { display:flex; align-items:center; gap:.45rem; font-weight:800; font-size:.92rem; color:var(--pv-accent-d); margin-bottom:1.1rem; }
+    .pv-brand-ic { width:26px;height:26px;border-radius:7px;background:var(--pv-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.8rem; }
+    .pv-card { background:#fff; border-radius:16px; padding:18px 16px; box-shadow:0 8px 30px rgba(15,23,42,.10); }
+    .pv-h { font-size:1.1rem; font-weight:800; color:#0f172a; }
+    .pv-sub { font-size:.76rem; color:#64748b; margin:.25rem 0 1rem; }
+    .pv-flabel { font-size:.7rem; font-weight:700; color:#475569; margin-bottom:.3rem; }
+    .pv-input { height:38px; border:1.5px solid #e2e8f0; border-radius:9px; margin-bottom:1rem; background:#f8fafc; }
+    .pv-btn { width:100%; background:var(--pv-accent); color:#fff; border:none; border-radius:11px; padding:.8rem; font-weight:700; font-size:.9rem; cursor:default; }
+    .pv-steps { display:flex; flex-direction:column; gap:.85rem; margin-top:.6rem; }
+    .pv-step { display:flex; align-items:center; gap:.6rem; font-size:.82rem; color:#94a3b8; }
+    .pv-step.done, .pv-step.spin { color:#0f172a; font-weight:600; }
+    .pv-dot { width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;border:2px solid #e2e8f0; flex-shrink:0; }
+    .pv-step.done .pv-dot { background:var(--pv-accent); border-color:var(--pv-accent); color:#fff; }
+    .pv-step.spin .pv-dot { border-color:var(--pv-accent); color:var(--pv-accent); }
+    .pv-ring { width:70px;height:70px;border-radius:50%;border:3px solid #16a34a;display:flex;align-items:center;justify-content:center;color:#16a34a;font-size:1.8rem;margin:1rem auto; }
+    .pv-popup { position:absolute; inset:0; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:14px; }
+    .pv-pop-box { background:#fff; border-radius:16px; padding:16px 14px; text-align:center; width:100%; }
+    .pv-pop-title { font-weight:800; font-size:.95rem; color:#0f172a; }
+    .pv-pop-text { font-size:.72rem; color:#64748b; margin:.3rem 0 .8rem; }
+    .pv-qrs { display:flex; gap:.6rem; justify-content:center; margin-bottom:.8rem; }
+    .pv-qr { flex:1; background:#f8faff; border:1px solid #e2e8f0; border-radius:10px; padding:.5rem; }
+    .pv-qr img { width:100%; border-radius:6px; display:block; }
+    .pv-qr-l { font-size:.7rem; font-weight:700; margin-top:.35rem; }
+    .pv-qr-empty { font-size:.7rem; color:#94a3b8; padding:1.4rem .4rem; }
+    .pv-anim-full .pv-step.spin .pv-dot { animation:pvPulse 1.6s ease-in-out infinite; }
+    .pv-anim-full .pv-ring { animation:pvBounce .6s cubic-bezier(.34,1.56,.64,1); }
+    .pv-anim-full .pv-card, .pv-anim-full .pv-pop-box { animation:pvIn .5s cubic-bezier(.2,.7,.2,1) both; }
+    .pv-anim-subtle .pv-card, .pv-anim-subtle .pv-pop-box { animation:pvFade .5s ease both; }
+    @keyframes pvPulse { 0%{box-shadow:0 0 0 0 var(--pv-accent-l)} 70%{box-shadow:0 0 0 8px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+    @keyframes pvBounce { 0%{transform:scale(.7);opacity:.4} 60%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+    @keyframes pvIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:none} }
+    @keyframes pvFade { from{opacity:0} to{opacity:1} }
+    .cust-subs { margin: .3rem 0 .9rem; }
+    .cust-subs-hdr { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .4rem; }
+    .sub-item { border: 1px solid var(--border); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
+    .sub-item.refunded { opacity: .8; }
+    .sub-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .8rem; cursor: pointer; background: #fbfcfe; transition: background .15s; }
+    .sub-head:hover { background: #f1f5ff; }
+    .sub-head-main { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+    .sub-prod { font-weight: 700; font-size: .82rem; color: var(--text); }
+    .sub-pkg { font-size: .74rem; color: var(--muted); }
+    .sub-head-meta { display: flex; align-items: center; gap: .8rem; font-size: .72rem; color: var(--muted); white-space: nowrap; }
+    .sub-caret { color: var(--blue); font-weight: 700; }
+    .sub-body { display: none; padding: .8rem; border-top: 1px solid var(--border); }
+    .sub-body.open { display: block; }
+    .sub-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .7rem; }
+
+    /* ── Activation Portal slide editor ────────────────────────────────────── */
+    .slide-edit-row { border: 1.5px solid var(--border); border-radius: 10px; padding: .8rem .9rem; margin-bottom: .7rem; background: #fbfcfe; }
+    .slide-edit-row .form-row { margin-bottom: .5rem; }
+    .slide-edit-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .55rem; }
+    .slide-edit-head .slide-idx { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .slide-image-controls { display: flex; gap: .7rem; align-items: flex-start; margin-top: .35rem; }
+    .slide-thumb { width: 84px; height: 58px; border-radius: 8px; border: 1px solid var(--border); background-size: cover; background-position: center; background-color: #eef2f7; flex-shrink: 0; }
 
     /* ── Instructions ──────────────────────────────────────────────────────── */
     .instr-card    { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; padding: 1.2rem 1.4rem; margin-bottom: .8rem; box-shadow: var(--shadow); transition: all .2s; }
@@ -232,57 +324,419 @@
     .notif-type-btn.sel-warning{background:#fffbeb;border-color:#fde68a;color:#b45309}
     .notif-type-btn.sel-error  {background:#fef2f2;border-color:#fecaca;color:#dc2626}
 
-    /* ── Landing Page Editor ──────────────────────────────────────────────────── */
-    @media(max-width:960px){#page-landing [style*="grid-template-columns:1fr 420px"]{display:block!important}}
-    #page-landing [style*="grid-template-columns:1fr 420px"] > div:last-child{margin-top:1.2rem}
-
-    /* ── Login screen ──────────────────────────────────────────────────────── */
+    /* ── Secure cyber login screen ───────────────────────────────────────── */
     #login-wrap {
+      --cyber-navy: #071a3a;
+      --cyber-blue: #176bff;
+      --cyber-sky: #38bdf8;
+      --cyber-pale: #eef6ff;
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg);
       width: 100%;
-      padding: 2rem 1rem;
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr);
+      background:
+        radial-gradient(circle at 13% 12%, rgba(56,189,248,.16), transparent 28%),
+        radial-gradient(circle at 86% 84%, rgba(23,107,255,.12), transparent 30%),
+        linear-gradient(135deg, #f7fbff 0%, #edf5ff 48%, #f8fbff 100%);
+      isolation: isolate;
+    }
+    #login-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      opacity: .42;
+      background-image:
+        linear-gradient(rgba(23,107,255,.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23,107,255,.055) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(90deg, #000 0 55%, transparent 82%);
+      animation: cyberGridMove 18s linear infinite;
+    }
+    #login-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -35%;
+      z-index: -3;
+      background: conic-gradient(from 120deg, transparent, rgba(56,189,248,.08), transparent 28%, rgba(23,107,255,.07), transparent 58%);
+      animation: cyberAura 26s linear infinite;
+    }
+    .cyber-visual {
+      min-height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: clamp(2.2rem, 5vw, 5rem);
+      color: var(--cyber-navy);
+      overflow: hidden;
+    }
+    .cyber-visual::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 9%;
+      bottom: 9%;
+      width: 1px;
+      background: linear-gradient(transparent, rgba(23,107,255,.22), transparent);
+    }
+    .cyber-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: .85rem;
+      width: max-content;
+      animation: cyberFadeDown .7s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .cyber-brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, var(--cyber-blue), #0f4fd6);
+      box-shadow: 0 10px 30px rgba(23,107,255,.25), inset 0 1px rgba(255,255,255,.35);
+      display: grid;
+      place-items: center;
+      color: #fff;
+      position: relative;
+    }
+    .cyber-brand-mark::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border: 1px solid rgba(23,107,255,.18);
+      border-radius: 18px;
+    }
+    .cyber-brand-mark svg { width: 23px; height: 23px; }
+    .cyber-brand-name { font-size: 1rem; font-weight: 800; letter-spacing: -.02em; }
+    .cyber-brand-sub { color: #6b7f9f; font-size: .68rem; margin-top: .08rem; letter-spacing: .04em; }
+
+    .cyber-hero {
+      display: grid;
+      grid-template-columns: minmax(300px, 520px) minmax(240px, 420px);
+      align-items: center;
+      gap: clamp(1.6rem, 4vw, 4.8rem);
+      margin: 1.5rem 0;
+    }
+    .cyber-copy { position: relative; z-index: 3; animation: cyberFadeUp .85s .1s cubic-bezier(.2,.8,.2,1) both; }
+    .cyber-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: .48rem;
+      padding: .36rem .7rem;
+      border: 1px solid rgba(23,107,255,.18);
+      border-radius: 999px;
+      background: rgba(255,255,255,.58);
+      color: var(--cyber-blue);
+      font: 600 .64rem 'JetBrains Mono', monospace;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      box-shadow: 0 8px 30px rgba(25,76,150,.06);
+      backdrop-filter: blur(10px);
+    }
+    .cyber-live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16,185,129,.45);
+      animation: cyberPulse 2s ease-out infinite;
+    }
+    .cyber-title {
+      max-width: 620px;
+      margin-top: 1.25rem;
+      font-size: clamp(2.25rem, 4.7vw, 4.75rem);
+      line-height: .99;
+      font-weight: 800;
+      letter-spacing: -.065em;
+      color: var(--cyber-navy);
+    }
+    .cyber-title span {
+      display: block;
+      margin-top: .28rem;
+      color: var(--cyber-blue);
+      text-shadow: 0 12px 30px rgba(23,107,255,.13);
+    }
+    .cyber-description {
+      max-width: 580px;
+      margin-top: 1.25rem;
+      color: #617697;
+      font-size: clamp(.88rem, 1.25vw, 1.02rem);
+      line-height: 1.75;
+    }
+    .cyber-features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: .7rem;
+      margin-top: 1.65rem;
+      max-width: 660px;
+    }
+    .cyber-feature {
+      min-height: 82px;
+      padding: .86rem .9rem;
+      border: 1px solid rgba(23,107,255,.12);
+      border-radius: 15px;
+      background: rgba(255,255,255,.55);
+      box-shadow: 0 12px 35px rgba(30,80,145,.06);
+      backdrop-filter: blur(12px);
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .cyber-feature:hover { transform: translateY(-4px); border-color: rgba(23,107,255,.28); box-shadow: 0 18px 42px rgba(30,80,145,.11); }
+    .cyber-feature-icon {
+      width: 27px; height: 27px; border-radius: 8px; display: grid; place-items: center;
+      background: #e8f2ff; color: var(--cyber-blue); margin-bottom: .55rem;
+    }
+    .cyber-feature-icon svg { width: 14px; height: 14px; }
+    .cyber-feature strong { display: block; font-size: .72rem; color: #173157; }
+    .cyber-feature span { display: block; color: #7a8ca7; font-size: .61rem; margin-top: .18rem; line-height: 1.35; }
+
+    .security-core {
+      width: min(34vw, 410px);
+      aspect-ratio: 1;
+      position: relative;
+      display: grid;
+      place-items: center;
+      justify-self: end;
+      animation: cyberCoreEnter 1s .18s cubic-bezier(.16,1,.3,1) both;
+    }
+    .security-core::before {
+      content: '';
+      position: absolute;
+      inset: 11%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,.9), rgba(230,242,255,.62) 50%, transparent 72%);
+      filter: blur(2px);
+      animation: coreGlow 3.8s ease-in-out infinite;
+    }
+    .security-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(23,107,255,.22);
+    }
+    .security-ring::before, .security-ring::after {
+      content: '';
+      position: absolute;
+      width: 8px; height: 8px; border-radius: 50%; background: var(--cyber-sky);
+      box-shadow: 0 0 16px rgba(56,189,248,.9);
+    }
+    .ring-one { inset: 4%; border-style: dashed; animation: ringRotate 18s linear infinite; }
+    .ring-one::before { top: 12%; left: 19%; }
+    .ring-one::after { right: 7%; bottom: 29%; }
+    .ring-two { inset: 17%; border-color: rgba(23,107,255,.3); animation: ringRotateReverse 12s linear infinite; }
+    .ring-two::before { top: -4px; left: 48%; }
+    .ring-two::after { bottom: 9%; left: 7%; }
+    .ring-three { inset: 29%; border-style: dotted; animation: ringRotate 9s linear infinite; }
+    .ring-three::before { right: 0; top: 43%; }
+    .ring-three::after { display: none; }
+    .security-crosshair { position: absolute; inset: 0; opacity: .35; }
+    .security-crosshair::before, .security-crosshair::after { content:''; position:absolute; background:linear-gradient(90deg,transparent,rgba(23,107,255,.22),transparent); }
+    .security-crosshair::before { width: 88%; height: 1px; left: 6%; top: 50%; }
+    .security-crosshair::after { height: 88%; width: 1px; top: 6%; left: 50%; background:linear-gradient(transparent,rgba(23,107,255,.22),transparent); }
+    .shield-shell {
+      width: 38%;
+      aspect-ratio: .83;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      filter: drop-shadow(0 22px 30px rgba(23,107,255,.22));
+      animation: shieldFloat 4.2s ease-in-out infinite;
+    }
+    .shield-shell svg { width: 100%; height: 100%; overflow: visible; }
+    .shield-scan {
+      position: absolute;
+      z-index: 4;
+      width: 36%;
+      height: 4px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, transparent, rgba(56,189,248,.95), transparent);
+      box-shadow: 0 0 18px rgba(56,189,248,.9);
+      animation: shieldScan 3.4s ease-in-out infinite;
+    }
+    .core-status {
+      position: absolute;
+      right: -2%; bottom: 17%; z-index: 5;
+      padding: .65rem .8rem;
+      min-width: 140px;
+      border: 1px solid rgba(23,107,255,.17);
+      border-radius: 13px;
+      background: rgba(255,255,255,.76);
+      box-shadow: 0 16px 40px rgba(20,73,140,.12);
+      backdrop-filter: blur(14px);
+      animation: statusFloat 4.8s .4s ease-in-out infinite;
+    }
+    .core-status-label { color:#8292aa; font:500 .55rem 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+    .core-status-value { margin-top:.3rem; display:flex; align-items:center; gap:.4rem; color:#12315e; font-size:.7rem; font-weight:700; }
+    .core-status-value i { width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 10px rgba(16,185,129,.65); }
+    .cyber-visual-footer {
+      display: flex; align-items: center; gap: .55rem; color: #7d8fa8;
+      font: 500 .62rem 'JetBrains Mono',monospace;
+      animation: cyberFadeUp .8s .3s both;
+    }
+    .cyber-visual-footer svg { width: 14px; height: 14px; color: var(--cyber-blue); }
+
+    .login-console {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: clamp(1.2rem, 4vw, 4.2rem);
+      position: relative;
+    }
+    .login-console::before {
+      content: '';
+      position: absolute;
+      width: 70%; aspect-ratio: 1; border-radius: 50%;
+      background: rgba(23,107,255,.09); filter: blur(90px); z-index: -1;
+      animation: consoleGlow 6s ease-in-out infinite;
     }
     .login-card {
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 2.8rem 2.4rem;
       width: 100%;
-      max-width: 400px;
-      box-shadow: var(--shadow-lg);
-      animation: fadeUp .4s ease;
+      max-width: 470px;
+      position: relative;
+      overflow: hidden;
+      padding: clamp(1.6rem, 3.4vw, 2.55rem);
+      border: 1px solid rgba(169,196,232,.62);
+      border-radius: 28px;
+      background: rgba(255,255,255,.88);
+      box-shadow: 0 30px 80px rgba(17,61,119,.15), inset 0 1px rgba(255,255,255,.95);
+      backdrop-filter: blur(22px);
+      animation: consoleEnter .8s .1s cubic-bezier(.16,1,.3,1) both;
+      transition: transform .35s ease, box-shadow .35s ease;
     }
-    .login-logo {
-      display: flex;
-      align-items: center;
-      gap: .8rem;
-      margin-bottom: 2rem;
+    .login-card::before {
+      content: '';
+      position: absolute;
+      height: 3px; left: 9%; right: 9%; top: 0;
+      background: linear-gradient(90deg, transparent, var(--cyber-blue), var(--cyber-sky), transparent);
+      box-shadow: 0 0 16px rgba(23,107,255,.35);
+      animation: consoleLine 4s ease-in-out infinite;
     }
-    .login-logo-icon {
-      width: 44px;
-      height: 44px;
-      background: var(--blue);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 14px rgba(37,99,235,.35);
+    .login-card::after {
+      content: '';
+      position: absolute;
+      width: 140px; height: 140px; right: -70px; top: -70px; border-radius: 50%;
+      border: 1px solid rgba(23,107,255,.13);
+      box-shadow: 0 0 0 20px rgba(23,107,255,.025), 0 0 0 45px rgba(23,107,255,.018);
+      pointer-events: none;
     }
-    .login-logo-icon svg { width: 22px; height: 22px; }
-    .login-brand   { font-size: 1.15rem; font-weight: 800; color: var(--text); letter-spacing: -.025em; }
-    .login-tagline { font-size: .72rem; color: var(--muted); margin-top: .08rem; }
-    .login-title   { font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: .3rem; letter-spacing: -.02em; }
-    .login-sub     { font-size: .82rem; color: var(--muted); margin-bottom: 1.6rem; }
-    .input-group   { position: relative; }
-    .input-group input { padding-left: 2.6rem; }
-    .input-group-icon { position: absolute; left: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted2); font-size: .85rem; pointer-events: none; }
-    .btn-login     { width: 100%; padding: .8rem; font-size: .92rem; border-radius: 10px; margin-top: .4rem; }
-    .login-footer  { margin-top: 1.4rem; font-size: .7rem; color: var(--muted2); text-align: center; }
+    .login-card.login-denied { animation: loginShake .42s ease; }
+    .login-card.login-approved { transform: translateY(-5px) scale(.99); box-shadow: 0 30px 90px rgba(16,185,129,.2); }
+    .console-topline { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.65rem; position:relative; z-index:2; }
+    .console-logo { display:flex; align-items:center; gap:.72rem; }
+    .console-logo-icon { width:42px; height:42px; border-radius:13px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,var(--cyber-blue),#0f4fd6); box-shadow:0 9px 24px rgba(23,107,255,.28); }
+    .console-logo-icon svg { width:20px; height:20px; }
+    .console-logo-name { font-size:.84rem; font-weight:800; color:var(--cyber-navy); letter-spacing:-.02em; }
+    .console-logo-sub { margin-top:.1rem; color:#8a9ab1; font:500 .53rem 'JetBrains Mono',monospace; letter-spacing:.07em; text-transform:uppercase; }
+    .console-security-badge { display:inline-flex; align-items:center; gap:.35rem; padding:.36rem .58rem; border-radius:999px; background:#eefbf6; border:1px solid #c8f1df; color:#12825a; font:600 .57rem 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.04em; }
+    .console-security-badge i { width:6px; height:6px; border-radius:50%; background:#10b981; animation: cyberPulse 2s ease-out infinite; }
+    .console-kicker { color:var(--cyber-blue); font:600 .62rem 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.12em; }
+    .login-title { margin-top:.6rem; color:var(--cyber-navy); font-size:clamp(1.65rem,3vw,2.1rem); font-weight:800; letter-spacing:-.045em; line-height:1.12; }
+    .login-sub { margin-top:.65rem; color:#72849f; font-size:.8rem; line-height:1.65; margin-bottom:1.45rem; max-width:390px; }
+    .login-form-label { display:flex; align-items:center; justify-content:space-between; gap:.8rem; color:#203a60; font-size:.7rem; margin-bottom:.45rem; }
+    .login-form-label span { color:#9aa8bb; font:500 .55rem 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.07em; }
+    .cyber-input-group { position:relative; }
+    .cyber-input-group::after { content:''; position:absolute; left:50%; right:50%; bottom:0; height:2px; background:linear-gradient(90deg,var(--cyber-blue),var(--cyber-sky)); transition:left .28s ease,right .28s ease; border-radius:999px; }
+    .cyber-input-group:focus-within::after { left:1px; right:1px; }
+    .cyber-input-group input {
+      height:57px;
+      padding:0 3.1rem 0 3rem;
+      border:1.5px solid #d8e5f5;
+      border-radius:14px;
+      background:#f9fcff;
+      color:#102a4f;
+      font:500 .85rem 'JetBrains Mono',monospace;
+      letter-spacing:.04em;
+      box-shadow:inset 0 1px 2px rgba(15,44,82,.025);
+    }
+    .cyber-input-group input:hover { border-color:#c3d8f2; }
+    .cyber-input-group input:focus { border-color:rgba(23,107,255,.58); background:#fff; box-shadow:0 0 0 4px rgba(23,107,255,.08),0 10px 25px rgba(28,89,164,.07); }
+    .cyber-input-icon { position:absolute; left:1rem; top:50%; transform:translateY(-50%); display:grid; place-items:center; color:#7591b7; pointer-events:none; z-index:2; transition:color .2s ease,transform .2s ease; }
+    .cyber-input-group:focus-within .cyber-input-icon { color:var(--cyber-blue); transform:translateY(-50%) scale(1.08); }
+    .cyber-input-icon svg { width:17px; height:17px; }
+    .password-toggle { position:absolute; right:.65rem; top:50%; transform:translateY(-50%); z-index:3; width:36px; height:36px; border:0; border-radius:10px; background:transparent; color:#7d91ac; display:grid; place-items:center; cursor:pointer; transition:background .18s,color .18s; }
+    .password-toggle:hover { background:#eaf3ff; color:var(--cyber-blue); }
+    .password-toggle svg { width:17px; height:17px; }
+    .caps-warning { min-height:19px; margin-top:.42rem; display:flex; align-items:center; gap:.35rem; color:#b7791f; font-size:.63rem; opacity:0; transform:translateY(-3px); transition:.2s ease; }
+    .caps-warning.show { opacity:1; transform:none; }
+    .caps-warning svg { width:13px; height:13px; }
+    .login-meta { display:flex; align-items:center; justify-content:space-between; gap:1rem; min-height:32px; margin:.3rem 0 .8rem; color:#8392a8; font-size:.62rem; }
+    .login-meta-secure { display:flex; align-items:center; gap:.35rem; }
+    .login-meta-secure svg { width:13px; height:13px; color:#178864; }
+    .btn-login {
+      width:100%;
+      height:56px;
+      margin-top:.1rem;
+      border-radius:14px;
+      background:linear-gradient(135deg,var(--cyber-blue),#1154dc);
+      color:#fff;
+      font-size:.84rem;
+      font-weight:700;
+      box-shadow:0 13px 30px rgba(23,107,255,.26);
+      position:relative;
+      isolation:isolate;
+    }
+    .btn-login:hover:not(:disabled) { background:linear-gradient(135deg,#2377ff,#104cca); box-shadow:0 17px 36px rgba(23,107,255,.31); }
+    .btn-login .login-btn-content { display:flex; align-items:center; justify-content:center; gap:.55rem; position:relative; z-index:2; }
+    .btn-login .login-btn-content svg { width:17px; height:17px; transition:transform .2s ease; }
+    .btn-login:hover .login-btn-content svg { transform:translateX(3px); }
+    .btn-login.is-loading .login-btn-content svg { display:none; }
+    .login-spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; display:none; animation:spin .7s linear infinite; }
+    .btn-login.is-loading .login-spinner { display:block; }
+    .btn-login::before { content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(100deg,transparent 25%,rgba(255,255,255,.24) 50%,transparent 75%); transform:translateX(-120%); }
+    .btn-login.is-loading::before { animation:authScan 1.2s ease-in-out infinite; }
+    .login-error-wrap { min-height:54px; }
+    #login-err { margin-top:.7rem; border-radius:12px; font-size:.69rem; animation:errorEnter .25s ease both; }
+    .console-divider { display:flex; align-items:center; gap:.65rem; margin:1.05rem 0 .85rem; color:#a2afc0; font:500 .52rem 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+    .console-divider::before,.console-divider::after { content:''; flex:1; height:1px; background:#e5edf7; }
+    .access-notice { display:flex; gap:.62rem; align-items:flex-start; padding:.72rem .78rem; border:1px solid #e1ebf7; border-radius:12px; background:#f8fbff; color:#76869c; font-size:.62rem; line-height:1.55; }
+    .access-notice svg { width:15px; height:15px; color:var(--cyber-blue); flex:0 0 auto; margin-top:.05rem; }
+    .login-footer { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1rem; color:#9aa8ba; font:500 .52rem 'JetBrains Mono',monospace; }
+    .login-footer span:last-child { color:#6681a7; }
+
+    @keyframes cyberGridMove { to { background-position:42px 42px; } }
+    @keyframes cyberAura { to { transform:rotate(360deg); } }
+    @keyframes cyberFadeDown { from { opacity:0; transform:translateY(-14px); } }
+    @keyframes cyberFadeUp { from { opacity:0; transform:translateY(22px); } }
+    @keyframes cyberCoreEnter { from { opacity:0; transform:scale(.82) rotate(-8deg); } }
+    @keyframes consoleEnter { from { opacity:0; transform:translateY(28px) scale(.97); } }
+    @keyframes consoleLine { 0%,100% { transform:scaleX(.55); opacity:.5; } 50% { transform:scaleX(1); opacity:1; } }
+    @keyframes ringRotate { to { transform:rotate(360deg); } }
+    @keyframes ringRotateReverse { to { transform:rotate(-360deg); } }
+    @keyframes shieldFloat { 0%,100% { transform:translateY(-5px); } 50% { transform:translateY(8px); } }
+    @keyframes shieldScan { 0%,100% { transform:translateY(-58px) scaleX(.75); opacity:0; } 15% { opacity:1; } 50% { transform:translateY(48px) scaleX(1.05); opacity:.9; } 85% { opacity:1; } }
+    @keyframes statusFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+    @keyframes coreGlow { 0%,100% { transform:scale(.96); opacity:.65; } 50% { transform:scale(1.06); opacity:1; } }
+    @keyframes consoleGlow { 0%,100% { transform:scale(.9); opacity:.5; } 50% { transform:scale(1.12); opacity:.9; } }
+    @keyframes cyberPulse { 70% { box-shadow:0 0 0 7px rgba(16,185,129,0); } 100% { box-shadow:0 0 0 0 rgba(16,185,129,0); } }
+    @keyframes authScan { to { transform:translateX(120%); } }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    @keyframes loginShake { 20%,60% { transform:translateX(-7px); } 40%,80% { transform:translateX(7px); } }
+    @keyframes errorEnter { from { opacity:0; transform:translateY(-6px); } }
+
+    @media (max-width: 1120px) {
+      #login-wrap { grid-template-columns: minmax(0,1fr) minmax(390px,.82fr); }
+      .cyber-visual { padding:2.6rem; }
+      .cyber-hero { grid-template-columns:1fr; }
+      .security-core { position:absolute; width:310px; right:-100px; bottom:10%; opacity:.6; }
+      .cyber-copy { max-width:580px; }
+    }
+    @media (max-width: 860px) {
+      #login-wrap { display:block; min-height:100vh; }
+      #login-wrap::before { mask-image:none; opacity:.3; }
+      .cyber-visual { min-height:auto; padding:1.35rem 1.35rem .7rem; }
+      .cyber-visual::after,.cyber-hero,.cyber-visual-footer { display:none; }
+      .cyber-brand { margin:0 auto; }
+      .login-console { min-height:calc(100vh - 84px); padding:1rem 1rem 2rem; place-items:start center; }
+      .login-card { margin-top:.5rem; }
+    }
+    @media (max-width: 520px) {
+      .login-console { padding:.7rem .72rem 1.2rem; }
+      .login-card { padding:1.45rem 1.15rem; border-radius:22px; }
+      .console-security-badge { display:none; }
+      .login-title { font-size:1.65rem; }
+      .login-footer { align-items:flex-start; flex-direction:column; gap:.3rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #login-wrap *, #login-wrap::before, #login-wrap::after { animation:none!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+    }
   </style>
+  <link rel="stylesheet" href="css/audit-logs.css"/>
 </head>
 <body>
 
@@ -290,35 +744,142 @@
      LOGIN SCREEN
 ═══════════════════════════════════════════════════════════════════════════ -->
 <div id="login-wrap">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="login-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+  <section class="cyber-visual" aria-hidden="true">
+    <div class="cyber-brand">
+      <div class="cyber-brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
           <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
         </svg>
       </div>
       <div>
-        <div class="login-brand">DTC</div>
-        <div class="login-tagline">Digital Tools Corner</div>
+        <div class="cyber-brand-name">Digital Tools Corner</div>
+        <div class="cyber-brand-sub">Administrative Security Infrastructure</div>
       </div>
     </div>
 
-    <div class="login-title">Welcome back</div>
-    <div class="login-sub">Sign in to the admin panel to manage activations.</div>
+    <div class="cyber-hero">
+      <div class="cyber-copy">
+        <div class="cyber-eyebrow"><i class="cyber-live-dot"></i> Protected gateway online</div>
+        <h1 class="cyber-title">Secure administration.<span>Total operational control.</span></h1>
+        <p class="cyber-description">Manage customer records, activation requests, subscriptions, revenue and system operations from one protected DTC command environment.</p>
+        <div class="cyber-features">
+          <div class="cyber-feature">
+            <div class="cyber-feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <strong>Protected Access</strong><span>Authorized administrators only</span>
+          </div>
+          <div class="cyber-feature">
+            <div class="cyber-feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 16 4-5 3 3 5-7"/></svg>
+            </div>
+            <strong>Live Operations</strong><span>Activation and revenue controls</span>
+          </div>
+          <div class="cyber-feature">
+            <div class="cyber-feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1A1.7 1.7 0 0 0 2.9 13.6H3V9.6h-.1A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6A1.7 1.7 0 0 0 10.4 2.9V3h4v-.1A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.4.27.75.62 1 1 .22.34.35.72.4 1.1h-.1v4h.1c-.05.38-.18.76-.4 1.1-.25.38-.6.73-1 1z"/></svg>
+            </div>
+            <strong>Command Center</strong><span>Centralized system management</span>
+          </div>
+        </div>
+      </div>
 
-    <div class="form-group">
-      <label for="admin-key">Admin Key</label>
-      <div class="input-group">
-        <span class="input-group-icon">🔑</span>
-        <input type="password" id="admin-key" placeholder="Enter your admin key…"/>
+      <div class="security-core">
+        <div class="security-crosshair"></div>
+        <div class="security-ring ring-one"></div>
+        <div class="security-ring ring-two"></div>
+        <div class="security-ring ring-three"></div>
+        <div class="shield-shell">
+          <svg viewBox="0 0 160 192" fill="none">
+            <defs>
+              <linearGradient id="shieldFill" x1="26" y1="14" x2="142" y2="178" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#3B82F6"/><stop offset="1" stop-color="#0F4EC9"/>
+              </linearGradient>
+              <linearGradient id="shieldEdge" x1="33" y1="23" x2="128" y2="166" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#A7D8FF"/><stop offset="1" stop-color="#38BDF8"/>
+              </linearGradient>
+            </defs>
+            <path d="M80 5 146 29v50c0 47-26 83-66 106C40 162 14 126 14 79V29L80 5Z" fill="url(#shieldFill)" stroke="url(#shieldEdge)" stroke-width="4"/>
+            <path d="M80 26 126 43v36c0 34-18 61-46 79-28-18-46-45-46-79V43L80 26Z" fill="white" fill-opacity=".12" stroke="white" stroke-opacity=".28" stroke-width="2"/>
+            <path d="m86 49-38 52h31l-5 43 38-58H82l4-37Z" fill="white"/>
+          </svg>
+        </div>
+        <div class="shield-scan"></div>
+        <div class="core-status">
+          <div class="core-status-label">Security status</div>
+          <div class="core-status-value"><i></i> All systems protected</div>
+        </div>
       </div>
     </div>
 
-    <button class="btn btn-primary btn-login" id="login-btn" onclick="Auth.login()">Sign In →</button>
-    <div class="msg err" id="login-err"></div>
+    <div class="cyber-visual-footer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      DTC encrypted administrative environment
+    </div>
+  </section>
 
-    <div class="login-footer">DTC Admin Panel v3.0</div>
-  </div>
+  <main class="login-console">
+    <div class="login-card" id="login-card">
+      <div class="console-topline">
+        <div class="console-logo">
+          <div class="console-logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div>
+            <div class="console-logo-name">DTC Secure Command</div>
+            <div class="console-logo-sub">Administrator gateway</div>
+          </div>
+        </div>
+        <div class="console-security-badge"><i></i> Secure</div>
+      </div>
+
+      <div class="console-kicker">Restricted system</div>
+      <h2 class="login-title">Administrator access</h2>
+      <p class="login-sub">Enter your authorized admin key to open the protected DTC management environment.</p>
+
+      <div class="form-group" style="margin-bottom:0">
+        <label class="login-form-label" for="admin-key">Secure admin key <span>Encrypted entry</span></label>
+        <div class="cyber-input-group">
+          <span class="cyber-input-icon">
+            <svg id="login-lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input type="password" id="admin-key" placeholder="Enter your admin key" autocomplete="current-password" spellcheck="false" aria-describedby="caps-warning login-err"/>
+          <button class="password-toggle" id="password-toggle" type="button" aria-label="Show admin key" title="Show admin key">
+            <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="caps-warning" id="caps-warning" role="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          Caps Lock is enabled
+        </div>
+      </div>
+
+      <div class="login-meta">
+        <span class="login-meta-secure">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+          Password-only administrator login
+        </span>
+        <span id="login-status">Gateway ready</span>
+      </div>
+
+      <button class="btn btn-primary btn-login" id="login-btn" onclick="Auth.login()">
+        <span class="login-btn-content">
+          <span class="login-spinner" aria-hidden="true"></span>
+          <span id="login-btn-label">Authenticate securely</span>
+          <svg id="login-btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+        </span>
+      </button>
+      <div class="login-error-wrap"><div class="msg err" id="login-err" role="alert"></div></div>
+
+      <div class="console-divider">Security notice</div>
+      <div class="access-notice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+        <span>This area is restricted to authorized DTC administrators. Access attempts may be recorded for security and operational auditing.</span>
+      </div>
+
+      <div class="login-footer"><span>DTC Admin Panel v3.0</span><span>dtc@dtc1.shop</span></div>
+    </div>
+  </main>
 </div>
 
 
@@ -345,6 +906,7 @@
       <div class="nav-sec">Main</div>
       <div class="nav-item active" onclick="Shell.navigate('dashboard', this)">
         <span class="icon">⚡</span>Dashboard
+        <span class="nav-badge" id="nb-sub" style="display:none;background:var(--warn);color:#fff">0</span>
       </div>
       <div class="nav-item" onclick="Shell.navigate('customers', this)">
         <span class="icon">👤</span>Customers
@@ -358,14 +920,22 @@
       <div class="nav-item" onclick="Shell.navigate('resellers', this)">
         <span class="icon">🤝</span>Resellers
       </div>
+      <div class="nav-item" onclick="Shell.navigate('reports', this)">
+        <span class="icon">📊</span>Reports
+      </div>
+      <div class="nav-item" onclick="Shell.navigate('keys', this)">
+        <span class="icon">🔑</span>Keys
+      </div>
+      <div class="nav-sec" style="margin-top:.5rem">Security & Audit</div>
+      <div class="nav-item" onclick="Shell.navigate('audit-logs', this)">
+        <span class="icon">🛡</span>Activity Logs
+        <span class="nav-badge" id="nb-audit-fail" style="display:none;background:var(--error);color:#fff">0</span>
+      </div>
       <div class="nav-sec" style="margin-top:.5rem">Catalogue</div>
       <div class="nav-item" onclick="Shell.navigate('products', this)">
         <span class="icon">📦</span>Products
       </div>
       <div class="nav-sec" style="margin-top:.5rem">Settings</div>
-      <div class="nav-item" onclick="Shell.navigate('landing', this)">
-        <span class="icon">🌐</span>Landing Page
-      </div>
       <div class="nav-item" onclick="Shell.navigate('instructions', this)">
         <span class="icon">📋</span>Instructions
       </div>
@@ -377,6 +947,9 @@
       </div>
       <div class="nav-item" onclick="Shell.navigate('campaigns', this)">
         <span class="icon">📨</span>Email Campaigns
+      </div>
+      <div class="nav-item" onclick="Shell.navigate('email-automation', this)">
+        <span class="icon">⚙️</span>Email Automation
       </div>
       <div class="nav-item" onclick="Shell.navigate('email', this)">
         <span class="icon">✉</span>Email Config
@@ -401,6 +974,14 @@
       <div class="card">
         <div class="card-title">Generate Activation Link</div>
 
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Customer <span style="font-weight:400;color:var(--muted)">— pick an existing customer to avoid duplicates, or add a new one</span></label>
+          <input id="gen-cust-search" placeholder="Search existing customers by name, email, WeChat or ID…" oninput="Dashboard.filterCustomers()" autocomplete="off"/>
+          <select id="gen-customer" onchange="Dashboard.onCustomerPick()" style="margin-top:.4rem">
+            <option value="">➕ New customer</option>
+          </select>
+        </div>
+
         <div class="form-row">
           <div class="form-group" style="margin-bottom:0">
             <label>Customer Name</label>
@@ -416,13 +997,24 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Email <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="email" id="gen-email" placeholder="customer@email.com"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+            <input type="text" id="gen-wechat" placeholder="WeChat ID"/>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
             <label>Package</label>
             <select id="pkg" onchange="Dashboard.onPackageChange()">
               <option value="">— Select Package —</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom:0">
-            <label>Price (USD) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
+            <label>Price (<span class="price-cur-code">USD</span>) <span style="color:var(--error);font-size:.65rem;font-weight:400">* required — no free links</span></label>
             <div class="price-input-wrap">
               <span class="price-currency-icon">$</span>
               <input type="number" id="gen-price" min="0.01" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--success)"/>
@@ -432,33 +1024,81 @@
 
         <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
+            <label>Purchase Price / Cost (<span class="price-cur-code">USD</span>) <span style="font-weight:400;color:var(--muted);font-size:.65rem">— your cost, for profit</span></label>
+            <div class="price-input-wrap">
+              <span class="price-currency-icon">$</span>
+              <input type="number" id="gen-cost" min="0" step="0.01" placeholder="0.00" style="font-weight:700;color:var(--warn)"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product Key <span style="font-weight:400;color:var(--muted);font-size:.65rem">— optional, from this product's stock</span></label>
+            <select id="gen-key"><option value="">— No key —</option></select>
+            <div id="gen-key-stock" style="font-size:.68rem;margin-top:.25rem"></div>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Payment Method</label>
+            <select id="gen-method">
+              <option value="">— Select —</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
             <label>Pre-Activation Instructions</label>
             <select id="gen-instr-set">
               <option value="">— Default —</option>
             </select>
           </div>
+        </div>
+
+        <div class="form-row" style="margin-top:.7rem">
           <div class="form-group" style="margin-bottom:0">
             <label>Post-Activation Instructions</label>
             <select id="gen-post-instr-set">
               <option value="">— Same as Pre —</option>
             </select>
           </div>
+          <div class="form-group" style="margin-bottom:0"></div>
         </div>
 
         <!-- Reseller (optional) -->
         <div style="margin-top:.5rem">
-          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem">
-            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller tracking (optional)</summary>
-            <div class="form-row" style="margin-top:.7rem;margin-bottom:0">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller ID</label>
-                <input id="gen-reseller-id" placeholder="e.g. reseller-ahmed"/>
+          <details style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.5rem .8rem" id="gen-reseller-details">
+            <summary style="font-size:.75rem;font-weight:600;color:var(--muted);cursor:pointer;list-style:none">🤝 Reseller / referral (optional)</summary>
+            <div class="form-group" style="margin-top:.7rem;margin-bottom:.6rem">
+              <label>Referred by reseller?</label>
+              <select id="gen-reseller" onchange="Dashboard.onResellerPick()">
+                <option value="">— Direct (no reseller) —</option>
+                <option value="__new__">➕ New reseller…</option>
+              </select>
+            </div>
+            <div id="gen-reseller-new" style="display:none">
+              <div class="form-row" style="margin-bottom:.6rem">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Reseller Name</label>
+                  <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Contact (optional)</label>
+                  <input id="gen-reseller-contact" placeholder="WeChat / phone / email"/>
+                </div>
               </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Reseller Name</label>
-                <input id="gen-reseller-name" placeholder="e.g. Ahmed Khan"/>
+              <div class="form-row" style="margin-bottom:0">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Type</label>
+                  <select id="gen-reseller-ctype">
+                    <option value="percent">Percentage of sale (%)</option>
+                    <option value="flat">Flat amount per sale</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Commission Value</label>
+                  <input type="number" id="gen-reseller-cvalue" min="0" step="0.01" placeholder="e.g. 20"/>
+                </div>
               </div>
             </div>
+            <div id="gen-reseller-info" style="display:none;font-size:.72rem;color:var(--muted);margin-top:.3rem"></div>
           </details>
         </div>
 
@@ -484,14 +1124,47 @@
         <div class="stat"><div class="stat-val sv-warn" id="s-sub">0</div><div class="stat-lbl">Submitted</div></div>
         <div class="stat"><div class="stat-val sv-green" id="s-act">0</div><div class="stat-lbl">Activated</div></div>
         <div class="stat"><div class="stat-val sv-red" id="s-exp">0</div><div class="stat-lbl">Expired / Declined</div></div>
-        <div class="stat"><div class="stat-val sv-green" id="s-rev">$0</div><div class="stat-lbl">Total Revenue</div></div>
+        <div class="stat"><div class="stat-val sv-green" id="s-rev">$0</div><div class="stat-lbl">Net Revenue <span id="s-refund" style="color:var(--error);font-weight:600"></span></div></div>
       </div>
+
+      <!-- Animated customer region map -->
+      <section class="region-card" id="region-map-card">
+        <div class="region-head">
+          <div><h3>🌐 Customer Regions</h3><p>Animated geographic view based on the country saved in each customer profile.</p></div>
+          <div class="region-metrics">
+            <div class="region-metric"><strong id="region-assigned">0</strong><span>Mapped</span></div>
+            <div class="region-metric"><strong id="region-countries">0</strong><span>Countries</span></div>
+            <div class="region-metric"><strong id="region-unassigned">0</strong><span>Not set</span></div>
+            <button class="region-refresh" onclick="RegionMap.load()">↻ Refresh map</button>
+          </div>
+        </div>
+        <div class="region-layout">
+          <div class="region-map-wrap">
+            <svg id="region-world-svg" viewBox="0 0 1000 500" role="img" aria-label="Customer location map"></svg>
+            <div id="region-focus" style="position:absolute;left:1rem;bottom:.7rem;font-size:.64rem;color:rgba(255,255,255,.7)">Add country information in customer profiles to populate the map.</div>
+          </div>
+          <aside class="region-side"><div class="region-side-title">Customers by country</div><div class="region-list" id="region-list"><div class="region-empty">Loading customer regions…</div></div></aside>
+        </div>
+      </section>
 
       <!-- Links table -->
       <div class="card">
         <div class="card-title">
           <span>All Links</span>
-          <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+            <span id="last-updated" style="font-size:.66rem;color:var(--muted2);font-weight:500"></span>
+            <label class="toggle" style="margin-bottom:0" title="Automatically refresh customer data">
+              <input type="checkbox" id="auto-refresh" checked onchange="Dashboard.setAuto(this.checked)"/>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              <span style="font-size:.72rem;color:var(--text);margin-left:.4rem;font-weight:600">Auto-refresh</span>
+            </label>
+            <label class="toggle" style="margin-bottom:0" title="Sound + notification when a new submission arrives">
+              <input type="checkbox" id="alerts-on" checked onchange="Dashboard.setAlerts(this.checked)"/>
+              <div class="toggle-track"><div class="toggle-thumb"></div></div>
+              <span style="font-size:.72rem;color:var(--text);margin-left:.4rem;font-weight:600">🔔 Alerts</span>
+            </label>
+            <button class="btn btn-outline btn-sm" onclick="Dashboard.reload()">↻ Refresh</button>
+          </div>
         </div>
         <div class="filters" id="df">
           <button class="fb active" onclick="Dashboard.setFilter('all',this)">All</button>
@@ -543,12 +1216,147 @@
         <div class="ph-title">Resellers</div>
         <div class="ph-sub">Track sales made through resellers separately from direct sales.</div>
       </div>
-      <div class="stats" style="grid-template-columns:repeat(2,1fr);max-width:420px;margin-bottom:1.4rem">
-        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Revenue</div></div>
-        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Revenue</div></div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr);max-width:620px;margin-bottom:1.4rem">
+        <div class="stat"><div class="stat-val sv-ind" id="reseller-total">$0</div><div class="stat-lbl">Reseller Sales</div></div>
+        <div class="stat"><div class="stat-val sv-blue" id="direct-total">$0</div><div class="stat-lbl">Direct Sales</div></div>
+        <div class="stat"><div class="stat-val" style="color:#7c3aed" id="reseller-commission">$0</div><div class="stat-lbl">Reseller Commission (profit owed)</div></div>
       </div>
       <div id="reseller-breakdown"><div class="empty">Loading…</div></div>
     </div><!-- /page-resellers -->
+
+    <!-- ── PAGE: Reports ── -->
+    <div class="page" id="page-reports">
+      <div class="ph">
+        <div class="ph-title">Reports</div>
+        <div class="ph-sub">Download Excel or PDF reports. Choose a time grouping where relevant.</div>
+      </div>
+      <div id="reports-cards"></div>
+    </div><!-- /page-reports -->
+
+    <!-- ── PAGE: Activity Logs ── -->
+    <div class="page" id="page-audit-logs">
+      <div class="ph audit-page-head">
+        <div>
+          <div class="ph-title">Activity & Audit Logs</div>
+          <div class="ph-sub">A complete timeline of administrator actions, customer activity, access attempts and system changes.</div>
+        </div>
+        <div class="audit-head-actions">
+          <button class="btn btn-outline" onclick="AuditLogs.exportCsv()">⇩ Export CSV</button>
+          <button class="btn btn-primary" onclick="AuditLogs.load(true)">↻ Refresh</button>
+        </div>
+      </div>
+
+      <div class="audit-summary-grid" id="audit-summary-grid">
+        <div class="audit-summary-card"><span class="audit-summary-icon">◷</span><div><strong>—</strong><small>Total events</small></div></div>
+        <div class="audit-summary-card"><span class="audit-summary-icon">⌁</span><div><strong>—</strong><small>Today</small></div></div>
+        <div class="audit-summary-card"><span class="audit-summary-icon success">✓</span><div><strong>—</strong><small>Successful</small></div></div>
+        <div class="audit-summary-card"><span class="audit-summary-icon danger">!</span><div><strong>—</strong><small>Denied / failed</small></div></div>
+        <div class="audit-summary-card"><span class="audit-summary-icon">👥</span><div><strong>—</strong><small>Active users</small></div></div>
+      </div>
+
+      <div class="card audit-filter-card">
+        <div class="audit-filter-title">
+          <div><strong>Search and filters</strong><span>Filter by exact date, time, administrator, affected user and action.</span></div>
+          <button class="audit-reset" onclick="AuditLogs.resetFilters()">Reset all</button>
+        </div>
+        <div class="audit-filter-grid">
+          <div class="audit-field audit-search-field">
+            <label>Search details</label>
+            <div class="audit-input-icon"><span>⌕</span><input id="audit-search" placeholder="Customer, email, IP, action, product…" oninput="AuditLogs.queueSearch()"/></div>
+          </div>
+          <div class="audit-field">
+            <label>Performed by</label>
+            <select id="audit-actor" onchange="AuditLogs.applyFilters()"><option value="">All administrators/users</option></select>
+          </div>
+          <div class="audit-field">
+            <label>Affected user/customer</label>
+            <select id="audit-subject" onchange="AuditLogs.applyFilters()"><option value="">All affected records</option></select>
+          </div>
+          <div class="audit-field">
+            <label>Category</label>
+            <select id="audit-category" onchange="AuditLogs.applyFilters()"><option value="">All categories</option></select>
+          </div>
+          <div class="audit-field">
+            <label>Action</label>
+            <select id="audit-action" onchange="AuditLogs.applyFilters()"><option value="">All actions</option></select>
+          </div>
+          <div class="audit-field">
+            <label>Result</label>
+            <select id="audit-result" onchange="AuditLogs.applyFilters()">
+              <option value="">All results</option><option value="success">Successful</option><option value="denied">Denied</option><option value="failed">Failed</option>
+            </select>
+          </div>
+          <div class="audit-field">
+            <label>From date</label>
+            <input type="date" id="audit-date-from" onchange="AuditLogs.applyFilters()"/>
+          </div>
+          <div class="audit-field">
+            <label>From time</label>
+            <input type="time" id="audit-time-from" step="60" onchange="AuditLogs.applyFilters()"/>
+          </div>
+          <div class="audit-field">
+            <label>To date</label>
+            <input type="date" id="audit-date-to" onchange="AuditLogs.applyFilters()"/>
+          </div>
+          <div class="audit-field">
+            <label>To time</label>
+            <input type="time" id="audit-time-to" step="60" onchange="AuditLogs.applyFilters()"/>
+          </div>
+          <div class="audit-field">
+            <label>Sort order</label>
+            <select id="audit-order" onchange="AuditLogs.applyFilters()"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+          </div>
+          <div class="audit-field">
+            <label>Rows per page</label>
+            <select id="audit-limit" onchange="AuditLogs.applyFilters()"><option>25</option><option selected>50</option><option>100</option><option>200</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="audit-user-strip" id="audit-user-strip"></div>
+
+      <div class="card audit-table-card">
+        <div class="audit-table-head">
+          <div><strong>Detailed timeline</strong><span id="audit-result-count">Loading activity…</span></div>
+          <div class="audit-live"><i></i> Audit recording active</div>
+        </div>
+        <div class="audit-table-wrap">
+          <table class="audit-table">
+            <thead><tr>
+              <th>Date & time</th><th>Performed by</th><th>Action</th><th>Affected user / record</th><th>Source</th><th>Result</th><th></th>
+            </tr></thead>
+            <tbody id="audit-log-body"><tr><td colspan="7"><div class="audit-loading"><span></span>Loading audit trail…</div></td></tr></tbody>
+          </table>
+        </div>
+        <div class="audit-pagination" id="audit-pagination"></div>
+      </div>
+    </div><!-- /page-audit-logs -->
+
+    <!-- ── PAGE: Keys ── -->
+    <div class="page" id="page-keys">
+      <div class="ph">
+        <div class="ph-title">Product Keys</div>
+        <div class="ph-sub">Stock of activation keys per product. Unused keys appear in the create-link dropdown; used keys show who used them.</div>
+      </div>
+      <div id="keys-lowstock"></div>
+      <div class="card" style="margin-bottom:1.2rem">
+        <div class="card-title"><span>➕ Add Keys</span></div>
+        <div class="form-row" style="margin-bottom:.7rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Product</label>
+            <select id="keys-add-product"><option value="">— Select product —</option></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:.7rem">
+          <label>Keys <span style="font-weight:400;color:var(--muted)">— one per line</span></label>
+          <textarea id="keys-add-text" rows="4" placeholder="KEY-ABC-123&#10;KEY-DEF-456" style="font-family:'JetBrains Mono',monospace;font-size:.82rem"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="Keys.add()">Add keys</button>
+        <span id="keys-add-status" style="font-size:.75rem;color:var(--muted);margin-left:.6rem"></span>
+      </div>
+      <div id="keys-list"></div>
+    </div><!-- /page-keys -->
 
     <!-- ── PAGE: Revenue ── -->
     <div class="page" id="page-revenue">
@@ -559,6 +1367,9 @@
       <div class="card" style="margin-bottom:1.2rem">
         <div style="display:flex;align-items:flex-end;gap:2rem;flex-wrap:wrap">
           <div><div class="rev-big" id="rev-total">$0.00</div><div class="rev-big-label">Total Revenue (Activated)</div></div>
+          <div><div class="rev-big" id="rev-cost" style="color:var(--warn);font-size:1.5rem">$0.00</div><div class="rev-big-label">Total Cost</div></div>
+          <div><div class="rev-big" id="rev-commission" style="color:#7c3aed;font-size:1.5rem">$0.00</div><div class="rev-big-label">Reseller Commission</div></div>
+          <div><div class="rev-big" id="rev-profit" style="color:var(--success);font-size:1.7rem">$0.00</div><div class="rev-big-label">Net Profit</div></div>
         </div>
       </div>
       <div id="rev-breakdown"><div class="empty">Loading…</div></div>
@@ -611,6 +1422,12 @@
         <div class="msg ok" id="notif-ok"></div>
         <div class="msg err" id="notif-err"></div>
       </div>
+
+      <div class="card" style="margin-top:1.2rem">
+        <div class="card-title"><span>⚠ Server Load Alerts — per product</span></div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;line-height:1.6">Lists <strong>all your products</strong>. Turn on a heavy-load <strong>warning</strong> and a live <strong>processing timer</strong> for <strong>only the products that are slow right now</strong> — customers of every other product see nothing. Changes reach waiting customers within seconds.</div>
+        <div id="proc-alert-list"><div class="empty">Loading…</div></div>
+      </div>
     </div><!-- /page-notifications -->
 
     <!-- ── PAGE: Email Campaigns ── -->
@@ -643,8 +1460,16 @@
               <option value="expiring">Expiring within 30 days</option>
               <option value="expired">Expired subscriptions</option>
               <option value="submitted">Submitted, awaiting approval</option>
+              <option value="custom-only">Custom recipients only (below)</option>
             </select>
             <span class="recipient-count-badge" id="recipient-count">0 recipients</span>
+          </div>
+
+          <!-- Custom / external recipients -->
+          <div class="form-group" style="margin-bottom:.8rem">
+            <label>Add custom recipients <span style="font-weight:400;color:var(--muted)">— people not in your customer list</span></label>
+            <textarea id="bulk-custom-emails" rows="3" placeholder="One per line, e.g.&#10;jane@example.com&#10;Ahmed Khan &lt;ahmed@example.com&gt;" style="font-family:'JetBrains Mono',monospace;font-size:.8rem" oninput="BulkEmail._renderRecipientCount()"></textarea>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.3rem">Added on top of the filter above (or choose “Custom recipients only”). Use <code>Name &lt;email&gt;</code> to personalise <code>{{name}}</code>; duplicates of existing customers are skipped.</div>
           </div>
 
           <!-- Template type indicator -->
@@ -678,6 +1503,10 @@
               <span class="var-chip" onclick="BulkEmail.insertVar('{{daysLeft}}')">{{daysLeft}}</span>
               <span class="var-chip" onclick="BulkEmail.insertVar('{{email}}')">{{email}}</span>
               <span class="var-chip" onclick="BulkEmail.insertVar('{{wechat}}')">{{wechat}}</span>
+              <span class="var-chip" onclick="BulkEmail.insertVar('{{otp}}')">{{otp}}</span>
+              <span class="var-chip" onclick="BulkEmail.insertVar('{{otpExpiryMinutes}}')">{{otpExpiryMinutes}}</span>
+              <span class="var-chip" onclick="BulkEmail.insertVar('{{magicLinkBlock}}')">{{magicLinkBlock}}</span>
+              <span class="var-chip" onclick="BulkEmail.insertVar('{{activationLink}}')">{{activationLink}}</span>
             </div>
           </div>
 
@@ -746,136 +1575,188 @@
         </div>
       </div>
 
+      <div class="setting-block">
+        <div class="setting-block-title">Backup &amp; Restore</div>
+        <div class="setting-block-sub">Download a full backup of all your data (links, customers, products, settings, payments) as a single file, or restore from one. Restoring overwrites current data.</div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-outline btn-sm" onclick="Settings.downloadBackup()">⬇ Download backup</button>
+          <input type="file" id="restore-file" accept="application/json,.json" style="display:none" onchange="Settings.restoreBackup(this)"/>
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('restore-file').click()">⬆ Restore from file</button>
+          <span id="restore-status" style="font-size:.72rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Activation Page Theme &amp; Animation</div>
+        <div class="setting-block-sub">Controls the colours and motion of the customer activation page — the form, the verification-status steps, badges and buttons.</div>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Accent Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-accent" value="#2563eb" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-accent-hex').value=this.value"/>
+              <input type="text" id="portal-accent-hex" placeholder="#2563eb" style="flex:1" oninput="document.getElementById('portal-accent').value=this.value"/>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Background Colour</label>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <input type="color" id="portal-bg" value="#f0f4ff" style="width:48px;height:38px;padding:2px;border:1px solid var(--border);border-radius:8px;cursor:pointer" oninput="document.getElementById('portal-bg-hex').value=this.value"/>
+              <input type="text" id="portal-bg-hex" placeholder="#f0f4ff" style="flex:1" oninput="document.getElementById('portal-bg').value=this.value"/>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label>Animation Level</label>
+          <select id="portal-anim">
+            <option value="full">Full — all motion (cross-zoom, aurora, glow, entrances)</option>
+            <option value="subtle">Subtle — gentle fades only</option>
+            <option value="off">Off — no animation</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Live Preview</div>
+        <div class="setting-block-sub">Updates instantly as you change the colours, animation, slides and popup above — no need to save or open the link.</div>
+        <div class="pv-tabs">
+          <button type="button" class="pv-tab on" data-view="form" onclick="Settings.previewView('form')">Form</button>
+          <button type="button" class="pv-tab" data-view="status" onclick="Settings.previewView('status')">Status</button>
+          <button type="button" class="pv-tab" data-view="activated" onclick="Settings.previewView('activated')">Activated</button>
+          <button type="button" class="pv-tab" data-view="popup" onclick="Settings.previewView('popup')">Popup</button>
+        </div>
+        <div class="pv-phone" id="pv-phone"><div class="pv-screen" id="pv-screen"></div></div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Pre-Activation Contact Popup</div>
+        <div class="setting-block-sub">Show a popup with your WeChat &amp; WhatsApp QR codes before the customer sees the activation form. Upload your own QR images.</div>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:.7rem">
+          <input type="checkbox" id="portal-intro-on" style="width:auto"/> Show contact popup before activation
+        </label>
+        <div class="form-row" style="margin-bottom:.8rem">
+          <div class="form-group" style="margin-bottom:0"><label>Popup Title</label><input id="portal-intro-title" placeholder="Contact us before activating"/></div>
+          <div class="form-group" style="margin-bottom:0"><label>Popup Message</label><input id="portal-intro-text" placeholder="Scan to reach us on WeChat or WhatsApp first."/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0">
+            <label>WeChat QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-wechat-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-wechat-qr"/>
+              <input type="file" accept="image/*" id="qr-wechat-file" style="display:none" onchange="Settings.uploadQR(this,'wechat')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-wechat-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('wechat')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-wechat-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>WhatsApp QR Image</label>
+            <div style="display:flex;align-items:center;gap:.6rem">
+              <img id="qr-whatsapp-thumb" style="display:none;width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>
+              <input type="hidden" id="portal-whatsapp-qr"/>
+              <input type="file" accept="image/*" id="qr-whatsapp-file" style="display:none" onchange="Settings.uploadQR(this,'whatsapp')"/>
+              <button class="btn btn-outline btn-sm" type="button" onclick="document.getElementById('qr-whatsapp-file').click()">Upload</button>
+              <button class="btn btn-outline btn-sm" type="button" onclick="Settings.clearQR('whatsapp')" style="border-color:var(--error-border);color:var(--error)">Remove</button>
+              <span id="qr-whatsapp-status" style="font-size:.7rem;color:var(--muted)"></span>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Tip: if you leave WhatsApp QR empty but set a WhatsApp number above, one will be generated automatically.</div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Payment Methods</div>
+        <div class="setting-block-sub">One per line. These appear in the "Payment Method" dropdown when you create a link and when you edit a customer.</div>
+        <textarea id="payment-methods" rows="7" placeholder="Cash&#10;Bank Transfer&#10;Alipay&#10;WeChat Pay&#10;PayPal" style="font-family:'JetBrains Mono',monospace;font-size:.8rem"></textarea>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-block-title">Activation Page Slideshow &amp; WhatsApp</div>
+        <div class="setting-block-sub">These slides appear beside the customer's activation page. Clicking any slide opens your WhatsApp. Use them to promote current subscriptions and offers.</div>
+
+        <div class="form-group" style="margin-bottom:1rem">
+          <label>WhatsApp Link or Number</label>
+          <input id="portal-whatsapp" placeholder="e.g. https://wa.me/8619738122807  or  +86 19738122807"/>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">A full https://wa.me/… link is used as-is. A plain number is converted to a wa.me link automatically.</div>
+        </div>
+
+        <div class="form-row" style="margin-bottom:1rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label>Panel Size (desktop)</label>
+            <select id="portal-panel-size">
+              <option value="narrow">Narrow (40%)</option>
+              <option value="half">Half (50%)</option>
+              <option value="wide">Wide (60%)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Layout</label>
+            <select id="portal-layout">
+              <option value="single">Single animated slide</option>
+              <option value="grid">Grid — show multiple at once</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <label style="margin-bottom:0">Slides</label>
+          <button class="btn btn-outline btn-sm" onclick="Settings.addSlide()">+ Add Slide</button>
+        </div>
+        <div id="portal-slides-rows"></div>
+      </div>
+
       <button class="btn btn-primary" onclick="Settings.save()">Save Settings</button>
       <div class="msg ok" id="settings-ok"></div>
       <div class="msg err" id="settings-err"></div>
     </div><!-- /page-settings -->
 
-    <!-- ── PAGE: Landing Page Editor ── -->
-    <div class="page" id="page-landing">
-      <div class="ph">
-        <div class="ph-title">🌐 Landing Page</div>
-        <div class="ph-sub">Edit all content displayed on your public-facing landing page.</div>
-      </div>
+    <!-- ── PAGE: Email Automation ── -->
+    <div class="page" id="page-email-automation">
+      <div class="ph"><div class="ph-title">Email &amp; OTP Automation</div><div class="ph-sub">Edit every automatic system email, verification-code rule, expiry schedule and admin motion preference from one place.</div></div>
+      <div class="automation-hero"><div class="automation-hero-content"><div><div class="automation-title">DTC Communication Control Centre</div><div class="automation-sub">Automatic OTP, activation, request approval, renewal and expiry emails now use editable templates. Changes apply to future messages immediately.</div></div><div class="automation-health"><span id="auto-health-enabled">Loading…</span><span id="auto-health-otp">OTP settings</span><span id="auto-health-rules">Expiry rules</span></div></div></div>
 
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center">
-        <button class="btn btn-primary" onclick="Landing.save()">💾 Save Changes</button>
-        <button class="btn btn-outline" onclick="Landing.openLandingPage()">↗ View Live Page</button>
-        <button class="btn btn-outline" onclick="Landing.reset()" style="margin-left:auto;color:var(--error);border-color:var(--error-border)">↺ Reset to Defaults</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 420px;gap:1.5rem;align-items:start">
-        <!-- LEFT: Edit forms -->
-        <div>
-
-          <!-- Hero Section -->
-          <div class="setting-block">
-            <div class="setting-block-title">🚀 Hero Section</div>
-            <div class="setting-block-sub">The main headline and subtitle visitors see first.</div>
-            <div class="form-group">
-              <label>Hero Title <span style="font-weight:400;color:var(--muted)">(HTML supported — use &lt;span&gt; for blue text)</span></label>
-              <input id="lp-hero-title" placeholder="Your Gateway to <span>AI & Academic</span> Excellence"/>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Hero Subtitle</label>
-              <textarea id="lp-hero-subtitle" rows="3" placeholder="Short compelling description of DTC's value…"></textarea>
-            </div>
+      <div class="automation-grid">
+        <div class="card">
+          <div class="card-title"><span>Master controls</span><label class="toggle"><input id="auto-master" type="checkbox" checked/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.72rem;margin-left:.45rem">Enable automatic emails</span></label></div>
+          <div class="auto-help">Turning this off pauses OTP delivery and all automatic subscription emails. SMTP configuration and manual campaigns remain available.</div>
+          <div class="appearance-options">
+            <div class="appearance-option"><label>Motion level <select id="admin-motion-level" style="margin-left:auto;width:120px"><option value="off">Off</option><option value="subtle">Subtle</option><option value="balanced">Balanced</option><option value="full">Full</option></select></label></div>
+            <div class="appearance-option"><label><input type="checkbox" id="appearance-cardHover"/> Card hover movement</label></div>
+            <div class="appearance-option"><label><input type="checkbox" id="appearance-backgroundGlow"/> Background glow</label></div>
+            <div class="appearance-option"><label><input type="checkbox" id="appearance-dataAnimations"/> Data entrance animations</label></div>
           </div>
-
-          <!-- Statistics -->
-          <div class="setting-block">
-            <div class="setting-block-title">📊 Statistics Bar</div>
-            <div class="setting-block-sub">Key numbers shown prominently on the landing page.</div>
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Active Customers</label>
-                <input id="lp-stat-customers" placeholder="2,000+"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Accounts Activated</label>
-                <input id="lp-stat-activations" placeholder="10,000+"/>
-              </div>
-            </div>
-            <div class="form-row" style="margin-top:.7rem">
-              <div class="form-group" style="margin-bottom:0">
-                <label>AI Tools Count</label>
-                <input id="lp-stat-tools" placeholder="100+"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>Countries Served</label>
-                <input id="lp-stat-countries" placeholder="50+"/>
-              </div>
-            </div>
-          </div>
-
-          <!-- About -->
-          <div class="setting-block">
-            <div class="setting-block-title">ℹ About Section</div>
-            <div class="setting-block-sub">Text in the "About DTC" section of the page.</div>
-            <div class="form-group">
-              <label>Section Title</label>
-              <input id="lp-about-title" placeholder="Premium AI Access, Made Affordable"/>
-            </div>
-            <div class="form-group" style="margin-bottom:0">
-              <label>Description</label>
-              <textarea id="lp-about-desc" rows="3" placeholder="Describe DTC's mission and value proposition…"></textarea>
-            </div>
-          </div>
-
-          <!-- Contact -->
-          <div class="setting-block">
-            <div class="setting-block-title">📞 Contact Details</div>
-            <div class="setting-block-sub">Shown in the contact section and page footer.</div>
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label>Email Address</label>
-                <input id="lp-email" type="email" placeholder="dtc@dtc1.shop"/>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label>WhatsApp Number</label>
-                <input id="lp-whatsapp" placeholder="+86 19738122807"/>
-              </div>
-            </div>
-          </div>
-
-          <!-- WeChat QR -->
-          <div class="setting-block">
-            <div class="setting-block-title">💬 WeChat QR Code</div>
-            <div class="setting-block-sub">Upload your WeChat QR code image. It will be embedded on the landing page. Max 500 KB.</div>
-            <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap">
-              <div id="lp-qr-preview" style="width:80px;height:80px;border:2px dashed var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:.65rem;text-align:center;background:#f8fafc">
-                No QR set
-              </div>
-              <div style="flex:1;min-width:200px">
-                <label class="btn btn-outline" style="cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;margin-bottom:.5rem">
-                  📁 Upload QR Image
-                  <input type="file" accept="image/*" style="display:none" onchange="Landing.handleQrUpload(this)"/>
-                </label>
-                <div class="form-group" style="margin-bottom:0">
-                  <label>Or paste Image URL / Base64</label>
-                  <input id="lp-wechat-qr" placeholder="https://… or data:image/png;base64,…" style="font-size:.75rem"/>
-                </div>
-              </div>
-            </div>
-          </div>
-
         </div>
-
-        <!-- RIGHT: Live preview -->
-        <div style="position:sticky;top:1.5rem">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-title" style="margin-bottom:.9rem">
-              <span>Live Preview</span>
-              <button class="btn btn-outline btn-sm" onclick="Landing.save()">Save →</button>
-            </div>
-            <div id="lp-preview" style="font-size:.78rem"></div>
+        <div class="card">
+          <div class="card-title">Customer portal OTP rules</div>
+          <div class="auto-setting-grid">
+            <div class="form-group"><label>Code digits</label><input id="auto-otp-digits" type="number" min="4" max="8"/><div class="auto-help">4 to 8 digits</div></div>
+            <div class="form-group"><label>Expires after</label><input id="auto-otp-expiryMinutes" type="number" min="2" max="60"/><div class="auto-help">Minutes</div></div>
+            <div class="form-group"><label>Resend timer</label><input id="auto-otp-resendSeconds" type="number" min="10" max="300"/><div class="auto-help">Seconds</div></div>
+            <div class="form-group"><label>Maximum attempts</label><input id="auto-otp-maxAttempts" type="number" min="3" max="10"/><div class="auto-help">Before a new code is required</div></div>
+            <div class="form-group"><label>Portal session</label><input id="auto-otp-sessionDays" type="number" min="1" max="90"/><div class="auto-help">Days remembered</div></div>
+            <div class="form-group"><label>Magic link</label><label class="toggle" style="margin-top:.45rem"><input id="auto-magic" type="checkbox"/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.72rem;margin-left:.45rem">Include secure link</span></label></div>
           </div>
         </div>
       </div>
 
-      <div class="msg ok" id="lp-ok" style="margin-top:1rem"></div>
-      <div class="msg err" id="lp-err" style="margin-top:1rem"></div>
-    </div><!-- /page-landing -->
+      <div class="card">
+        <div class="card-title"><span>Automatic message mapping</span><button class="btn btn-outline btn-sm" onclick="EmailAutomation.load()">↻ Refresh templates</button></div>
+        <div class="auto-help" style="margin-bottom:.75rem">Choose which saved template is used by each system event. Click Edit to modify the complete subject and HTML appearance.</div>
+        <div class="auto-map-list" id="auto-fixed-list"><div class="empty">Loading…</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>Expiry and renewal schedule</span><button class="btn btn-outline btn-sm" onclick="EmailAutomation.addRule()">+ Add reminder</button></div>
+        <div class="auto-help" style="margin-bottom:.75rem">Set 30, 7, 5, 1 or any number of days before expiry. Use 0 for the email sent after the subscription expires.</div>
+        <div id="auto-expiry-rules"><div class="empty">Loading…</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Test and save</div>
+        <div class="auto-footer"><div class="auto-test"><input type="email" id="auto-test-email" placeholder="Test recipient email"/><select id="auto-test-template" style="min-width:220px"><option>Choose template</option></select><button class="btn btn-outline" onclick="EmailAutomation.testSelected()">Send Test</button></div><button class="btn btn-primary" onclick="EmailAutomation.save()">Save Automation Settings</button></div>
+        <div class="msg ok" id="auto-ok"></div><div class="msg err" id="auto-err"></div>
+      </div>
+    </div><!-- /page-email-automation -->
 
     <!-- ── PAGE: Email Config ── -->
     <div class="page" id="page-email">
@@ -939,6 +1820,10 @@
 </div><!-- /app -->
 
 
+<datalist id="country-list">
+  <option>China</option><option>Pakistan</option><option>India</option><option>United States</option><option>United Kingdom</option><option>Nigeria</option><option>South Africa</option><option>United Arab Emirates</option><option>Saudi Arabia</option><option>Canada</option><option>Australia</option><option>Germany</option><option>France</option><option>Italy</option><option>Spain</option><option>Netherlands</option><option>Turkey</option><option>Russia</option><option>Japan</option><option>South Korea</option><option>Singapore</option><option>Malaysia</option><option>Indonesia</option><option>Philippines</option><option>Thailand</option><option>Vietnam</option><option>Bangladesh</option><option>Sri Lanka</option><option>Nepal</option><option>Hong Kong</option><option>Taiwan</option><option>Qatar</option><option>Oman</option><option>Kuwait</option><option>Egypt</option><option>Kenya</option><option>Ghana</option><option>Morocco</option><option>Brazil</option><option>Mexico</option><option>Argentina</option><option>New Zealand</option>
+</datalist>
+
 <!-- ══════════════════════════════════════════════════════════════════════════
      MODALS
 ═══════════════════════════════════════════════════════════════════════════ -->
@@ -970,6 +1855,62 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="Modals.closeSession()">Close</button>
       <button class="btn btn-primary" onclick="Modals.copySession()">Copy Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Profile -->
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal" style="max-width:680px">
+    <div id="profile-body"></div>
+  </div>
+</div>
+
+<!-- Edit Customer / Package -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">Edit Customer &amp; Package</div>
+    <div class="modal-sub">Update package details mid-subscription without re-issuing the activation link.</div>
+    <input type="hidden" id="edit-token"/>
+    <div class="form-row">
+      <div class="form-group"><label>Customer Name</label><input type="text" id="edit-name"/></div>
+      <div class="form-group"><label>Package</label><input type="text" id="edit-package" placeholder="e.g. 1 Month Pro"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Email</label><input type="email" id="edit-email"/></div>
+      <div class="form-group"><label>WeChat</label><input type="text" id="edit-wechat"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Price</label><input type="number" id="edit-price" min="0" step="0.01"/></div>
+      <div class="form-group"><label>Purchase Price / Cost</label><input type="number" id="edit-cost" min="0" step="0.01" placeholder="Your cost"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Subscription Length (days)</label><input type="number" id="edit-days" min="1" step="1"/></div>
+      <div class="form-group"><label>Amount Received</label><input type="number" id="edit-amount" min="0" step="0.01" placeholder="Actual amount paid"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Payment Method</label>
+        <select id="edit-method">
+          <option value="">— Select —</option>
+          <option>Cash</option>
+          <option>Bank Transfer</option>
+          <option>Alipay</option>
+          <option>WeChat Pay</option>
+          <option>PayPal</option>
+          <option>Card</option>
+          <option>Crypto</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Subscription Expiry Date</label>
+      <input type="date" id="edit-expiry"/>
+      <div style="font-size:.66rem;color:var(--muted);margin-top:.3rem">This is when the subscription ends. "Length" only sets the total used by the usage bar.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="Modals.closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="Modals.confirmEdit()">Save Changes</button>
     </div>
   </div>
 </div>
@@ -1036,7 +1977,7 @@
     </div>
     <div class="form-group">
       <label>Body <span style="font-weight:400;color:var(--muted)">— HTML supported</span></label>
-      <div class="teditor-hint">Available variables: <code>{{name}}</code> <code>{{package}}</code> <code>{{product}}</code> <code>{{expiry}}</code> <code>{{daysLeft}}</code> <code>{{email}}</code> <code>{{wechat}}</code></div>
+      <div class="teditor-hint">Available variables: <code>{{name}}</code> <code>{{package}}</code> <code>{{product}}</code> <code>{{expiry}}</code> <code>{{daysLeft}}</code> <code>{{email}}</code> <code>{{wechat}}</code> <code>{{otp}}</code> <code>{{otpExpiryMinutes}}</code> <code>{{otpDigits}}</code> <code>{{magicLink}}</code> <code>{{magicLinkBlock}}</code> <code>{{activationLink}}</code></div>
       <textarea class="compose-textarea html-textarea" id="teditor-body" placeholder="&lt;p&gt;Hi {{name}},&lt;/p&gt;&#10;&lt;p&gt;Your &lt;strong&gt;{{package}}&lt;/strong&gt; subscription expires on &lt;strong&gt;{{expiry}}&lt;/strong&gt;.&lt;/p&gt;"></textarea>
     </div>
     <div class="msg err" id="teditor-err"></div>
@@ -1065,10 +2006,17 @@
     </div>
     <div class="form-row">
       <div class="form-group"><label>Description</label><input id="prod-desc" placeholder="Short description shown in admin"/></div>
+      <div class="form-group"><label>Default Purchase Price / Cost <span style="font-weight:400;color:var(--muted);font-size:.7rem">— your cost per sale (used for profit; pre-fills the create-link form)</span></label><input type="number" id="prod-cost" min="0" step="0.01" placeholder="0.00"/></div>
       <div class="form-group" style="display:flex;align-items:flex-end;gap:1rem;padding-bottom:.1rem">
         <div style="flex:1"><label>Colour</label><input type="color" id="prod-color" value="#2563eb" style="height:2.4rem;padding:.2rem .3rem;cursor:pointer"/></div>
         <label class="toggle" style="margin-bottom:.35rem"><input type="checkbox" id="prod-active" checked/><div class="toggle-track"><div class="toggle-thumb"></div></div><span style="font-size:.8rem;font-weight:600;margin-left:.4rem">Active</span></label>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label>Activation Page Name <span style="font-weight:400;color:var(--muted)">(Portal title shown to the customer)</span></label>
+      <input id="prod-portal-name" placeholder="e.g. Premium AI Activation — leave blank to use the default"/>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem">Appears as the heading on this product's activation page instead of the fixed "Claude" / "ChatGPT" label. Leave blank to keep the default.</div>
     </div>
 
     <div style="margin-bottom:.8rem">
@@ -1118,16 +2066,22 @@
 <script src="js/settings.js"></script>
 <script src="js/resellers.js"></script>
 <script src="js/bulk-email.js"></script>
-<script src="js/landing.js"></script>
 <script src="js/products.js"></script>
 <script src="js/revenue.js"></script>
 <script src="js/notifications.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/keys.js"></script>
+<script src="js/region-map.js"></script>
+<script src="js/email-automation.js"></script>
+<script src="js/admin-effects.js"></script>
+<script src="js/audit-logs.js"></script>
 
 <script>
   // ── Bootstrap: wire up everything once DOM is ready ──
   document.addEventListener('DOMContentLoaded', () => {
     Auth.init();
     Modals.init();
+    AdminEffects.init();
   });
 </script>
 
