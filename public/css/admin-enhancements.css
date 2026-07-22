@@ -1,0 +1,59 @@
+/* DTC Admin — Email automation, regional map and professional motion */
+:root{--cyber-blue:#2563eb;--cyber-deep:#0b2a5b;--cyber-sky:#38bdf8;--cyber-soft:#eff6ff}
+body{position:relative;isolation:isolate}
+body.admin-glow::before,body.admin-glow::after{content:"";position:fixed;z-index:-2;pointer-events:none;border-radius:50%;filter:blur(80px);opacity:.18;animation:adminGlowDrift 18s ease-in-out infinite alternate}
+body.admin-glow::before{width:420px;height:420px;background:#60a5fa;right:-160px;top:8vh}
+body.admin-glow::after{width:340px;height:340px;background:#c4b5fd;left:12vw;bottom:-180px;animation-delay:-7s}
+@keyframes adminGlowDrift{to{transform:translate3d(-35px,35px,0) scale(1.12)}}
+.page.active{animation:adminPageIn .42s cubic-bezier(.2,.72,.2,1) both}
+@keyframes adminPageIn{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+body.admin-card-hover .card,body.admin-card-hover .stat,body.admin-card-hover .setting-block{transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+body.admin-card-hover .card:hover,body.admin-card-hover .setting-block:hover{transform:translateY(-2px);box-shadow:0 14px 35px rgba(30,64,175,.09);border-color:#c8d8f1}
+body.admin-card-hover .stat:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(37,99,235,.10);border-color:#c9d9f3}
+.nav-item{position:relative;overflow:hidden}
+.nav-item::after{content:"";position:absolute;inset:auto -45% 0;height:1px;background:linear-gradient(90deg,transparent,#60a5fa,transparent);transform:translateX(-70%);opacity:0}
+.nav-item:hover::after{opacity:.65;animation:navScan 1.4s ease}
+@keyframes navScan{to{transform:translateX(75%)}}
+.stat.motion-pop{animation:statPop .5s ease both}
+@keyframes statPop{from{opacity:.35;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+.motion-row{animation:motionRow .38s ease both}
+@keyframes motionRow{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+/* Automation centre */
+.automation-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0b2a5b,#1451a4 55%,#2563eb);border-radius:18px;padding:1.4rem 1.5rem;color:#fff;margin-bottom:1.1rem;box-shadow:0 16px 38px rgba(20,81,164,.2)}
+.automation-hero::before{content:"";position:absolute;width:260px;height:260px;border:1px solid rgba(255,255,255,.15);border-radius:50%;right:-70px;top:-110px;box-shadow:0 0 0 34px rgba(255,255,255,.035),0 0 0 68px rgba(255,255,255,.025);animation:autoRing 14s linear infinite}
+.automation-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.12) 50%,transparent 65%);transform:translateX(-110%);animation:autoSweep 7s ease-in-out infinite}
+@keyframes autoRing{to{transform:rotate(360deg)}}
+@keyframes autoSweep{0%,60%{transform:translateX(-110%)}90%,100%{transform:translateX(110%)}}
+.automation-hero-content{position:relative;z-index:1;display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}
+.automation-title{font-size:1.15rem;font-weight:800;letter-spacing:-.02em}.automation-sub{font-size:.76rem;opacity:.76;margin-top:.28rem;line-height:1.55;max-width:660px}
+.automation-health{display:flex;gap:.55rem;flex-wrap:wrap}.automation-health span{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.17);border-radius:999px;padding:.36rem .65rem;font:600 .66rem Inter,sans-serif;backdrop-filter:blur(8px)}
+.automation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin-bottom:1rem}
+.auto-setting-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem}
+.auto-setting-grid .form-group{margin:0}.auto-help{font-size:.68rem;color:var(--muted);line-height:1.55;margin-top:.3rem}
+.auto-map-list{display:flex;flex-direction:column;gap:.65rem}.auto-map-row{display:grid;grid-template-columns:44px minmax(130px,.8fr) minmax(180px,1.2fr) auto auto;gap:.65rem;align-items:center;padding:.72rem .75rem;border:1px solid var(--border);border-radius:11px;background:linear-gradient(135deg,#fff,#fbfdff)}
+.auto-map-row:hover{border-color:#bed1ef;background:#f9fbff}.auto-map-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#edf5ff;color:#2563eb;font-size:1rem}.auto-map-name{font-size:.76rem;font-weight:700;color:var(--text)}.auto-map-desc{font-size:.64rem;color:var(--muted);margin-top:.18rem;line-height:1.4}.auto-map-row select{min-width:180px}.auto-toggle-cell{display:flex;align-items:center;justify-content:center}
+.expiry-rule-row{display:grid;grid-template-columns:44px 100px minmax(190px,1fr) auto minmax(128px,auto);gap:.65rem;align-items:center;padding:.68rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;margin-bottom:.55rem}.expiry-rule-label{font-size:.7rem;font-weight:700;color:var(--text)}
+.auto-footer{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-top:1rem}.auto-test{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.auto-test input{width:250px}
+.appearance-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin-top:.7rem}.appearance-option{border:1px solid var(--border);border-radius:10px;padding:.65rem;background:#fbfdff}.appearance-option label{display:flex;gap:.55rem;align-items:center;font-size:.73rem;font-weight:650;cursor:pointer;margin:0}.appearance-option input{width:auto}
+@media(max-width:930px){.automation-grid{grid-template-columns:1fr}.auto-map-row{grid-template-columns:40px 1fr}.auto-map-row select,.auto-map-row .auto-toggle-cell,.auto-map-row .auto-actions{grid-column:2}.auto-setting-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.auto-setting-grid,.appearance-options{grid-template-columns:1fr}.expiry-rule-row{grid-template-columns:40px 1fr}.expiry-rule-row>*:not(:first-child){grid-column:2}.auto-test input{width:100%}}
+
+/* Regional customer map */
+.region-card{position:relative;overflow:hidden;margin-bottom:1.2rem;background:linear-gradient(145deg,#071e42,#0e3f80 58%,#1258ad);border:1px solid #1c5da9;border-radius:17px;box-shadow:0 18px 46px rgba(7,30,66,.18);color:#fff}
+.region-card::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(125,211,252,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(125,211,252,.055) 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(to bottom,#000,transparent 92%);animation:mapGridMove 18s linear infinite}
+@keyframes mapGridMove{to{background-position:28px 28px}}
+.region-head{position:relative;z-index:1;display:flex;justify-content:space-between;gap:1rem;align-items:center;padding:1.05rem 1.15rem;border-bottom:1px solid rgba(255,255,255,.1)}
+.region-head h3{margin:0;font-size:.91rem}.region-head p{margin:.23rem 0 0;font-size:.66rem;color:rgba(255,255,255,.64)}.region-metrics{display:flex;gap:.55rem;flex-wrap:wrap}.region-metric{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:9px;padding:.45rem .62rem;min-width:76px}.region-metric strong{display:block;font:700 .88rem 'JetBrains Mono',monospace}.region-metric span{font-size:.57rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
+.region-layout{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(240px,.7fr);min-height:360px}.region-map-wrap{position:relative;padding:.65rem}.region-map-wrap svg{display:block;width:100%;height:100%;min-height:330px}.world-land{fill:#e8f3ff;fill-opacity:.13;stroke:#8ed8ff;stroke-opacity:.22;stroke-width:1.2}.world-line{stroke:#7dd3fc;stroke-opacity:.1;stroke-width:1}.map-marker{cursor:pointer;transform-origin:center;animation:markerEnter .55s cubic-bezier(.2,.8,.2,1) both}.map-marker .pulse{fill:none;stroke:#7dd3fc;stroke-width:1.5;animation:mapPulse 2.4s ease-out infinite}.map-marker .dot{fill:#fff;stroke:#38bdf8;stroke-width:3;filter:drop-shadow(0 0 7px #38bdf8)}.map-marker .count{fill:#0b2a5b;font:800 9px Inter,sans-serif;text-anchor:middle;dominant-baseline:middle}.map-marker:hover .dot{fill:#bae6fd;transform:scale(1.18)}
+@keyframes mapPulse{0%{r:6;opacity:.9}100%{r:23;opacity:0}}@keyframes markerEnter{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:scale(1)}}
+.region-side{border-left:1px solid rgba(255,255,255,.1);background:rgba(4,20,48,.28);padding:.85rem;backdrop-filter:blur(8px)}.region-side-title{font-size:.63rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.55);font-weight:700;margin-bottom:.55rem}.region-list{display:flex;flex-direction:column;gap:.45rem;max-height:292px;overflow:auto;padding-right:.2rem}.region-item{background:rgba(255,255,255,.065);border:1px solid rgba(255,255,255,.09);border-radius:9px;padding:.58rem .62rem;cursor:pointer;transition:.18s}.region-item:hover{background:rgba(255,255,255,.11);transform:translateX(-2px)}.region-item-top{display:flex;justify-content:space-between;gap:.5rem;font-size:.7rem;font-weight:700}.region-item-sub{font-size:.58rem;color:rgba(255,255,255,.58);margin-top:.2rem}.region-bar{height:3px;background:rgba(255,255,255,.1);border-radius:99px;margin-top:.42rem;overflow:hidden}.region-bar span{display:block;height:100%;background:linear-gradient(90deg,#38bdf8,#c4b5fd);border-radius:99px;animation:barGrow .7s ease both}@keyframes barGrow{from{width:0}}
+.region-empty{padding:1.2rem;color:rgba(255,255,255,.65);font-size:.72rem;line-height:1.6}.region-refresh{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;border-radius:8px;padding:.4rem .65rem;cursor:pointer;font-size:.65rem;font-weight:700}.region-refresh:hover{background:rgba(255,255,255,.14)}
+@media(max-width:900px){.region-layout{grid-template-columns:1fr}.region-side{border-left:0;border-top:1px solid rgba(255,255,255,.1)}.region-map-wrap svg{min-height:270px}.region-list{max-height:190px}}
+
+/* Reduced motion and user-selected motion levels */
+body[data-admin-motion="off"] *,body[data-admin-motion="off"] *::before,body[data-admin-motion="off"] *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+body[data-admin-motion="subtle"] .automation-hero::before,body[data-admin-motion="subtle"] .automation-hero::after,body[data-admin-motion="subtle"] .region-card::before,body[data-admin-motion="subtle"] .map-marker .pulse{animation:none!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+
+.expiry-rule-actions{display:flex;align-items:center;gap:.4rem;justify-content:flex-end}
