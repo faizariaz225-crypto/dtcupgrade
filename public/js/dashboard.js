@@ -174,6 +174,8 @@ const Dashboard = (() => {
     try { Revenue.render(); } catch(e) { console.warn(e); }
     try { _checkNewSubmissions(); } catch(e) { console.warn(e); }
     try { refreshCustomerPicker(); refreshPaymentMethods(); _applyCurrencyUi(); } catch(e) { console.warn(e); }
+    try { if (typeof RegionMap !== 'undefined') RegionMap.load(); } catch(e) { console.warn(e); }
+    try { if (typeof AdminEffects !== 'undefined') AdminEffects.apply(); } catch(e) { console.warn(e); }
     _stampUpdated();
   };
 

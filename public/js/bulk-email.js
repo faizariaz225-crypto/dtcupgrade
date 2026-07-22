@@ -137,7 +137,11 @@ const BulkEmail = (() => {
   const SAMPLE = {
     name: 'Ahmed Khan', package: 'Claude Pro — 1 Month',
     expiry: '05 August 2025', daysLeft: '12',
-    product: 'Claude Pro', email: 'ahmed@example.com', wechat: 'ahmed_wechat'
+    product: 'Claude Pro', email: 'ahmed@example.com', wechat: 'ahmed_wechat',
+    otp: '482913', otpExpiryMinutes: '15', otpDigits: '6',
+    magicLink: 'https://dtc1.shop/portal?token=sample-secure-link',
+    magicLinkBlock: '<p style="margin-top:18px"><a href="https://dtc1.shop/portal?token=sample-secure-link" style="display:inline-block;padding:12px 20px;background:#176bff;color:#fff;text-decoration:none;border-radius:8px;font-weight:700">Open customer portal</a></p>',
+    activationLink: 'https://dtc1.shop/activate/sample-link'
   };
 
   const _fillVars = (str) => str
@@ -147,7 +151,13 @@ const BulkEmail = (() => {
     .replace(/\{\{email\}\}/g,    SAMPLE.email)
     .replace(/\{\{wechat\}\}/g,   SAMPLE.wechat)
     .replace(/\{\{expiry\}\}/g,   SAMPLE.expiry)
-    .replace(/\{\{daysLeft\}\}/g, SAMPLE.daysLeft);
+    .replace(/\{\{daysLeft\}\}/g, SAMPLE.daysLeft)
+    .replace(/\{\{otp\}\}/g, SAMPLE.otp)
+    .replace(/\{\{otpExpiryMinutes\}\}/g, SAMPLE.otpExpiryMinutes)
+    .replace(/\{\{otpDigits\}\}/g, SAMPLE.otpDigits)
+    .replace(/\{\{magicLinkBlock\}\}/g, SAMPLE.magicLinkBlock)
+    .replace(/\{\{magicLink\}\}/g, SAMPLE.magicLink)
+    .replace(/\{\{activationLink\}\}/g, SAMPLE.activationLink);
 
   const _updatePreview = () => {
     const subject = document.getElementById('compose-subject')?.value || '';

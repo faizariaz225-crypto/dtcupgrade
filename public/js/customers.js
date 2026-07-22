@@ -404,6 +404,11 @@ const Customers = (() => {
           ${PRESET_TAGS.map(tg => `<button type="button" class="ptag${tags.includes(tg) ? ' on' : ''}" data-tag="${tg}" onclick="this.classList.toggle('on')">${tg}</button>`).join('')}
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>Country</label><input id="profile-country" list="country-list" placeholder="e.g. China" value="${esc(g.cust.country || '')}"/></div>
+        <div class="form-group"><label>Region / State</label><input id="profile-region" placeholder="e.g. Hubei" value="${esc(g.cust.region || '')}"/></div>
+      </div>
+      <div class="form-group"><label>City</label><input id="profile-city" placeholder="e.g. Wuhan" value="${esc(g.cust.city || '')}"/><div style="font-size:.67rem;color:var(--muted);margin-top:.3rem">Country is used for the animated customer map. Region and city appear in map details.</div></div>
       <div class="form-group"><label>Internal Notes</label><textarea id="profile-note" rows="3" placeholder="Private notes about this customer…">${esc(g.cust.note || '')}</textarea></div>
       <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:.4rem 0">Subscription history</div>
       <div class="tbl-wrap" style="max-height:240px;overflow:auto"><table><thead><tr><th>Date</th><th>Product</th><th>Package</th><th>Status</th><th style="text-align:right">Amount</th></tr></thead><tbody>${rows}</tbody></table></div>
@@ -422,7 +427,10 @@ const Customers = (() => {
     if (!customerId) { closeProfile(); return; }
     const tags = [...document.querySelectorAll('#profile-tags .ptag.on')].map(b => b.dataset.tag);
     const note = document.getElementById('profile-note').value;
-    const d = await api('/admin/customer/update', { adminKey: Store.adminKey, customerId, note, tags });
+    const country = document.getElementById('profile-country')?.value.trim() || '';
+    const region = document.getElementById('profile-region')?.value.trim() || '';
+    const city = document.getElementById('profile-city')?.value.trim() || '';
+    const d = await api('/admin/customer/update', { adminKey: Store.adminKey, customerId, note, tags, country, region, city });
     closeProfile();
     if (d && d.success) Dashboard.reload(); else alert('Failed to save.');
   };

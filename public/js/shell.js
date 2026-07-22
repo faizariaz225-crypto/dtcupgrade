@@ -30,8 +30,12 @@ const Shell = (() => {
     if (pageId === 'keys')         Keys.render();
     if (pageId === 'settings')     Settings.load();
     if (pageId === 'revenue')      Revenue.render();
+    if (pageId === 'audit-logs')   AuditLogs.load();
+    if (pageId === 'email-automation') EmailAutomation.load();
+    if (pageId === 'dashboard') RegionMap.load();
     if (pageId === 'notifications')  { Notifications.init(); Notifications.load(); }
     if (pageId === 'landing')         Landing.load();
+    try { AdminEffects.pageChanged(); } catch (e) {}
   };
 
   // Called by nav-items: onclick="Shell.navigate('dashboard', this)"

@@ -22,11 +22,17 @@ const Store = (() => {
   let _instructions  = { sets: {} };
   let _dashFilter    = 'all';
   let _custFilter    = 'all';
+  let _currentUser   = null;
+  let _sessionToken  = '';
 
   return {
     // ── Admin key ────────────────────────────────────────────────────────────
     get adminKey()     { return _adminKey; },
     setAdminKey(k)     { _adminKey = k; },
+    get currentUser()   { return _currentUser; },
+    set currentUser(u)  { _currentUser = u || null; },
+    get sessionToken()  { return _sessionToken; },
+    set sessionToken(t) { _sessionToken = t || ''; },
 
     // ── Tokens (links) ───────────────────────────────────────────────────────
     get tokens()       { return _tokens; },
@@ -77,7 +83,7 @@ const Store = (() => {
     setKeyStock(s)     { _keyStock = s || {}; },
 
     // ── Bulk load after login ─────────────────────────────────────────────────
-    load({ tokens, emailLog, revenue, customers, resellers, keys, keyStock, settings }) {
+    load({ tokens, emailLog, revenue, customers, resellers, keys, keyStock, settings, currentUser, sessionToken }) {
       this.setTokens(tokens);
       this.setEmailLog(emailLog);
       if (revenue) this.setRevenue(revenue);
@@ -87,6 +93,8 @@ const Store = (() => {
       if (keyStock) this.setKeyStock(keyStock);
       // Merge currency + payment methods so every page reflects the configured currency
       if (settings) _settings = { ..._settings, ...settings };
+      if (currentUser) _currentUser = currentUser;
+      if (sessionToken) _sessionToken = sessionToken;
     },
   };
 })();
